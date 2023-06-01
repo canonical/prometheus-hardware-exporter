@@ -1,0 +1,84 @@
+{
+"Controllers":[
+{
+	"Command Status" : {
+		"CLI Version" : "007.2408.0000.0000 Nov 15, 2022",
+		"Operating system" : "Linux 5.15.0-72-generic",
+		"Controller" : 0,
+		"Status" : "Success",
+		"Description" : "None"
+	},
+	"Response Data" : {
+		"/c0/v239" : [
+			{
+				"DG/VD" : "0/239",
+				"TYPE" : "RAID1",
+				"State" : "Optl",
+				"Access" : "RW",
+				"Consist" : "Yes",
+				"Cache" : "NRWTD",
+				"Cac" : "-",
+				"sCC" : "ON",
+				"Size" : "744.687 GiB",
+				"Name" : "NVMe-RAID-1"
+			}
+		],
+		"PDs for VD 239" : [
+			{
+				"EID:Slt" : "251:1",
+				"DID" : 0,
+				"State" : "Onln",
+				"DG" : 0,
+				"Size" : "800.00 GB",
+				"Intf" : "NVMe",
+				"Med" : "SSD",
+				"SED" : "N",
+				"PI" : "N",
+				"SeSz" : "512B",
+				"Model" : "MZXLR800HBHQ-000H3                      ",
+				"Sp" : "U",
+				"Type" : "-"
+			},
+			{
+				"EID:Slt" : "251:2",
+				"DID" : 1,
+				"State" : "Onln",
+				"DG" : 0,
+				"Size" : "800.00 GB",
+				"Intf" : "NVMe",
+				"Med" : "SSD",
+				"SED" : "N",
+				"PI" : "N",
+				"SeSz" : "512B",
+				"Model" : "MZXLR800HBHQ-000H3                      ",
+				"Sp" : "U",
+				"Type" : "-"
+			}
+		],
+		"VD239 Properties" : {
+			"Strip Size" : "64 KB",
+			"Number of Blocks" : 1561722880,
+			"VD has Emulated Drive" : "No",
+			"Span Depth" : 1,
+			"Number of Drives Per Span" : 2,
+			"Write Cache(initial setting)" : "WriteThrough",
+			"Disk Cache Policy" : "Disk's Default",
+			"Write Cache Status" : "Disabled",
+			"Encryption" : "None",
+			"Data Integrity" : "None",
+			"Active Operations" : "None",
+			"Exposed to OS" : "Yes",
+			"OS Drive Name" : "/dev/sda",
+			"Creation Date" : "02-08-2022",
+			"Creation Time" : "01:29:12 PM",
+			"Emulation type" : "default",
+			"Cachebypass size" : "Cachebypass-64k",
+			"Cachebypass Mode" : "Cachebypass Intelligent",
+			"Is LD Ready for OS Requests" : "Yes",
+			"SCSI NAA Id" : "600062b2073a48402a7be3283fc1215e",
+			"Unmap Enabled" : "No"
+		}
+	}
+}
+]
+}

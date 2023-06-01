@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# Generate a default config.yaml
+
+cat <<EOF > $SNAP_DATA/config.yaml
+port: 10000
+level: INFO
+EOF

@@ -1,0 +1,82 @@
+# This is a template `pyproject.toml` file for snaps
+# This file is managed by bootstack-charms-spec and should not be modified
+# within individual snap repos. https://launchpad.net/bootstack-charms-spec
+
+[tool.flake8]
+ignore = ["C901", "D100", "D101", "D102", "D103", "W503", "W504"]
+exclude = ['.eggs', '.git', '.tox', '.venv', '.build', 'build', 'report']
+max-line-length = 99
+max-complexity = 10
+
+[tool.black]
+line-length = 99
+exclude = '''
+/(
+    | .eggs
+    | .git
+    | .tox
+    | .venv
+    | .build
+    | build
+    | report
+)/
+'''
+
+[tool.isort]
+profile = "black"
+skip_glob = [
+  ".eggs",
+  ".git",
+  ".tox",
+  ".venv",
+  ".build",
+  "build",
+  "report"
+]
+
+[tool.pylint]
+max-line-length = 99
+ignore-paths = [
+  ".eggs",
+  ".git",
+  ".tox",
+  ".venv",
+  ".build",
+  "report",
+  "tests",
+]
+
+[tool.pylint.'MESSAGES CONTROL']
+extension-pkg-allow-list = "pydantic" # Fix pydantic issue in pylint, see https://github.com/pydantic/pydantic/issues/1961
+
+[tool.mypy]
+warn_unused_ignores = true
+warn_unused_configs = true
+warn_unreachable = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+exclude = [
+  ".eggs",
+  ".git",
+  ".tox",
+  ".venv",
+  ".build",
+  "lib",
+  "report",
+  "tests",
+]
+
+[tool.coverage.run]
+relative_files = true
+source = ["."]
+omit = ["tests/**", "docs/**", "lib/**", "snap/**", "build/**", "setup.py"]
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+
+[tool.coverage.html]
+directory = "tests/unit/report/html"
+
+[tool.coverage.xml]
+output = "tests/unit/report/coverage.xml"

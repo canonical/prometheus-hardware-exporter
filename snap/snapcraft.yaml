@@ -1,0 +1,30 @@
+name: prometheus-hardware-exporter
+base: core22
+adopt-info: prometheus-hardware-exporter
+summary: collects backup results and exports them as metrics
+description: |
+  The prometheus-hardware-exporter is a snap for collecting backup
+  results from charm-hardware, and export those results as prometheus
+  metrics. The metrics are expected to be used with prometheus.
+
+grade: stable
+confinement: classic
+
+apps:
+  prometheus-hardware-exporter:
+    daemon: simple
+    install-mode: disable
+    restart-condition: on-abnormal
+    command: bin/prometheus-hardware-exporter
+    plugs:
+      - network-bind
+
+parts:
+  prometheus-hardware-exporter:
+    source: .
+    plugin: python
+    python-requirements: [./requirements.txt]
+    override-build: |
+      snapcraftctl build
+      echo "Version: $(python3 setup.py --version)"
+      snapcraftctl set-version "$(python3 setup.py --version)"
