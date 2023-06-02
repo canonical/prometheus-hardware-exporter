@@ -35,6 +35,11 @@ class Command:
         Returns:
             result: an instance of Result class
         """
+        if not self.installed:
+            error = ValueError(f"{self.command} not installed.")
+            logger.error(error)
+            return Result(error=error)
+
         return self.check_output(args=args)
 
     def check_output(
@@ -48,11 +53,6 @@ class Command:
         Returns:
             result: an instance of Result class
         """
-        if not self.installed:
-            error = ValueError(f"{self.command} not installed.")
-            logger.error(error)
-            return Result(error=error)
-
         result = Result()
         args = args if args is not None else ""
         prefix = prefix if prefix is not None else self.prefix
