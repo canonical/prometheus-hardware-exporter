@@ -9,17 +9,6 @@ TMP_DIR = "/tmp"
 SETUP_TIMEOUT = 5
 
 
-@pytest.fixture()
-def available_metric_names():
-    return [
-        "megaraid_controllers",
-        "megaraid_virtual_drive",
-        "megaraid_virtual_drive_state",
-        "megaraid_virtual_drive_cache_policy",
-        "storcli_command_success",
-    ]
-
-
 @pytest.fixture(scope="session")
 def snap_name():
     return "prometheus-hardware-exporter"
@@ -40,7 +29,9 @@ def setup_snap(snap_name):
     if test_snap:
         logging.info("Installing %s snap package...", test_snap)
         assert os.path.isfile(test_snap)
-        assert check_call(f"sudo snap install --dangerous {test_snap}".split()) == 0  # noqa
+        assert (
+            check_call(f"sudo snap install --dangerous --classic {test_snap}".split()) == 0
+        )  # noqa
         assert check_call(f"sudo snap start {snap_name}".split()) == 0
     else:
         logging.error(

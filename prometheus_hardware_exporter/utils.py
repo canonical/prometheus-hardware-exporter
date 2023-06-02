@@ -1,18 +1,19 @@
 """Module for helper functions."""
 
 import subprocess
+from dataclasses import dataclass
 from logging import getLogger
-from typing import Optional, Tuple
+from typing import Optional
 
 logger = getLogger(__name__)
 
 
-class CommandNotFoundError(Exception):
-    """Command not found error."""
+@dataclass
+class Result:
+    """Result represents the outcome of a subprocess call."""
 
-
-class CommandExecutionError(Exception):
-    """Command excution error error."""
+    data: str = ""
+    error: Optional[Exception] = None
 
 
 class Command:
@@ -20,63 +21,47 @@ class Command:
 
     prefix = ""
     command = ""
-    installed = False
 
     def __init__(self) -> None:
         """Initialize the Command class."""
-        self.installed = self.check_installed()
+        self.installed = False
+        result = self.check_output(prefix="", command=f"which {self.command}")
+        if not result.error:
+            self.installed = True
 
-    def __call__(self, args: Optional[str] = None) -> Tuple[Optional[str], Optional[Exception]]:
+    def __call__(self, args: Optional[str] = None) -> Result:
         """Run the command, and return the result and error.
 
         Returns:
-            result: output of the command or None
-            error: an exception of None
+            result: an instance of Result class
         """
-        if not self.installed:
-            error = CommandNotFoundError(f"{self.command} not installed.")
-            logger.error(str(error))
-            return None, error
-
-        result, error = self.check_output(args=args)  # type: ignore[assignment]
-        if error:
-            logger.error(str(error))
-            return None, error
-        return result, error
-
-    def check_installed(self) -> bool:
-        """Check if the command is installed or not.
-
-        Returns:
-            True if the command can be found else False.
-        """
-        _, error = self.check_output(prefix="", command=f"which {self.command}")
-        if error:
-            return False
-        return True
+        return self.check_output(args=args)
 
     def check_output(
         self,
         prefix: Optional[str] = None,
         command: Optional[str] = None,
         args: Optional[str] = None,
-    ) -> Tuple[Optional[str], Optional[CommandExecutionError]]:
-        """Run the command, and return the result and error.
+    ) -> Result:
+        """Run the command, and return the result.
 
         Returns:
-            result: output of the command or None
-            error: an exception of None
+            result: an instance of Result class
         """
-        error = None
-        result = None
+        if not self.installed:
+            error = ValueError(f"{self.command} not installed.")
+            logger.error(error)
+            return Result(error=error)
+
+        result = Result()
         args = args if args is not None else ""
         prefix = prefix if prefix is not None else self.prefix
         command = command if command is not None else self.command
         full_command = " ".join([prefix, command, args]).strip()
-
-        logger.debug("Running command: %s", full_command)
         try:
-            result = subprocess.check_output(full_command, shell=True).decode().strip()
+            logger.debug("Running command: %s", full_command)
+            result.data = subprocess.check_output(full_command, shell=True).decode().strip()
         except subprocess.CalledProcessError as err:
-            error = CommandExecutionError(err)
-        return result, error
+            logger.error(err)
+            result.error = err
+        return result

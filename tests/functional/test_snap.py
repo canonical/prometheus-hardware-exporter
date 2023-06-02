@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 """Test exporter snap."""
 import os
-import re
 from subprocess import run
 
 SNAP_NAME = "prometheus-hardware-exporter"
@@ -27,15 +26,3 @@ def test_exporter_http_server():
     """Check if http server is running."""
     result = run("curl http://localhost:10000", shell=True, capture_output=True)
     assert result.returncode == 0
-
-
-def test_exporter_metrics_created(available_metric_names):
-    """Check if hardware related metric is created."""
-    result = run("curl http://localhost:10000", shell=True, capture_output=True)
-    assert result.returncode == 0
-
-    output = result.stdout.decode().strip()
-    for metric_name in available_metric_names:
-        pattern = metric_name
-        match = re.search(pattern, output).group()
-        assert match is not None

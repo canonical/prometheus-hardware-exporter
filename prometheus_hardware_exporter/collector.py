@@ -54,10 +54,10 @@ class MegaRAIDCollector(BlockingCollector):
 
     def fetch(self) -> List[Payload]:
         """Load the MegaRAID related information."""
-        controller_payload, error_con = self.storcli.get_controllers()
-        virtual_drives_payload, error_vd = self.storcli.get_all_virtual_drives()
+        controller_payload = self.storcli.get_controllers()
+        virtual_drives_payload = self.storcli.get_all_virtual_drives()
 
-        if any([error_con, error_vd]):
+        if not all([controller_payload, virtual_drives_payload]):
             logger.error(
                 "Failed to get MegaRAID controller information using %s", self.storcli.command
             )
@@ -72,8 +72,8 @@ class MegaRAIDCollector(BlockingCollector):
         payloads = [
             Payload(
                 name="megaraid_controllers",
-                labels=[controller_payload["hostname"]],  # type: ignore[index]
-                value=controller_payload["count"],  # type: ignore[index]
+                labels=[controller_payload["hostname"]],
+                value=controller_payload["count"],
             ),
             Payload(
                 name="storcli_command_success",
@@ -81,15 +81,15 @@ class MegaRAIDCollector(BlockingCollector):
                 value=1.0,
             ),
         ]
-        for ctrl_id, vds_payload in virtual_drives_payload.items():  # type: ignore[union-attr]
+        for ctrl_id, vds_payload in virtual_drives_payload.items():
             payloads.append(
                 Payload(
                     name="megaraid_virtual_drive",
                     labels=[str(ctrl_id)],
-                    value=len(vds_payload),  # type: ignore[arg-type]
+                    value=len(vds_payload),
                 )
             )
-            for vd_payload in vds_payload:  # type: ignore[union-attr]
+            for vd_payload in vds_payload:
                 payloads.append(
                     Payload(
                         name="megaraid_virtual_drive_state",
