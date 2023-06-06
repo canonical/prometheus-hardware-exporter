@@ -4,9 +4,9 @@ from unittest.mock import patch
 from prometheus_hardware_exporter.collectors.storcli import StorCLI
 from prometheus_hardware_exporter.utils import Command, Result
 
-SHOW_CTRLCOUNT = "tests/unit/test_resources/show_ctrlcount.txt"
-SHOW_ALL = "tests/unit/test_resources/show_all.txt"
-CX_VALL_SHOW_ALL = "tests/unit/test_resources/cx_vall_show_all.txt"
+SHOW_CTRLCOUNT = "tests/unit/test_resources/storcli/show_ctrlcount.txt"
+SHOW_ALL = "tests/unit/test_resources/storcli/show_all.txt"
+CX_VALL_SHOW_ALL = "tests/unit/test_resources/storcli/cx_vall_show_all.txt"
 
 
 class TestStorCLI(unittest.TestCase):

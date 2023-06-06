@@ -1,0 +1,5 @@
+    Adapter Vendor Device SubSys SubSys
+Index Type ID ID Pci Address Ven ID Dev ID
+----- --------- ------ ------ ---------------- ------- ------
+ 0 SAS3008 1000h 72h 00h:01h:00h:00h 1000h 00dah
+ 1 SAS3008 1000h 72h 00h:05h:00h:00h 1000h 00dah
