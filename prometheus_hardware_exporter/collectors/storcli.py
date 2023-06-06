@@ -2,11 +2,19 @@
 
 import re
 from logging import getLogger
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
 from ..utils import Command
 
 logger = getLogger(__name__)
+
+
+CACHE_REGEX = re.compile(r'"Cache"\s*:\s*"(\w*)"')
+CONTROLLER_CNT_REGEX = re.compile(r'"Controller Count"\s*:\s*(?P<num>\d*)')
+DG_VD_REGEX = re.compile(r'"DG\/VD"\s*:\s*"(\d*)\/(\d*)"')
+HOSTENAME_REGEX = re.compile(r'"Host Name"\s*:\s*"(?P<hostname>\w*)"')
+NUM_CONTROLLER_REGEX = re.compile(r'"Number of Controllers"\s*:\s*(?P<num>\d*)')
+STATE_REGEX = re.compile(r'"State"\s*:\s*"(\w*)"')
 
 
 class StorCLI(Command):
@@ -14,33 +22,26 @@ class StorCLI(Command):
 
     prefix = ""
     command = "storcli"
-    installed = False
 
-    def _get_all_virtual_drives(
-        self, controller: int
-    ) -> Tuple[Optional[List[Dict[str, str]]], Optional[Exception]]:
+    def _get_all_virtual_drives(self, controller: int) -> List[Dict[str, str]]:
         """Get all virtual drive information in this controller.
 
         Equivalent to running `storcli /cx/vall show all` for controller "x".
 
         Returns:
-            virtual_drive: dictionary of a virtual drive information or None
-            error: an exception if there is any or None
+            payloads: list of virtual drives information or []
         """
-        result, error = self(f"/c{controller}/vall show J")
-        if error:
-            return None, error
+        result = self(f"/c{controller}/vall show J")
+        if result.error:
+            logger.error(result.error)
+            return []
 
-        dg_vd_regex = re.compile(r'"DG\/VD"\s*:\s*"(\d*)\/(\d*)"')
-        state_regex = re.compile(r'"State"\s*:\s*"(\w*)"')
-        cache_regex = re.compile(r'"Cache"\s*:\s*"(\w*)"')
-        dg_vd_matches = dg_vd_regex.findall(result)  # type: ignore[arg-type]
-        state_matches = state_regex.findall(result)  # type: ignore[arg-type]
-        cache_matches = cache_regex.findall(result)  # type: ignore[arg-type]
+        dg_vd_matches = DG_VD_REGEX.findall(result.data)
+        state_matches = STATE_REGEX.findall(result.data)
+        cache_matches = CACHE_REGEX.findall(result.data)
         if not all([dg_vd_matches, state_matches, cache_matches]):
-            return None, ValueError(
-                f"Controller {controller}: cannot get virtual drive information."
-            )
+            logger.error("Controller %d: cannot get virtual drive information.", controller)
+            return []
 
         payloads = []
         for ctrl_id, virtual_device, state, cache in zip(
@@ -57,76 +58,67 @@ class StorCLI(Command):
                     "cache": cache,
                 }
             )
-        return payloads, None
+        return payloads
 
-    def _get_controller_ids(self) -> Tuple[Optional[List[int]], Optional[Exception]]:
+    def _get_controller_ids(self) -> List[int]:
         """Get controller ids.
 
         Returns:
-            ids: list of controller ids, or None
-            error: an exception if there is any, or None
+            ids: list of controller ids or []
         """
-        result, error = self("show ctrlcount J")
-        if error:
-            return None, ValueError("Cannot get controller ids.")
+        result = self("show ctrlcount J")
+        if result.error:
+            logger.error(result.error)
+            return []
 
-        num_controller_regex = re.compile(r'"Controller Count"\s*:\s*(?P<num>\d*)')
-        num_match = num_controller_regex.search(result)  # type: ignore[arg-type]
-        if not num_match:
-            error_msg = "Cannot get the number of controllers."
-            return None, ValueError(error_msg)
+        ctrl_count_match = CONTROLLER_CNT_REGEX.search(result.data)
+        if not ctrl_count_match:
+            logger.error("Cannot get controller ids.")
+            return []
 
-        return list(range(int(num_match.group("num")))), None
+        return list(range(int(ctrl_count_match.group("num"))))
 
-    def get_controllers(self) -> Tuple[Optional[Dict[str, Any]], Optional[Exception]]:
+    def get_controllers(self) -> Dict[str, Any]:
         """Get the number of controller.
 
         Returns:
-            payload: a dictionary of number of controller and hostname, or None
-            error: an exception if there is any, or None
+            payload: a dictionary of controller count and hostname, or {}
         """
-        result, error = self("show all J")
-        if error:
-            logger.error("Cannot get the number of controllers.")
-            return None, error
+        result = self("show all J")
+        if result.error:
+            logger.error(result.error)
+            return {}
 
-        num_controller_regex = re.compile(r'"Number of Controllers"\s*:\s*(?P<num>\d*)')
-        hostename_regex = re.compile(r'"Host Name"\s*:\s*"(?P<hostname>\w*)"')
-        num_match = num_controller_regex.search(result)  # type: ignore[arg-type]
-        hostname_match = hostename_regex.search(result)  # type: ignore[arg-type]
+        num_match = NUM_CONTROLLER_REGEX.search(result.data)
+        hostname_match = HOSTENAME_REGEX.search(result.data)
         if not all([num_match, hostname_match]):
-            error_msg = "Cannot get controller's information."
-            logger.error(error_msg)
-            return None, ValueError(error_msg)
+            logger.error("Cannot get controller's information.")
+            return {}
 
         payload = {
-            "count": int(num_match.group("num")),  # type: ignore[union-attr]
-            "hostname": hostname_match.group("hostname"),  # type: ignore[union-attr]
+            "count": int(num_match.group("num")) if num_match else 0,
+            "hostname": hostname_match.group("hostname") if hostname_match else "",
         }
-        return payload, None
+        return payload
 
     def get_all_virtual_drives(
         self,
-    ) -> Tuple[Optional[Dict[int, Optional[List[Dict[str, str]]]]], Optional[Exception]]:
+    ) -> Dict[int, List[Dict[str, str]]]:
         """Get all virtual drive information.
 
         Equivalent to running `storcli /cx/vall show all` for all controller "x".
 
         Returns:
-            virtual_drives: dictionary of all virtual drive information or None
-            error: an exception if there is any or None
+            virtual_drives: dictionary of all virtual drive information or {}
         """
-        ids, error = self._get_controller_ids()
-        if error:
-            logger.error(str(error))
-            return None, error
+        ids = self._get_controller_ids()
+        if not ids:
+            return {}
 
         payload = {}
-        if ids:
-            for controller_id in ids:
-                vd_payload, error = self._get_all_virtual_drives(controller_id)
-                if error:
-                    logger.error(str(error))
-                    return None, error
-                payload[controller_id] = vd_payload
-        return payload, None
+        for controller_id in ids:
+            vd_payload = self._get_all_virtual_drives(controller_id)
+            if not vd_payload:
+                return {}
+            payload[controller_id] = vd_payload
+        return payload

@@ -1,34 +1,41 @@
+import subprocess
 import unittest
 from unittest.mock import patch
 
-from prometheus_hardware_exporter.utils import Command
+from prometheus_hardware_exporter import utils
+from prometheus_hardware_exporter.utils import Command, Result
 
 
 class TestCommand(unittest.TestCase):
     """Test Command class."""
 
     @patch.object(Command, "check_output")
-    def test_check_installed(self, mock_check_output):
-        mock_check_output.return_value = True, False
+    def test_command_installed(self, mock_check_output):
+        mock_check_output.return_value = Result("", None)
         command = Command()
-        self.assertTrue(command.check_installed())
+        self.assertTrue(command.installed)
 
-    @patch.object(Command, "check_installed")
     @patch.object(Command, "check_output")
-    def test_call_okay(self, mock_check_output, mock_check_installed):
-        mock_check_installed.return_value = True, False
-        mock_check_output.return_value = True, False
+    def test_command_not_installed(self, mock_check_output):
+        mock_check_output.return_value = Result("", Exception())
         command = Command()
-        result, error = command()
-        self.assertFalse(error)
+        self.assertFalse(command.installed)
 
-    @patch.object(Command, "check_installed")
-    @patch.object(Command, "check_output")
-    def test_call_failed(self, mock_check_output, mock_check_installed):
-        mock_check_installed.return_value = True, False
-        mock_check_output.return_value = False, True
+    @patch.object(utils.subprocess, "check_output")
+    def test_check_output_okay(self, mock_subprocess_check_output):
+        mock_subprocess_check_output.return_value = b""
         command = Command()
-        result, error = command()
-        print(result, error)
-        self.assertTrue(error)
-        self.assertIsNone(result)
+        command.installed = True
+        result = command()
+        self.assertEqual(result.data, "")
+        self.assertEqual(result.error, None)
+
+    @patch.object(utils.subprocess, "check_output")
+    def test_check_output_failed(self, mock_subprocess_check_output):
+        mock_subprocess_check_output.side_effect = subprocess.CalledProcessError(1, "cmd")
+        command = Command()
+        command.installed = True
+        result = command()
+        self.assertEqual(result.data, "")
+        self.assertEqual(str(result.error), "Command 'cmd' returned non-zero exit status 1.")
+        self.assertEqual(type(result.error), subprocess.CalledProcessError)

@@ -17,6 +17,10 @@ configs = {
     },
 }
 
+with open("requirements.txt", encoding="utf-8") as f:
+    requirements = [req.strip() for req in f.readlines()]
+    configs.update({"install_requires": requirements})
+
 with open("LICENSE", encoding="utf-8") as f:
     configs.update({"license": f.read()})
 
