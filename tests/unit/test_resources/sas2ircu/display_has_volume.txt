@@ -86,6 +86,10 @@ Enclosure information
   Logical ID                              : 5782bcb0:19e35100
   Numslots                                : 9
   StartSlot                               : 0
+  Enclosure#                              : 2
+  Logical ID                              : 5782bcb0:19e35101
+  Numslots                                : 10
+  StartSlot                               : 0
 ------------------------------------------------------------------------
 SAS2IRCU: Command DISPLAY Completed Successfully.
 SAS2IRCU: Utility Completed Successfully.

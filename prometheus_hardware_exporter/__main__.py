@@ -3,7 +3,7 @@
 import argparse
 import logging
 
-from .collector import MegaRAIDCollector
+from .collector import LSISAS2ControllerCollector, MegaRAIDCollector
 from .config import DEFAULT_CONFIG, Config
 from .exporter import Exporter
 
@@ -36,6 +36,7 @@ def main() -> None:
 
     exporter = Exporter(config.port)
     exporter.register(MegaRAIDCollector())
+    exporter.register(LSISAS2ControllerCollector())
     exporter.run()
 
 
