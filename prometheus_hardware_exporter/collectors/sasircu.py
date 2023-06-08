@@ -1,4 +1,4 @@
-"""Collector for LSI SAS-2 controllers."""
+"""Collector for LSI SAS controllers."""
 
 import re
 from collections import defaultdict
@@ -43,15 +43,21 @@ VOL_TOPOLOGY_REGEX = re.compile(
 )
 
 ADAPTERS_REGEX = re.compile(
-    r"-\s*\n\s*(?P<adapters>(?:.|\n)*)SAS2IRCU: Utility Completed Successfully"
+    r"-\s*\n\s*(?P<adapters>(?:.|\n)*)SAS[2,3]IRCU: Utility Completed Successfully"
 )
 
 
-class Sas2ircu(Command):
-    """Command line tool for LSI SAS-2 Controller."""
+class Sasircu(Command):
+    """Command line tool for LSI SAS Controller."""
 
     prefix = ""
-    command = "sas2ircu"
+    command = ""
+
+    def __init__(self, version: int) -> None:
+        """Initialize the command line tool."""
+        self.version = version
+        self.command = f"sas{version}ircu"
+        super().__init__()
 
     def _parse_key_value(self, text: str) -> Dict[str, Any]:
         """Return a dictionary from a text with the format of "key : value".
@@ -171,7 +177,7 @@ class Sas2ircu(Command):
 
         adapters_match = ADAPTERS_REGEX.search(result.data)
         if not adapters_match:
-            logger.error("Cannot find LSI SAS-2 adapters.")
+            logger.error("Cannot find LSI SAS %d adapters.", self.version)
             return {}
 
         adapters = {}

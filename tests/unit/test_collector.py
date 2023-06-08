@@ -3,6 +3,7 @@ from unittest.mock import Mock
 
 from prometheus_hardware_exporter.collector import (
     LSISAS2ControllerCollector,
+    LSISAS3ControllerCollector,
     MegaRAIDCollector,
 )
 
@@ -130,6 +131,96 @@ class TestCustomCollector(unittest.TestCase):
         payloads = lsi_sas_2_collector.collect()
 
         available_metrics = [spec.name for spec in lsi_sas_2_collector.specifications]
+        self.assertEqual(len(list(payloads)), len(available_metrics))
+        for payload in payloads:
+            self.assertIn(payload.name, available_metrics)
+
+    def test_20_lsi_sas_3_collector_not_installed(self):
+        """Test LSI SAS 3 collector when sas3ircu is not installed."""
+        lsi_sas_3_collector = LSISAS3ControllerCollector()
+        payloads = lsi_sas_3_collector.collect()
+
+        self.assertEqual(len(list(payloads)), 1)
+
+    def test_21_lsi_sas_3_collector_installed_and_okay(self):
+        """Test LSI SAS 3 collector can fetch correct number of metrics."""
+        lsi_sas_3_collector = LSISAS3ControllerCollector()
+        lsi_sas_3_collector.sas3ircu = Mock()
+        mock_adapters = {
+            "0": {
+                "Index": "0",
+                "Adapter Type": "SAS3004",
+                "Vendor ID": "1000h",
+                "Device ID": "97h",
+                "Pci Address": "00h:01h:00h:00h",
+                "SubSys Ven ID": "1028h",
+                "SubSys Dev ID": "1f53h",
+            },
+        }
+        mock_information = {
+            "controller": {
+                "Controller type": "SAS3008",
+                "BIOS version": "8.37.02.00",
+                "Firmware version": "16.00.11.00",
+                "Channel description": "1 Serial Attached SCSI",
+                "Initiator ID": "0",
+                "Maximum physical devices": "543",
+                "Concurrent commands supported": "9584",
+                "Slot": "Unknown",
+                "Segment": "0",
+                "Bus": "1",
+                "Device": "0",
+                "Function": "0",
+                "RAID Support": "No",
+            },
+            "ir_volumes": {
+                "1": {
+                    "Volume ID": "286",
+                    "PI Supported": "Yes",
+                    "PI Enabled": "Yes",
+                    "Status of volume": "Okay (OKY)",
+                    "Volume wwid": "0677c0fb06777e7b",
+                    "RAID level": "RAID1",
+                    "Size (in MB)": "139236",
+                    "Boot": "Primary",
+                    "Physical hard disks": {
+                        "PHY[0] Enclosure#/Slot#": "1:0",
+                    },
+                }
+            },
+            "enclosures": {
+                "1": {
+                    "Enclosure#": "1",
+                    "Logical ID": "52cea7f0:c5597b00",
+                    "Numslots": "10",
+                    "StartSlot": "0",
+                },
+            },
+            "physical_disks": {
+                "1:0": {
+                    "Enclosure #": "1",
+                    "Slot #": "0",
+                    "SAS Address": "4433221-1-0400-0000",
+                    "State": "Ready (RDY)",
+                    "Size (in MB)/(in sectors)": "457862/937703087",
+                    "Manufacturer": "ATA",
+                    "Model Number": "HFS480G3H2X069N",
+                    "Firmware Revision": "DZ00",
+                    "Serial No": "BNA7N5994ICB47T3V",
+                    "Unit Serial No(VPD)": "BNA7N5994ICB47T3V",
+                    "GUID": "5ace42e02532f9e4",
+                    "Protocol": "SATA",
+                    "Drive Type": "SATA_SSD",
+                },
+            },
+        }
+
+        lsi_sas_3_collector.sas3ircu.get_adapters.return_value = mock_adapters
+        lsi_sas_3_collector.sas3ircu.get_all_information.return_value = mock_information
+
+        payloads = lsi_sas_3_collector.collect()
+
+        available_metrics = [spec.name for spec in lsi_sas_3_collector.specifications]
         self.assertEqual(len(list(payloads)), len(available_metrics))
         for payload in payloads:
             self.assertIn(payload.name, available_metrics)
