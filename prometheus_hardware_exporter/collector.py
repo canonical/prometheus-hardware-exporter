@@ -6,7 +6,7 @@ from typing import Dict, List
 from prometheus_client.metrics_core import GaugeMetricFamily, InfoMetricFamily
 
 from .collectors.sasircu import LSISASCollectorHelper, Sasircu
-from .collectors.storcli import StorCLI
+from .collectors.storcli import MegaRAIDCollectorHelper, StorCLI
 from .core import BlockingCollector, Payload, Specification
 
 logger = getLogger(__name__)
@@ -16,6 +16,7 @@ class MegaRAIDCollector(BlockingCollector):
     """Collector for MegaRAID controller."""
 
     storcli = StorCLI()
+    mega_raid_helper = MegaRAIDCollectorHelper()
 
     @property
     def specifications(self) -> List[Specification]:
@@ -23,88 +24,134 @@ class MegaRAIDCollector(BlockingCollector):
         return [
             Specification(
                 name="megaraid_controllers",
-                documentation="Total number of controllers",
-                labels=["hostname"],
+                documentation="Number of MegaRAID controllers",
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
-                name="megaraid_virtual_drive",
+                name="megaraid_virtual_drives",
                 documentation="Number of virtual drives",
                 labels=["controller_id"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
-                name="megaraid_virtual_drive_state",
-                documentation="Indicates the state of virtual drive",
-                labels=["controller_id", "virtual_drive_id", "state"],
+                name="megaraid_ready_virtual_drives",
+                documentation="Number of ready virtual drives",
+                labels=["controller_id"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
-                name="megaraid_virtual_drive_cache_policy",
-                documentation="Indicates the cache policy of virtual drive",
-                labels=["controller_id", "virtual_drive_id", "cache_policy"],
+                name="megaraid_unready_virtual_drives",
+                documentation="Number of unready virtual drives",
+                labels=["controller_id"],
                 metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="megaraid_virtual_drive",  # will append "_info" internally
+                documentation="Shows the information about the virtual drive",
+                metric_class=InfoMetricFamily,
+            ),
+            Specification(
+                name="megaraid_physical_drives",
+                documentation="Number of physical drives",
+                labels=["controller_id"],
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="megaraid_physical_drive",  # will append "_info" internally
+                documentation="Shows the information about the physical drive",
+                metric_class=InfoMetricFamily,
+            ),
+            Specification(
+                name="megaraid_enclosure",  # will append "_info" internally
+                documentation="Show the information about the enclosure",
+                metric_class=InfoMetricFamily,
             ),
             Specification(
                 name="storcli_command_success",
-                documentation="Indicates the if command is successful or not",
-                labels=[],
+                documentation="Indicates if the command is successful or not",
                 metric_class=GaugeMetricFamily,
             ),
         ]
 
     def fetch(self) -> List[Payload]:
         """Load the MegaRAID related information."""
-        controller_payload = self.storcli.get_controllers()
-        virtual_drives_payload = self.storcli.get_all_virtual_drives()
+        controllers = self.storcli.get_all_information()
 
-        if not all([controller_payload, virtual_drives_payload]):
+        if not controllers:
             logger.error(
                 "Failed to get MegaRAID controller information using %s", self.storcli.command
             )
-            return [
-                Payload(
-                    name="storcli_command_success",
-                    labels=[],
-                    value=0.0,
-                )
-            ]
+            return [Payload(name="storcli_command_success", value=0.0)]
 
         payloads = [
             Payload(
                 name="megaraid_controllers",
-                labels=[controller_payload["hostname"]],
-                value=controller_payload["count"],
+                value=len(controllers),
             ),
             Payload(
                 name="storcli_command_success",
-                labels=[],
                 value=1.0,
             ),
         ]
-        for ctrl_id, vds_payload in virtual_drives_payload.items():
+        for idx, controller in controllers.items():
+            idx = str(idx)
+
+            # Add integrated RAID volume metrics
+            virtual_drives = self.mega_raid_helper.extract_virtual_drives(
+                idx, controller["virtual_drives"]
+            )
+            virtual_drive_state_counts = self.mega_raid_helper.count_virtual_drive_state(
+                virtual_drives, state={"Optl"}
+            )
+            payloads.extend(
+                [
+                    Payload(name="megaraid_virtual_drive", value=virtual_drive)
+                    for virtual_drive in virtual_drives
+                ]
+            )
+            payloads.extend(
+                [
+                    Payload(
+                        name="megaraid_virtual_drives",
+                        labels=[idx],
+                        value=virtual_drive_state_counts[0],
+                    ),
+                    Payload(
+                        name="megaraid_ready_virtual_drives",
+                        labels=[idx],
+                        value=virtual_drive_state_counts[1],
+                    ),
+                    Payload(
+                        name="megaraid_unready_virtual_drives",
+                        labels=[idx],
+                        value=virtual_drive_state_counts[2],
+                    ),
+                ]
+            )
+
+            # Add physical drive metrics
+            physical_drives = self.mega_raid_helper.extract_physical_drives(
+                idx, controller["physical_drives"]
+            )
+            payloads.extend(
+                [
+                    Payload(name="megaraid_physical_drive", value=physical_drive)
+                    for physical_drive in physical_drives
+                ]
+            )
             payloads.append(
                 Payload(
-                    name="megaraid_virtual_drive",
-                    labels=[str(ctrl_id)],
-                    value=len(vds_payload),
-                )
+                    name="megaraid_physical_drives",
+                    labels=[idx],
+                    value=len(controller["physical_drives"]),
+                ),
             )
-            for vd_payload in vds_payload:
-                payloads.append(
-                    Payload(
-                        name="megaraid_virtual_drive_state",
-                        labels=[vd_payload["DG"], vd_payload["VD"], vd_payload["state"]],
-                        value=1.0,
-                    )
-                )
-                payloads.append(
-                    Payload(
-                        name="megaraid_virtual_drive_cache_policy",
-                        labels=[vd_payload["DG"], vd_payload["VD"], vd_payload["cache"]],
-                        value=1.0,
-                    )
-                )
+
+            # Add enclosure metrics
+            enclosures = self.mega_raid_helper.extract_enclosures(idx, controller["enclosures"])
+            payloads.extend(
+                [Payload(name="megaraid_enclosure", value=enclosure) for enclosure in enclosures]
+            )
         return payloads
 
     def process(self, payloads: List[Payload], datastore: Dict[str, Payload]) -> List[Payload]:

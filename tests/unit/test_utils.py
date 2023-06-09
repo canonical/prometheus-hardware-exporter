@@ -13,13 +13,17 @@ class TestCommand(unittest.TestCase):
     def test_command_installed(self, mock_check_output):
         mock_check_output.return_value = Result("", None)
         command = Command()
+        result = command()
         self.assertTrue(command.installed)
+        self.assertEqual(result.error, None)
 
     @patch.object(Command, "check_output")
     def test_command_not_installed(self, mock_check_output):
         mock_check_output.return_value = Result("", Exception())
         command = Command()
+        result = command()
         self.assertFalse(command.installed)
+        self.assertEqual(type(result.error), ValueError)
 
     @patch.object(utils.subprocess, "check_output")
     def test_check_output_okay(self, mock_subprocess_check_output):

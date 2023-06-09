@@ -1,83 +1,111 @@
+import json
 import unittest
 from unittest.mock import patch
 
 from prometheus_hardware_exporter.collectors.storcli import StorCLI
 from prometheus_hardware_exporter.utils import Command, Result
 
-SHOW_CTRLCOUNT = "tests/unit/test_resources/storcli/show_ctrlcount.txt"
-SHOW_ALL = "tests/unit/test_resources/storcli/show_all.txt"
-CX_VALL_SHOW_ALL = "tests/unit/test_resources/storcli/cx_vall_show_all.txt"
+CALL_SHOW_ALL = "tests/unit/test_resources/storcli/cALL_show_all.txt"
 
 
 class TestStorCLI(unittest.TestCase):
     """Test StorCLI class."""
 
     @patch.object(Command, "__call__")
-    def test_00_get_controllers_okay(self, mock_call):
-        with open(SHOW_ALL, "r") as content:
-            mock_call.return_value = Result(content.read(), None)
-            storcli = StorCLI()
-            payload = storcli.get_controllers()
-            self.assertEqual(payload, {"count": 1, "hostname": "kongfu"})
-
-    @patch.object(Command, "__call__")
-    def test_01_get_controllers_failed(self, mock_call):
-        mock_call.return_value = Result("", None)
+    def test_00__extract_enclosures_fail(self, mock_call):
         storcli = StorCLI()
-        payload = storcli.get_controllers()
-        self.assertEqual(payload, {})
-
-    @patch.object(StorCLI, "_get_controller_ids")
-    @patch.object(Command, "__call__")
-    def test_10_get_all_virtual_drives_okay(self, mock_call, mock__get_controller_ids):
-        with open(CX_VALL_SHOW_ALL, "r") as content:
-            mock_call.return_value = Result(content.read(), None)
-            mock__get_controller_ids.return_value = [1]
-            storcli = StorCLI()
-            payload = storcli.get_all_virtual_drives()
-            self.assertEqual(
-                payload, {1: [{"DG": "0", "VD": "239", "state": "Optl", "cache": "NRWTD"}]}
-            )
-
-    @patch.object(StorCLI, "_get_all_virtual_drives")
-    @patch.object(StorCLI, "_get_controller_ids")
-    @patch.object(Command, "__call__")
-    def test_11_get_all_virtual_drives_failed(
-        self, mock_call, mock__get_controller_ids, mock__get_all_virtual_drives
-    ):
-        with open(CX_VALL_SHOW_ALL, "r") as content:
-            mock_call.return_value = Result(content.read(), None)
-            mock__get_controller_ids.return_value = [1]
-            mock__get_all_virtual_drives.return_value = []
-            storcli = StorCLI()
-            payload = storcli.get_all_virtual_drives()
-            self.assertEqual(payload, {})
-
-    @patch.object(Command, "__call__")
-    def test_20__get_controller_id_okay(self, mock_call):
-        with open(SHOW_CTRLCOUNT, "r") as content:
-            mock_call.return_value = Result(content.read(), None)
-            storcli = StorCLI()
-            payload = storcli._get_controller_ids()
-            self.assertEqual(payload, [0])
-
-    @patch.object(Command, "__call__")
-    def test_21__get_controller_id_failed(self, mock_call):
-        mock_call.return_value = Result("", None)
-        storcli = StorCLI()
-        payload = storcli._get_controller_ids()
+        payload = storcli._extract_enclosures({})
         self.assertEqual(payload, [])
 
     @patch.object(Command, "__call__")
-    def test_30__get_all_virtual_drives_failed(self, mock_call):
-        mock_call.return_value = Result("", None)
+    def test_01__extract_virtual_drives_fail(self, mock_call):
         storcli = StorCLI()
-        payload = storcli._get_all_virtual_drives(0)
+        payload = storcli._extract_virtual_drives({})
         self.assertEqual(payload, [])
 
     @patch.object(Command, "__call__")
-    def test_31__get_all_virtual_drives_failed(self, mock_call):
-        mock_call.return_value = Result("", True)
+    def test_03__extract_physical_drives_fail(self, mock_call):
         storcli = StorCLI()
-        payload = storcli._get_all_virtual_drives(0)
+        payload = storcli._extract_physical_drives({})
         self.assertEqual(payload, [])
+
+    @patch.object(Command, "__call__")
+    def test_10_get_all_information_okay(self, mock_call):
+        with open(CALL_SHOW_ALL, "r") as content:
+            mock_call.return_value = Result(content.read(), None)
+            storcli = StorCLI()
+            payload = storcli.get_all_information()
+            expected_payload = {
+                0: {
+                    "enclosures": [
+                        {
+                            "EID": 251,
+                            "State": "OK",
+                            "Slots": 2,
+                            "PD": 2,
+                            "PS": 0,
+                            "Fans": 0,
+                            "TSs": 0,
+                            "Alms": 0,
+                            "SIM": 0,
+                            "Port#": "2I",
+                        }
+                    ],
+                    "virtual_drives": [
+                        {
+                            "DG/VD": "0/239",
+                            "TYPE": "RAID1",
+                            "State": "Optl",
+                            "Access": "RW",
+                            "Consist": "Yes",
+                            "Cache": "NRWTD",
+                            "Cac": "-",
+                            "sCC": "ON",
+                            "Size": "744.687 GiB",
+                            "Name": "NVMe-RAID-1",
+                        }
+                    ],
+                    "physical_drives": [
+                        {
+                            "EID:Slt": "251:1",
+                            "DID": 0,
+                            "State": "Onln",
+                            "DG": 0,
+                            "Size": "800.00 GB",
+                            "Intf": "NVMe",
+                            "Med": "SSD",
+                            "SED": "N",
+                            "PI": "N",
+                            "SeSz": "512B",
+                            "Model": "MZXLR800HBHQ-000H3                      ",
+                            "Sp": "U",
+                            "Type": "-",
+                        },
+                        {
+                            "EID:Slt": "251:2",
+                            "DID": 1,
+                            "State": "Onln",
+                            "DG": 0,
+                            "Size": "800.00 GB",
+                            "Intf": "NVMe",
+                            "Med": "SSD",
+                            "SED": "N",
+                            "PI": "N",
+                            "SeSz": "512B",
+                            "Model": "MZXLR800HBHQ-000H3                      ",
+                            "Sp": "U",
+                            "Type": "-",
+                        },
+                    ],
+                }
+            }
+            self.assertEqual(payload, expected_payload)
+
+    @patch.object(Command, "__call__")
+    def test_11_get_all_information_fail(self, mock_call):
+        mock_controllers = json.dumps({"Controllers": [{}]})
+        mock_call.return_value = Result(mock_controllers, None)
+        storcli = StorCLI()
+        payload = storcli.get_all_information()
+        expected_payload = {}
+        self.assertEqual(payload, expected_payload)

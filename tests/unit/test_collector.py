@@ -13,6 +13,8 @@ class TestCustomCollector(unittest.TestCase):
     def test_00_mega_raid_collector_not_installed(self):
         """Test mega raid collector when storcli is not installed."""
         mega_raid_collector = MegaRAIDCollector()
+        mega_raid_collector.sasircu = Mock()
+        mega_raid_collector.sasircu.installed = False
         payloads = mega_raid_collector.collect()
 
         self.assertEqual(len(list(payloads)), 1)
@@ -21,22 +23,58 @@ class TestCustomCollector(unittest.TestCase):
         """Test mega raid collector can fetch correct number of metrics."""
         mega_raid_collector = MegaRAIDCollector()
         mega_raid_collector.storcli = Mock()
+        mega_raid_collector.storcli.installed = True
 
-        mock_controller_payload = {"count": 1, "hostname": "kongfu"}
-        mock_virtual_drives_payload = {
-            "0": [
-                {
-                    "DG": 0,
-                    "VD": 239,
-                    "state": "Optl",
-                    "cache": "NRWTD",
-                }
-            ],
+        mock_controllers = {
+            0: {
+                "enclosures": [
+                    {
+                        "EID": 251,
+                        "State": "OK",
+                        "Slots": 2,
+                        "PD": 2,
+                        "PS": 0,
+                        "Fans": 0,
+                        "TSs": 0,
+                        "Alms": 0,
+                        "SIM": 0,
+                        "Port#": "2I",
+                    }
+                ],
+                "virtual_drives": [
+                    {
+                        "DG/VD": "0/239",
+                        "TYPE": "RAID1",
+                        "State": "Optl",
+                        "Access": "RW",
+                        "Consist": "Yes",
+                        "Cache": "NRWTD",
+                        "Cac": "-",
+                        "sCC": "ON",
+                        "Size": "744.687 GiB",
+                        "Name": "NVMe-RAID-1",
+                    }
+                ],
+                "physical_drives": [
+                    {
+                        "EID:Slt": "251:1",
+                        "DID": 0,
+                        "State": "Onln",
+                        "DG": 0,
+                        "Size": "800.00 GB",
+                        "Intf": "NVMe",
+                        "Med": "SSD",
+                        "SED": "N",
+                        "PI": "N",
+                        "SeSz": "512B",
+                        "Model": "MZXLR800HBHQ-000H3                      ",
+                        "Sp": "U",
+                        "Type": "-",
+                    },
+                ],
+            }
         }
-        mega_raid_collector.storcli.get_controllers.return_value = mock_controller_payload
-        mega_raid_collector.storcli.get_all_virtual_drives.return_value = (
-            mock_virtual_drives_payload
-        )
+        mega_raid_collector.storcli.get_all_information.return_value = mock_controllers
 
         payloads = mega_raid_collector.collect()
 
