@@ -123,12 +123,24 @@ class LSISAS2ControllerCollector(BlockingCollector):
         return [
             Specification(
                 name="lsi_sas_2_controllers",
-                documentation="Number of controllers",
+                documentation="Number of LSI SAS-2 controllers",
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
                 name="lsi_sas_2_ir_volumes",
-                documentation="Number of integrated RAID volumes",
+                documentation="Number of IR volumes",
+                labels=["controller_id"],
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="lsi_sas_2_ready_ir_volumes",
+                documentation="Number of ready IR volumes",
+                labels=["controller_id"],
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="lsi_sas_2_unready_ir_volumes",
+                documentation="Number of unready IR volumes",
                 labels=["controller_id"],
                 metric_class=GaugeMetricFamily,
             ),
@@ -140,6 +152,18 @@ class LSISAS2ControllerCollector(BlockingCollector):
             Specification(
                 name="lsi_sas_2_physical_devices",
                 documentation="Number of physical devices",
+                labels=["controller_id"],
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="lsi_sas_2_ready_physical_devices",
+                documentation="Number of ready physical devices",
+                labels=["controller_id"],
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="lsi_sas_2_unready_physical_devices",
+                documentation="Number of unready physical devices",
                 labels=["controller_id"],
                 metric_class=GaugeMetricFamily,
             ),
@@ -169,12 +193,7 @@ class LSISAS2ControllerCollector(BlockingCollector):
             logger.error(
                 "Failed to get LSI SAS-2 controller information using %s", self.sas2ircu.command
             )
-            return [
-                Payload(
-                    name="sas2ircu_command_success",
-                    value=0.0,
-                )
-            ]
+            return [Payload(name="sas2ircu_command_success", value=0.0)]
 
         payloads = [
             Payload(
@@ -186,17 +205,11 @@ class LSISAS2ControllerCollector(BlockingCollector):
                 value=1.0,
             ),
         ]
-
         for idx, info in all_information:
             # Add integrated RAID volume metrics
             if info["ir_volumes"]:
-                payloads.append(
-                    Payload(
-                        name="lsi_sas_2_ir_volumes",
-                        value=len(info["ir_volumes"]),
-                        labels=[str(idx)],
-                    )
-                )
+                ready_ir_volumes = 0
+                unready_ir_volumes = 0
                 for volume in info["ir_volumes"].values():
                     payloads.append(
                         Payload(
@@ -212,15 +225,32 @@ class LSISAS2ControllerCollector(BlockingCollector):
                             },
                         )
                     )
+                    ready = volume["Status of volume"] == "Okay (OKY)"
+                    ready_ir_volumes += ready
+                    unready_ir_volumes += not ready
+                payloads.extend(
+                    [
+                        Payload(
+                            name="lsi_sas_2_ir_volumes",
+                            labels=[idx],
+                            value=ready_ir_volumes + unready_ir_volumes,
+                        ),
+                        Payload(
+                            name="lsi_sas_2_ready_ir_volumes",
+                            labels=[idx],
+                            value=ready_ir_volumes,
+                        ),
+                        Payload(
+                            name="lsi_sas_2_unready_ir_volumes",
+                            labels=[idx],
+                            value=unready_ir_volumes,
+                        ),
+                    ]
+                )
             # Add physical disk metrics
             if info["physical_disks"]:
-                payloads.append(
-                    Payload(
-                        name="lsi_sas_2_physical_devices",
-                        value=len(info["physical_disks"]),
-                        labels=[str(idx)],
-                    )
-                )
+                ready_physical_disks = 0
+                unready_physical_disks = 0
                 for disk in info["physical_disks"].values():
                     payloads.append(
                         Payload(
@@ -236,6 +266,28 @@ class LSISAS2ControllerCollector(BlockingCollector):
                             },
                         )
                     )
+                    ready = disk["State"] in set(["Ready (RDY)", "Optimal (OPT)"])
+                    ready_physical_disks += ready
+                    unready_physical_disks += not ready
+                payloads.extend(
+                    [
+                        Payload(
+                            name="lsi_sas_2_physical_devices",
+                            labels=[idx],
+                            value=ready_physical_disks + unready_physical_disks,
+                        ),
+                        Payload(
+                            name="lsi_sas_2_ready_physical_devices",
+                            labels=[idx],
+                            value=ready_physical_disks,
+                        ),
+                        Payload(
+                            name="lsi_sas_2_unready_physical_devices",
+                            labels=[idx],
+                            value=unready_physical_disks,
+                        ),
+                    ]
+                )
             # Add enclosure metrics
             if info["enclosures"]:
                 for encl in info["enclosures"].values():
@@ -268,12 +320,24 @@ class LSISAS3ControllerCollector(BlockingCollector):
         return [
             Specification(
                 name="lsi_sas_3_controllers",
-                documentation="Number of controllers",
+                documentation="Number of LSI SAS-3 controllers",
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
                 name="lsi_sas_3_ir_volumes",
-                documentation="Number of integrated RAID volumes",
+                documentation="Number of IR volumes",
+                labels=["controller_id"],
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="lsi_sas_3_ready_ir_volumes",
+                documentation="Number of ready IR volumes",
+                labels=["controller_id"],
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="lsi_sas_3_unready_ir_volumes",
+                documentation="Number of unready IR volumes",
                 labels=["controller_id"],
                 metric_class=GaugeMetricFamily,
             ),
@@ -285,6 +349,18 @@ class LSISAS3ControllerCollector(BlockingCollector):
             Specification(
                 name="lsi_sas_3_physical_devices",
                 documentation="Number of physical devices",
+                labels=["controller_id"],
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="lsi_sas_3_ready_physical_devices",
+                documentation="Number of ready physical devices",
+                labels=["controller_id"],
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="lsi_sas_3_unready_physical_devices",
+                documentation="Number of unready physical devices",
                 labels=["controller_id"],
                 metric_class=GaugeMetricFamily,
             ),
@@ -314,12 +390,7 @@ class LSISAS3ControllerCollector(BlockingCollector):
             logger.error(
                 "Failed to get LSI SAS-3 controller information using %s", self.sas3ircu.command
             )
-            return [
-                Payload(
-                    name="sas3ircu_command_success",
-                    value=0.0,
-                )
-            ]
+            return [Payload(name="sas3ircu_command_success", value=0.0)]
 
         payloads = [
             Payload(
@@ -331,17 +402,11 @@ class LSISAS3ControllerCollector(BlockingCollector):
                 value=1.0,
             ),
         ]
-
         for idx, info in all_information:
             # Add integrated RAID volume metrics
             if info["ir_volumes"]:
-                payloads.append(
-                    Payload(
-                        name="lsi_sas_3_ir_volumes",
-                        value=len(info["ir_volumes"]),
-                        labels=[str(idx)],
-                    )
-                )
+                ready_ir_volumes = 0
+                unready_ir_volumes = 0
                 for volume in info["ir_volumes"].values():
                     payloads.append(
                         Payload(
@@ -357,15 +422,32 @@ class LSISAS3ControllerCollector(BlockingCollector):
                             },
                         )
                     )
+                    ready = volume["Status of volume"] == "Okay (OKY)"
+                    ready_ir_volumes += ready
+                    unready_ir_volumes += not ready
+                payloads.extend(
+                    [
+                        Payload(
+                            name="lsi_sas_3_ir_volumes",
+                            labels=[idx],
+                            value=ready_ir_volumes + unready_ir_volumes,
+                        ),
+                        Payload(
+                            name="lsi_sas_3_ready_ir_volumes",
+                            labels=[idx],
+                            value=ready_ir_volumes,
+                        ),
+                        Payload(
+                            name="lsi_sas_3_unready_ir_volumes",
+                            labels=[idx],
+                            value=unready_ir_volumes,
+                        ),
+                    ]
+                )
             # Add physical disk metrics
             if info["physical_disks"]:
-                payloads.append(
-                    Payload(
-                        name="lsi_sas_3_physical_devices",
-                        value=len(info["physical_disks"]),
-                        labels=[str(idx)],
-                    )
-                )
+                ready_physical_disks = 0
+                unready_physical_disks = 0
                 for disk in info["physical_disks"].values():
                     payloads.append(
                         Payload(
@@ -381,6 +463,28 @@ class LSISAS3ControllerCollector(BlockingCollector):
                             },
                         )
                     )
+                    ready = disk["State"] in set(["Ready (RDY)", "Optimal (OPT)"])
+                    ready_physical_disks += ready
+                    unready_physical_disks += not ready
+                payloads.extend(
+                    [
+                        Payload(
+                            name="lsi_sas_3_physical_devices",
+                            labels=[idx],
+                            value=ready_physical_disks + unready_physical_disks,
+                        ),
+                        Payload(
+                            name="lsi_sas_3_ready_physical_devices",
+                            labels=[idx],
+                            value=ready_physical_disks,
+                        ),
+                        Payload(
+                            name="lsi_sas_3_unready_physical_devices",
+                            labels=[idx],
+                            value=unready_physical_disks,
+                        ),
+                    ]
+                )
             # Add enclosure metrics
             if info["enclosures"]:
                 for encl in info["enclosures"].values():
