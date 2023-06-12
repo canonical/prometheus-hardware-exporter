@@ -1,0 +1,4 @@
+ID  | Name             | Type                     | State    | Reading    | Units       | Event
+0   | UID              | OEM Reserved             | N/A      | N/A        | N/A         | 'OEM Event = 0001h'
+1   | SysHealth_Stat   | Chassis                  | Nominal  | N/A        | N/A         | 'transition to OK'
+2   | 01-Inlet Ambient | Temperature              | Nominal  | 20.00      | C           | 'OK'
