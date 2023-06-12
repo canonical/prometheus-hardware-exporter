@@ -172,43 +172,43 @@ class IpmiSensorsCollector(BlockingCollector):
             Specification(
                 name="ipmi_temperature_celsius",
                 documentation="Temperature measure from temperature sensors",
-                labels=["id", "name", "state", "unit", "event"],
+                labels=["name", "state", "unit"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
                 name="ipmi_power_watts",
                 documentation="Power measure from power sensors",
-                labels=["id", "name", "state", "unit", "event"],
+                labels=["name", "state", "unit"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
                 name="ipmi_voltage_volts",
                 documentation="Voltage measure from voltage sensors",
-                labels=["id", "name", "state", "unit", "event"],
+                labels=["name", "state", "unit"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
                 name="ipmi_current_amperes",
                 documentation="Current measure from current sensors",
-                labels=["id", "name", "state", "unit", "event"],
+                labels=["name", "state", "unit"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
                 name="ipmi_fan_speed_rpm",
                 documentation="Fan speed measure, in rpm",
-                labels=["id", "name", "state", "unit", "event"],
+                labels=["name", "state", "unit"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
                 name="ipmi_fan_speed_ratio",
                 documentation="Fan speed measure, as a percentage of maximum speed",
-                labels=["id", "name", "state", "unit", "event"],
+                labels=["name", "state", "unit"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
                 name="ipmi_generic_sensor_value",
                 documentation="Generic sensor value from ipmi sensors",
-                labels=["id", "name", "state", "unit", "event", "type"],
+                labels=["name", "state", "unit", "type"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
@@ -280,11 +280,9 @@ class IpmiSensorsCollector(BlockingCollector):
             return Payload(
                 name=metric_name,
                 labels=[
-                    sensor_data_item["ID"],
                     sensor_data_item["Name"],
                     sensor_data_item["State"],
                     sensor_data_item["Units"],
-                    sensor_data_item["Event"],
                     sensor_data_item["Type"],
                 ],
                 value=self._get_sensor_value_from_reading(sensor_data_item["Reading"]),
@@ -293,11 +291,9 @@ class IpmiSensorsCollector(BlockingCollector):
         return Payload(
             name=metric_name,
             labels=[
-                sensor_data_item["ID"],
                 sensor_data_item["Name"],
                 sensor_data_item["State"],
                 sensor_data_item["Units"],
-                sensor_data_item["Event"],
             ],
             value=self._get_sensor_value_from_reading(sensor_data_item["Reading"]),
         )
@@ -327,7 +323,7 @@ class IpmiSelCollector(BlockingCollector):
             Specification(
                 name="ipmi_sel_state",
                 documentation="Event state from IPMI SEL entry.",
-                labels=["id", "date", "time", "name", "type", "event"],
+                labels=["name", "type"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
@@ -355,12 +351,8 @@ class IpmiSelCollector(BlockingCollector):
                 Payload(
                     name="ipmi_sel_state",
                     labels=[
-                        sel_entry["ID"],
-                        sel_entry["Date"],
-                        sel_entry["Time"],
                         sel_entry["Name"],
                         sel_entry["Type"],
-                        sel_entry["Event"],
                     ],
                     value=sel_states_dict[sel_entry["State"].upper()],
                 )
