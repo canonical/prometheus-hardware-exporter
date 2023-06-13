@@ -2,8 +2,7 @@ import unittest
 from unittest.mock import Mock
 
 from prometheus_hardware_exporter.collector import (
-    LSISAS2ControllerCollector,
-    LSISAS3ControllerCollector,
+    LSISASControllerCollector,
     MegaRAIDCollector,
 )
 
@@ -48,15 +47,15 @@ class TestCustomCollector(unittest.TestCase):
 
     def test_10_lsi_sas_2_collector_not_installed(self):
         """Test LSI SAS 2 collector when sas2ircu is not installed."""
-        lsi_sas_2_collector = LSISAS2ControllerCollector()
+        lsi_sas_2_collector = LSISASControllerCollector(2)
         payloads = lsi_sas_2_collector.collect()
 
         self.assertEqual(len(list(payloads)), 1)
 
     def test_11_lsi_sas_2_collector_installed_and_okay(self):
         """Test LSI SAS 2 collector can fetch correct number of metrics."""
-        lsi_sas_2_collector = LSISAS2ControllerCollector()
-        lsi_sas_2_collector.sas2ircu = Mock()
+        lsi_sas_2_collector = LSISASControllerCollector(2)
+        lsi_sas_2_collector.sasircu = Mock()
         mock_adapters = {
             "0": {
                 "Index": "0",
@@ -125,8 +124,8 @@ class TestCustomCollector(unittest.TestCase):
             },
         }
 
-        lsi_sas_2_collector.sas2ircu.get_adapters.return_value = mock_adapters
-        lsi_sas_2_collector.sas2ircu.get_all_information.return_value = mock_information
+        lsi_sas_2_collector.sasircu.get_adapters.return_value = mock_adapters
+        lsi_sas_2_collector.sasircu.get_all_information.return_value = mock_information
 
         payloads = lsi_sas_2_collector.collect()
 
@@ -137,15 +136,15 @@ class TestCustomCollector(unittest.TestCase):
 
     def test_20_lsi_sas_3_collector_not_installed(self):
         """Test LSI SAS 3 collector when sas3ircu is not installed."""
-        lsi_sas_3_collector = LSISAS3ControllerCollector()
+        lsi_sas_3_collector = LSISASControllerCollector(3)
         payloads = lsi_sas_3_collector.collect()
 
         self.assertEqual(len(list(payloads)), 1)
 
     def test_21_lsi_sas_3_collector_installed_and_okay(self):
         """Test LSI SAS 3 collector can fetch correct number of metrics."""
-        lsi_sas_3_collector = LSISAS3ControllerCollector()
-        lsi_sas_3_collector.sas3ircu = Mock()
+        lsi_sas_3_collector = LSISASControllerCollector(3)
+        lsi_sas_3_collector.sasircu = Mock()
         mock_adapters = {
             "0": {
                 "Index": "0",
@@ -215,8 +214,8 @@ class TestCustomCollector(unittest.TestCase):
             },
         }
 
-        lsi_sas_3_collector.sas3ircu.get_adapters.return_value = mock_adapters
-        lsi_sas_3_collector.sas3ircu.get_all_information.return_value = mock_information
+        lsi_sas_3_collector.sasircu.get_adapters.return_value = mock_adapters
+        lsi_sas_3_collector.sasircu.get_all_information.return_value = mock_information
 
         payloads = lsi_sas_3_collector.collect()
 

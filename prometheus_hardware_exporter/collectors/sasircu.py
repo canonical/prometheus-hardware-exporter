@@ -3,7 +3,7 @@
 import re
 from collections import defaultdict
 from logging import getLogger
-from typing import Any, Dict
+from typing import Any, Dict, List, Set, Tuple
 
 from ..utils import Command
 
@@ -221,3 +221,79 @@ class Sasircu(Command):
         }
 
         return information
+
+
+class LSISASCollectorHelper:
+    """Helper class to generate payloads."""
+
+    def count_ir_volume_state(
+        self, ir_volumes: List[Dict[str, str]], state: Set
+    ) -> Tuple[int, int, int]:
+        """Count the number of ir volume in a particular state."""
+        ready_ir_volumes = 0
+        unready_ir_volumes = 0
+        for ir_volume in ir_volumes:
+            ready = ir_volume["status"] in state
+            ready_ir_volumes += ready
+            unready_ir_volumes += not ready
+        return ready_ir_volumes + unready_ir_volumes, ready_ir_volumes, unready_ir_volumes
+
+    def count_physical_disk_state(
+        self, physical_disks: List[Dict[str, str]], state: Set
+    ) -> Tuple[int, int, int]:
+        """Count the number of physical disk in a particular set of state."""
+        ready_disks = 0
+        unready_disks = 0
+        for physical_disk in physical_disks:
+            ready = physical_disk["state"] in state
+            ready_disks += ready
+            unready_disks += not ready
+        return ready_disks + unready_disks, ready_disks, unready_disks
+
+    def extract_enclosures(self, idx: str, info: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Extract the enclosures payloads."""
+        data = []
+        for encl in info["enclosures"].values():
+            data.append(
+                {
+                    "controller_id": idx,
+                    "enclosure_id": encl["Enclosure#"],
+                    "num_slots": encl["Numslots"],
+                    "start_slot": encl["StartSlot"],
+                }
+            )
+        return data
+
+    def extract_ir_volumes(self, idx: str, info: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Extract the ir volumes payloads."""
+        data = []
+        for volume in info["ir_volumes"].values():
+            data.append(
+                {
+                    "controller_id": idx,
+                    "volume_id": volume["Volume ID"],
+                    "status": volume["Status of volume"],
+                    "size_mb": volume["Size (in MB)"],
+                    "boot": volume["Boot"],
+                    "raid_level": volume["RAID level"],
+                    "hard_disk": ",".join(volume["Physical hard disks"].values()),
+                }
+            )
+        return data
+
+    def extract_physical_disks(self, idx: str, info: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Extract the physical disks payloads."""
+        data = []
+        for disk in info["physical_disks"].values():
+            data.append(
+                {
+                    "controller_id": idx,
+                    "enclosure_id": disk["Enclosure #"],
+                    "slot_id": disk["Slot #"],
+                    "size_mb_sectors": disk["Size (in MB)/(in sectors)"],
+                    "drive_type": disk["Drive Type"],
+                    "protocol": disk["Protocol"],
+                    "state": disk["State"],
+                }
+            )
+        return data

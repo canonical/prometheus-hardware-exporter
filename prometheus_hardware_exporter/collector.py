@@ -5,7 +5,7 @@ from typing import Dict, List
 
 from prometheus_client.metrics_core import GaugeMetricFamily, InfoMetricFamily
 
-from .collectors.sasircu import Sasircu
+from .collectors.sasircu import LSISASCollectorHelper, Sasircu
 from .collectors.storcli import StorCLI
 from .core import BlockingCollector, Payload, Specification
 
@@ -112,393 +112,180 @@ class MegaRAIDCollector(BlockingCollector):
         return payloads
 
 
-class LSISAS2ControllerCollector(BlockingCollector):
-    """Collector for LSI SAS-2 controllers."""
+class LSISASControllerCollector(BlockingCollector):
+    """Collector for LSI SAS controllers."""
 
-    sas2ircu = Sasircu(2)
+    def __init__(self, version: int) -> None:
+        """Initialize the collector."""
+        self.version = version
+        self.sasircu = Sasircu(version)
+        self.lsi_sas_helper = LSISASCollectorHelper()
+        super().__init__()
 
     @property
     def specifications(self) -> List[Specification]:
-        """Define LSI SAS-2 metric specs."""
+        """Define LSI SAS metric specs."""
         return [
             Specification(
-                name="lsi_sas_2_controllers",
-                documentation="Number of LSI SAS-2 controllers",
+                name=f"lsi_sas_{self.version}_controllers",
+                documentation="Number of LSI SAS-{self.version} controllers",
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
-                name="lsi_sas_2_ir_volumes",
+                name=f"lsi_sas_{self.version}_ir_volumes",
                 documentation="Number of IR volumes",
                 labels=["controller_id"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
-                name="lsi_sas_2_ready_ir_volumes",
+                name=f"lsi_sas_{self.version}_ready_ir_volumes",
                 documentation="Number of ready IR volumes",
                 labels=["controller_id"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
-                name="lsi_sas_2_unready_ir_volumes",
+                name=f"lsi_sas_{self.version}_unready_ir_volumes",
                 documentation="Number of unready IR volumes",
                 labels=["controller_id"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
-                name="lsi_sas_2_ir_volume",  # will append "_info" internally
+                name=f"lsi_sas_{self.version}_ir_volume",  # will append "_info" internally
                 documentation="Shows the information about the integrated RAID volume",
                 metric_class=InfoMetricFamily,
             ),
             Specification(
-                name="lsi_sas_2_physical_devices",
+                name=f"lsi_sas_{self.version}_physical_devices",
                 documentation="Number of physical devices",
                 labels=["controller_id"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
-                name="lsi_sas_2_ready_physical_devices",
+                name=f"lsi_sas_{self.version}_ready_physical_devices",
                 documentation="Number of ready physical devices",
                 labels=["controller_id"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
-                name="lsi_sas_2_unready_physical_devices",
+                name=f"lsi_sas_{self.version}_unready_physical_devices",
                 documentation="Number of unready physical devices",
                 labels=["controller_id"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
-                name="lsi_sas_2_physical_device",  # will append "_info" internally
+                name=f"lsi_sas_{self.version}_physical_device",  # will append "_info" internally
                 documentation="Shows the information about the physical device",
                 metric_class=InfoMetricFamily,
             ),
             Specification(
-                name="lsi_sas_2_enclosure",  # will append "_info" internally
+                name=f"lsi_sas_{self.version}_enclosure",  # will append "_info" internally
                 documentation="Show the information about the enclosure",
                 metric_class=InfoMetricFamily,
             ),
             Specification(
-                name="sas2ircu_command_success",
+                name=f"sas{self.version}ircu_command_success",
                 documentation="Indicates if the command is successful or not",
                 metric_class=GaugeMetricFamily,
             ),
         ]
 
     def fetch(self) -> List[Payload]:
-        """Load the LSI SAS-2 controllers related information."""
-        adapters = self.sas2ircu.get_adapters()
-        all_information = [(idx, self.sas2ircu.get_all_information(idx)) for idx in adapters]
+        """Load the LSI SAS controllers related information."""
+        adapters = self.sasircu.get_adapters()
+        all_information = [(idx, self.sasircu.get_all_information(idx)) for idx in adapters]
 
         if not all([adapters, all_information]):
             logger.error(
-                "Failed to get LSI SAS-2 controller information using %s", self.sas2ircu.command
+                "Failed to get LSI SAS-%d controller information using %s",
+                self.version,
+                self.sasircu.command,
             )
-            return [Payload(name="sas2ircu_command_success", value=0.0)]
+            return [Payload(name=f"sas{self.version}ircu_command_success", value=0.0)]
 
         payloads = [
             Payload(
-                name="lsi_sas_2_controllers",
+                name=f"lsi_sas_{self.version}_controllers",
                 value=len(adapters),
             ),
             Payload(
-                name="sas2ircu_command_success",
+                name=f"sas{self.version}ircu_command_success",
                 value=1.0,
             ),
         ]
+
         for idx, info in all_information:
             # Add integrated RAID volume metrics
-            if info["ir_volumes"]:
-                ready_ir_volumes = 0
-                unready_ir_volumes = 0
-                for volume in info["ir_volumes"].values():
-                    payloads.append(
-                        Payload(
-                            name="lsi_sas_2_ir_volume",
-                            value={
-                                "controller_id": idx,
-                                "volume_id": volume["Volume ID"],
-                                "status": volume["Status of volume"],
-                                "size_mb": volume["Size (in MB)"],
-                                "boot": volume["Boot"],
-                                "raid_level": volume["RAID level"],
-                                "hard_disk": ",".join(volume["Physical hard disks"].values()),
-                            },
-                        )
-                    )
-                    ready = volume["Status of volume"] == "Okay (OKY)"
-                    ready_ir_volumes += ready
-                    unready_ir_volumes += not ready
-                payloads.extend(
-                    [
-                        Payload(
-                            name="lsi_sas_2_ir_volumes",
-                            labels=[idx],
-                            value=ready_ir_volumes + unready_ir_volumes,
-                        ),
-                        Payload(
-                            name="lsi_sas_2_ready_ir_volumes",
-                            labels=[idx],
-                            value=ready_ir_volumes,
-                        ),
-                        Payload(
-                            name="lsi_sas_2_unready_ir_volumes",
-                            labels=[idx],
-                            value=unready_ir_volumes,
-                        ),
-                    ]
-                )
-            # Add physical disk metrics
-            if info["physical_disks"]:
-                ready_physical_disks = 0
-                unready_physical_disks = 0
-                for disk in info["physical_disks"].values():
-                    payloads.append(
-                        Payload(
-                            name="lsi_sas_2_physical_device",
-                            value={
-                                "controller_id": idx,
-                                "enclosure_id": disk["Enclosure #"],
-                                "slot_id": disk["Slot #"],
-                                "size_mb_sectors": disk["Size (in MB)/(in sectors)"],
-                                "drive_type": disk["Drive Type"],
-                                "protocol": disk["Protocol"],
-                                "state": disk["State"],
-                            },
-                        )
-                    )
-                    ready = disk["State"] in set(["Ready (RDY)", "Optimal (OPT)"])
-                    ready_physical_disks += ready
-                    unready_physical_disks += not ready
-                payloads.extend(
-                    [
-                        Payload(
-                            name="lsi_sas_2_physical_devices",
-                            labels=[idx],
-                            value=ready_physical_disks + unready_physical_disks,
-                        ),
-                        Payload(
-                            name="lsi_sas_2_ready_physical_devices",
-                            labels=[idx],
-                            value=ready_physical_disks,
-                        ),
-                        Payload(
-                            name="lsi_sas_2_unready_physical_devices",
-                            labels=[idx],
-                            value=unready_physical_disks,
-                        ),
-                    ]
-                )
-            # Add enclosure metrics
-            if info["enclosures"]:
-                for encl in info["enclosures"].values():
-                    payloads.append(
-                        Payload(
-                            name="lsi_sas_2_enclosure",
-                            value={
-                                "controller_id": idx,
-                                "enclosure_id": encl["Enclosure#"],
-                                "num_slots": encl["Numslots"],
-                                "start_slot": encl["StartSlot"],
-                            },
-                        )
-                    )
-        return payloads
-
-    def process(self, payloads: List[Payload], datastore: Dict[str, Payload]) -> List[Payload]:
-        """Process the payload if needed."""
-        return payloads
-
-
-class LSISAS3ControllerCollector(BlockingCollector):
-    """Collector for LSI SAS-3 controllers."""
-
-    sas3ircu = Sasircu(3)
-
-    @property
-    def specifications(self) -> List[Specification]:
-        """Define LSI SAS-3 metric specs."""
-        return [
-            Specification(
-                name="lsi_sas_3_controllers",
-                documentation="Number of LSI SAS-3 controllers",
-                metric_class=GaugeMetricFamily,
-            ),
-            Specification(
-                name="lsi_sas_3_ir_volumes",
-                documentation="Number of IR volumes",
-                labels=["controller_id"],
-                metric_class=GaugeMetricFamily,
-            ),
-            Specification(
-                name="lsi_sas_3_ready_ir_volumes",
-                documentation="Number of ready IR volumes",
-                labels=["controller_id"],
-                metric_class=GaugeMetricFamily,
-            ),
-            Specification(
-                name="lsi_sas_3_unready_ir_volumes",
-                documentation="Number of unready IR volumes",
-                labels=["controller_id"],
-                metric_class=GaugeMetricFamily,
-            ),
-            Specification(
-                name="lsi_sas_3_ir_volume",  # will append "_info" internally
-                documentation="Shows the information about the integrated RAID volume",
-                metric_class=InfoMetricFamily,
-            ),
-            Specification(
-                name="lsi_sas_3_physical_devices",
-                documentation="Number of physical devices",
-                labels=["controller_id"],
-                metric_class=GaugeMetricFamily,
-            ),
-            Specification(
-                name="lsi_sas_3_ready_physical_devices",
-                documentation="Number of ready physical devices",
-                labels=["controller_id"],
-                metric_class=GaugeMetricFamily,
-            ),
-            Specification(
-                name="lsi_sas_3_unready_physical_devices",
-                documentation="Number of unready physical devices",
-                labels=["controller_id"],
-                metric_class=GaugeMetricFamily,
-            ),
-            Specification(
-                name="lsi_sas_3_physical_device",  # will append "_info" internally
-                documentation="Shows the information about the physical device",
-                metric_class=InfoMetricFamily,
-            ),
-            Specification(
-                name="lsi_sas_3_enclosure",  # will append "_info" internally
-                documentation="Show the information about the enclosure",
-                metric_class=InfoMetricFamily,
-            ),
-            Specification(
-                name="sas3ircu_command_success",
-                documentation="Indicates if the command is successful or not",
-                metric_class=GaugeMetricFamily,
-            ),
-        ]
-
-    def fetch(self) -> List[Payload]:
-        """Load the LSI SAS-3 controllers related information."""
-        adapters = self.sas3ircu.get_adapters()
-        all_information = [(idx, self.sas3ircu.get_all_information(idx)) for idx in adapters]
-
-        if not all([adapters, all_information]):
-            logger.error(
-                "Failed to get LSI SAS-3 controller information using %s", self.sas3ircu.command
+            ir_volumes = self.lsi_sas_helper.extract_ir_volumes(idx, info)
+            ir_volume_state_counts = self.lsi_sas_helper.count_ir_volume_state(
+                ir_volumes, {"Okay (OKY)"}
             )
-            return [Payload(name="sas3ircu_command_success", value=0.0)]
+            payloads.extend(
+                [
+                    Payload(
+                        name=f"lsi_sas_{self.version}_ir_volume",
+                        value=ir_volume,
+                    )
+                    for ir_volume in ir_volumes
+                ]
+            )
+            payloads.extend(
+                [
+                    Payload(
+                        name=f"lsi_sas_{self.version}_ir_volumes",
+                        labels=[idx],
+                        value=ir_volume_state_counts[0],
+                    ),
+                    Payload(
+                        name=f"lsi_sas_{self.version}_ready_ir_volumes",
+                        labels=[idx],
+                        value=ir_volume_state_counts[1],
+                    ),
+                    Payload(
+                        name=f"lsi_sas_{self.version}_unready_ir_volumes",
+                        labels=[idx],
+                        value=ir_volume_state_counts[2],
+                    ),
+                ]
+            )
 
-        payloads = [
-            Payload(
-                name="lsi_sas_3_controllers",
-                value=len(adapters),
-            ),
-            Payload(
-                name="sas3ircu_command_success",
-                value=1.0,
-            ),
-        ]
-        for idx, info in all_information:
-            # Add integrated RAID volume metrics
-            if info["ir_volumes"]:
-                ready_ir_volumes = 0
-                unready_ir_volumes = 0
-                for volume in info["ir_volumes"].values():
-                    payloads.append(
-                        Payload(
-                            name="lsi_sas_3_ir_volume",
-                            value={
-                                "controller_id": idx,
-                                "volume_id": volume["Volume ID"],
-                                "status": volume["Status of volume"],
-                                "size_mb": volume["Size (in MB)"],
-                                "boot": volume["Boot"],
-                                "raid_level": volume["RAID level"],
-                                "hard_disk": ",".join(volume["Physical hard disks"].values()),
-                            },
-                        )
-                    )
-                    ready = volume["Status of volume"] == "Okay (OKY)"
-                    ready_ir_volumes += ready
-                    unready_ir_volumes += not ready
-                payloads.extend(
-                    [
-                        Payload(
-                            name="lsi_sas_3_ir_volumes",
-                            labels=[idx],
-                            value=ready_ir_volumes + unready_ir_volumes,
-                        ),
-                        Payload(
-                            name="lsi_sas_3_ready_ir_volumes",
-                            labels=[idx],
-                            value=ready_ir_volumes,
-                        ),
-                        Payload(
-                            name="lsi_sas_3_unready_ir_volumes",
-                            labels=[idx],
-                            value=unready_ir_volumes,
-                        ),
-                    ]
-                )
             # Add physical disk metrics
-            if info["physical_disks"]:
-                ready_physical_disks = 0
-                unready_physical_disks = 0
-                for disk in info["physical_disks"].values():
-                    payloads.append(
-                        Payload(
-                            name="lsi_sas_3_physical_device",
-                            value={
-                                "controller_id": idx,
-                                "enclosure_id": disk["Enclosure #"],
-                                "slot_id": disk["Slot #"],
-                                "size_mb_sectors": disk["Size (in MB)/(in sectors)"],
-                                "drive_type": disk["Drive Type"],
-                                "protocol": disk["Protocol"],
-                                "state": disk["State"],
-                            },
-                        )
-                    )
-                    ready = disk["State"] in set(["Ready (RDY)", "Optimal (OPT)"])
-                    ready_physical_disks += ready
-                    unready_physical_disks += not ready
-                payloads.extend(
-                    [
-                        Payload(
-                            name="lsi_sas_3_physical_devices",
-                            labels=[idx],
-                            value=ready_physical_disks + unready_physical_disks,
-                        ),
-                        Payload(
-                            name="lsi_sas_3_ready_physical_devices",
-                            labels=[idx],
-                            value=ready_physical_disks,
-                        ),
-                        Payload(
-                            name="lsi_sas_3_unready_physical_devices",
-                            labels=[idx],
-                            value=unready_physical_disks,
-                        ),
-                    ]
-                )
+            physical_disks = self.lsi_sas_helper.extract_physical_disks(idx, info)
+            physical_disks_state_counts = self.lsi_sas_helper.count_physical_disk_state(
+                physical_disks, {"Ready (RDY)", "Optimal (OPT)"}
+            )
+            payloads.extend(
+                [
+                    Payload(name=f"lsi_sas_{self.version}_physical_device", value=ir_volume)
+                    for ir_volume in ir_volumes
+                ]
+            )
+            payloads.extend(
+                [
+                    Payload(
+                        name=f"lsi_sas_{self.version}_physical_devices",
+                        labels=[idx],
+                        value=physical_disks_state_counts[0],
+                    ),
+                    Payload(
+                        name=f"lsi_sas_{self.version}_ready_physical_devices",
+                        labels=[idx],
+                        value=physical_disks_state_counts[1],
+                    ),
+                    Payload(
+                        name=f"lsi_sas_{self.version}_unready_physical_devices",
+                        labels=[idx],
+                        value=physical_disks_state_counts[2],
+                    ),
+                ]
+            )
+
             # Add enclosure metrics
-            if info["enclosures"]:
-                for encl in info["enclosures"].values():
-                    payloads.append(
-                        Payload(
-                            name="lsi_sas_3_enclosure",
-                            value={
-                                "controller_id": idx,
-                                "enclosure_id": encl["Enclosure#"],
-                                "num_slots": encl["Numslots"],
-                                "start_slot": encl["StartSlot"],
-                            },
-                        )
-                    )
+            payloads.extend(
+                [
+                    Payload(name=f"lsi_sas_{self.version}_enclosure", value=enclosure)
+                    for enclosure in self.lsi_sas_helper.extract_enclosures(idx, info)
+                ]
+            )
         return payloads
 
     def process(self, payloads: List[Payload], datastore: Dict[str, Payload]) -> List[Payload]:
