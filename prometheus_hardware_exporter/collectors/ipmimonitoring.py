@@ -11,7 +11,7 @@ logger = getLogger(__name__)
 class IpmiMonitoring(Command):
     """Command line tool for getting ipmi sensors data."""
 
-    prefix = "sudo"
+    prefix = ""
     command = "ipmimonitoring"
 
     def get_sensor_data(self) -> List[Dict[str, str]]:

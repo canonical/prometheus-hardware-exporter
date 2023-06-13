@@ -11,7 +11,7 @@ logger = getLogger(__name__)
 class IpmiSel(Command):
     """Command line tool for ipmi sel."""
 
-    prefix = "sudo"
+    prefix = ""
     command = "ipmi-sel"
 
     def get_sel_entries(self) -> List[Dict[str, str]]:

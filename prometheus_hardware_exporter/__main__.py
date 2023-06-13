@@ -40,10 +40,10 @@ def main() -> None:
     root_logger.setLevel(logging.getLevelName(config.level))
 
     exporter = Exporter(config.port)
-    exporter.register(MegaRAIDCollector(args.config))
-    exporter.register(IpmiDcmiCollector(args.config))
-    exporter.register(IpmiSensorsCollector(args.config))
-    exporter.register(IpmiSelCollector(args.config))
+    exporter.register(MegaRAIDCollector())
+    exporter.register(IpmiDcmiCollector())
+    exporter.register(IpmiSensorsCollector())
+    exporter.register(IpmiSelCollector())
     exporter.run()
 
 

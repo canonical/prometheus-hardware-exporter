@@ -14,7 +14,7 @@ CURRENT_POWER_REGEX = re.compile(r"^Current Power\s*:\s*(?P<value>[0-9.]*)\s*Wat
 class IpmiDcmi(Command):
     """Command line tool for ipmi dcmi."""
 
-    prefix = "sudo"
+    prefix = ""
     command = "ipmi-dcmi"
 
     def get_current_power(self) -> Dict[str, float]:
