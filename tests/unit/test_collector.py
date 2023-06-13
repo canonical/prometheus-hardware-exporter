@@ -48,6 +48,10 @@ class TestCustomCollector(unittest.TestCase):
     def test_10_lsi_sas_2_collector_not_installed(self):
         """Test LSI SAS 2 collector when sas2ircu is not installed."""
         lsi_sas_2_collector = LSISASControllerCollector(2)
+        lsi_sas_2_collector.sasircu = Mock()
+        lsi_sas_2_collector.sasircu.installed = False
+        lsi_sas_2_collector.sasircu.get_adapters.return_value = {}
+        lsi_sas_2_collector.sasircu.get_all_information.return_value = {}
         payloads = lsi_sas_2_collector.collect()
 
         self.assertEqual(len(list(payloads)), 1)
@@ -124,6 +128,7 @@ class TestCustomCollector(unittest.TestCase):
             },
         }
 
+        lsi_sas_2_collector.sasircu.installed = True
         lsi_sas_2_collector.sasircu.get_adapters.return_value = mock_adapters
         lsi_sas_2_collector.sasircu.get_all_information.return_value = mock_information
 
@@ -137,6 +142,10 @@ class TestCustomCollector(unittest.TestCase):
     def test_20_lsi_sas_3_collector_not_installed(self):
         """Test LSI SAS 3 collector when sas3ircu is not installed."""
         lsi_sas_3_collector = LSISASControllerCollector(3)
+        lsi_sas_3_collector.sasircu = Mock()
+        lsi_sas_3_collector.sasircu.installed = False
+        lsi_sas_3_collector.sasircu.get_adapters.return_value = {}
+        lsi_sas_3_collector.sasircu.get_all_information.return_value = {}
         payloads = lsi_sas_3_collector.collect()
 
         self.assertEqual(len(list(payloads)), 1)
@@ -214,6 +223,7 @@ class TestCustomCollector(unittest.TestCase):
             },
         }
 
+        lsi_sas_3_collector.sasircu.installed = True
         lsi_sas_3_collector.sasircu.get_adapters.return_value = mock_adapters
         lsi_sas_3_collector.sasircu.get_all_information.return_value = mock_information
 
