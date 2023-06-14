@@ -7,6 +7,7 @@ from .collector import (
     IpmiDcmiCollector,
     IpmiSelCollector,
     IpmiSensorsCollector,
+    LSISASControllerCollector,
     MegaRAIDCollector,
 )
 from .config import DEFAULT_CONFIG, Config
@@ -44,6 +45,8 @@ def main() -> None:
     exporter.register(IpmiDcmiCollector())
     exporter.register(IpmiSensorsCollector())
     exporter.register(IpmiSelCollector())
+    exporter.register(LSISASControllerCollector(2))
+    exporter.register(LSISASControllerCollector(3))
     exporter.run()
 
 

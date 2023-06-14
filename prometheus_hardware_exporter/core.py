@@ -1,9 +1,9 @@
 """Module for collecter core codes."""
 
 from abc import abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from logging import getLogger
-from typing import Dict, Iterable, List, Optional, Type
+from typing import Any, Dict, Iterable, List, Optional, Type
 
 from prometheus_client.metrics_core import Metric
 from prometheus_client.registry import Collector
@@ -18,8 +18,8 @@ class Payload:
     """Container of data for each timeseries."""
 
     name: str
-    value: float
-    labels: List[str]
+    value: Any
+    labels: List[str] = field(default_factory=list)
     uuid: str = ""  # timeseries's name
 
     def __post_init__(self) -> None:
@@ -32,9 +32,9 @@ class Specification:
     """Specification for metrics."""
 
     name: str
-    labels: List[str]
     documentation: str
     metric_class: Type[Metric]
+    labels: List[str] = field(default_factory=list)
 
 
 class BlockingCollector(Collector):

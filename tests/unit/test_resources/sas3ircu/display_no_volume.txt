@@ -1,0 +1,82 @@
+Avago Technologies SAS3 IR Configuration Utility.
+Version 16.00.00.00 (2017.04.26)
+Copyright (c) 2009-2017 Avago Technologies. All rights reserved.
+
+Read configuration has been initiated for controller 0
+------------------------------------------------------------------------
+Controller information
+------------------------------------------------------------------------
+  Controller type                         : SAS3008
+  BIOS version                            : 8.37.02.00
+  Firmware version                        : 16.00.11.00
+  Channel description                     : 1 Serial Attached SCSI
+  Initiator ID                            : 0
+  Maximum physical devices                : 543
+  Concurrent commands supported           : 9584
+  Slot                                    : Unknown
+  Segment                                 : 0
+  Bus                                     : 1
+  Device                                  : 0
+  Function                                : 0
+  RAID Support                            : No
+------------------------------------------------------------------------
+IR Volume information
+------------------------------------------------------------------------
+------------------------------------------------------------------------
+Physical device information
+------------------------------------------------------------------------
+Initiator at ID #0
+
+Device is a Hard disk
+  Enclosure #                             : 1
+  Slot #                                  : 0
+  SAS Address                             : 4433221-1-0400-0000
+  State                                   : Ready (RDY)
+  Size (in MB)/(in sectors)               : 457862/937703087
+  Manufacturer                            : ATA
+  Model Number                            : HFS480G3H2X069N
+  Firmware Revision                       : DZ00
+  Serial No                               : BNA7N5994ICB47T3V
+  Unit Serial No(VPD)                     : BNA7N5994ICB47T3V
+  GUID                                    : 5ace42e02532f9e4
+  Protocol                                : SATA
+  Drive Type                              : SATA_SSD
+
+Device is a Hard disk
+  Enclosure #                             : 1
+  Slot #                                  : 1
+  SAS Address                             : 4433221-1-0000-0000
+  State                                   : Ready (RDY)
+  Size (in MB)/(in sectors)               : 457862/937703087
+  Manufacturer                            : ATA
+  Model Number                            : HFS480G3H2X069N
+  Firmware Revision                       : DZ00
+  Serial No                               : BNA7N5994ICB47T3S
+  Unit Serial No(VPD)                     : BNA7N5994ICB47T3S
+  GUID                                    : 5ace42e02532f9e1
+  Protocol                                : SATA
+  Drive Type                              : SATA_SSD
+
+Device is a Enclosure services device
+  Enclosure #                             : 1
+  Slot #                                  : 10
+  SAS Address                             : 53cea0f-0-c559-7b00
+  State                                   : Standby (SBY)
+  Manufacturer                            : DP
+  Model Number                            : BP14G+
+  Firmware Revision                       : 4.35
+  Serial No                               :
+  Unit Serial No(VPD)                     : N/A
+  GUID                                    : N/A
+  Protocol                                : SAS
+  Device Type                             : Enclosure services device
+------------------------------------------------------------------------
+Enclosure information
+------------------------------------------------------------------------
+  Enclosure#                              : 1
+  Logical ID                              : 52cea7f0:c5597b00
+  Numslots                                : 10
+  StartSlot                               : 0
+------------------------------------------------------------------------
+SAS3IRCU: Command DISPLAY Completed Successfully.
+SAS3IRCU: Utility Completed Successfully.
