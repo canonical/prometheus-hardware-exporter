@@ -4,7 +4,7 @@ from unittest.mock import patch
 from prometheus_hardware_exporter.collectors.ipmi_sel import IpmiSel
 from prometheus_hardware_exporter.utils import Command, Result
 
-SEL_SAMPLE_OUTPUT = "tests/unit/test_resources/ipmi_sel_sample_output.txt"
+SEL_SAMPLE_OUTPUT = "tests/unit/test_resources/ipmi/ipmi_sel_sample_output.txt"
 SAMPLE_SEL_ENTRIES = [
     {
         "ID": "493",

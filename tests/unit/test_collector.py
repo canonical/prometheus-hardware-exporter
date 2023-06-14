@@ -129,7 +129,7 @@ SAMPLE_IPMI_SENSOR_ENTRIES = [
         "Units": "%",
         "Event": "'OK'",
     },
-],
+]
 
 
 class TestCustomCollector(unittest.TestCase):
@@ -362,6 +362,9 @@ class TestCustomCollector(unittest.TestCase):
     def test_30_ipmi_dcmi_collector_not_installed(self):
         """Test ipmi dcmi collector when ipmi-dcmi is not installed."""
         ipmi_dcmi_collector = IpmiDcmiCollector()
+        ipmi_dcmi_collector.ipmi_dcmi = Mock()
+        ipmi_dcmi_collector.ipmi_dcmi.installed = False
+        ipmi_dcmi_collector.ipmi_dcmi.get_current_power.return_value = {}
         payloads = ipmi_dcmi_collector.collect()
 
         self.assertEqual(len(list(payloads)), 1)
@@ -385,6 +388,9 @@ class TestCustomCollector(unittest.TestCase):
     def test_40_ipmi_sel_not_installed(self):
         """Test ipmi sel collector when ipmi sel is not installed."""
         ipmi_sel_collector = IpmiSelCollector()
+        ipmi_sel_collector.ipmi_sel = Mock()
+        ipmi_sel_collector.ipmi_sel.installed = False
+        ipmi_sel_collector.ipmi_sel.get_sel_entries.return_value = []
         payloads = ipmi_sel_collector.collect()
 
         self.assertEqual(len(list(payloads)), 1)
@@ -408,6 +414,9 @@ class TestCustomCollector(unittest.TestCase):
     def test_50_ipmimonitoring_not_installed(self):
         """Test ipmi sensor collector when ipmimonitoring is not installed."""
         ipmi_sensors_collector = IpmiSensorsCollector()
+        ipmi_sensors_collector.ipmimonitoring = Mock()
+        ipmi_sensors_collector.ipmimonitoring.installed = False
+        ipmi_sensors_collector.ipmimonitoring.get_sensor_data.return_value = []
         payloads = ipmi_sensors_collector.collect()
 
         self.assertEqual(len(list(payloads)), 1)

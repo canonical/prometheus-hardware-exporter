@@ -5,7 +5,6 @@ from typing import Dict, List
 
 from prometheus_client.metrics_core import GaugeMetricFamily, InfoMetricFamily
 
-
 from .collectors.ipmi_dcmi import IpmiDcmi
 from .collectors.ipmi_sel import IpmiSel
 from .collectors.ipmimonitoring import IpmiMonitoring

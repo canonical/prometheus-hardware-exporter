@@ -4,7 +4,7 @@ from unittest.mock import patch
 from prometheus_hardware_exporter.collectors.ipmi_dcmi import IpmiDcmi
 from prometheus_hardware_exporter.utils import Command, Result
 
-DCMI_SAMPLE_OUTPUT = "tests/unit/test_resources/ipmi_dcmi_sample_output.txt"
+DCMI_SAMPLE_OUTPUT = "tests/unit/test_resources/ipmi/ipmi_dcmi_sample_output.txt"
 
 
 class TestIpmiDcmi(unittest.TestCase):

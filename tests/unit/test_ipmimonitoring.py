@@ -4,7 +4,7 @@ from unittest.mock import patch
 from prometheus_hardware_exporter.collectors.ipmimonitoring import IpmiMonitoring
 from prometheus_hardware_exporter.utils import Command, Result
 
-IPMIMONITORING_SAMPLE_OUTPUT = "tests/unit/test_resources/ipmimonitoring_sample_output.txt"
+IPMIMONITORING_SAMPLE_OUTPUT = "tests/unit/test_resources/ipmi/ipmimonitoring_sample_output.txt"
 SAMPLE_SENSOR_ENTRIES = [
     {
         "ID": "0",
