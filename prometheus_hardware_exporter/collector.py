@@ -127,13 +127,11 @@ class IpmiDcmiCollector(BlockingCollector):
             Specification(
                 name="ipmi_dcmi_power_cosumption_watts",
                 documentation="Current power consumption in watts",
-                labels=[],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
                 name="ipmi_dcmi_command_success",
                 documentation="Indicates if the ipmi dcmi command is successful or not",
-                labels=[],
                 metric_class=GaugeMetricFamily,
             ),
         ]
@@ -144,15 +142,14 @@ class IpmiDcmiCollector(BlockingCollector):
 
         if not current_power_payload:
             logger.error("Failed to fetch current power from ipmi dcmi")
-            return [Payload(name="ipmi_dcmi_command_success", labels=[], value=0.0)]
+            return [Payload(name="ipmi_dcmi_command_success", value=0.0)]
 
         payloads = [
             Payload(
                 name="ipmi_dcmi_power_cosumption_watts",
-                labels=[],
                 value=current_power_payload["current_power"],
             ),
-            Payload(name="ipmi_dcmi_command_success", labels=[], value=1.0),
+            Payload(name="ipmi_dcmi_command_success", value=1.0),
         ]
         return payloads
 
@@ -215,7 +212,6 @@ class IpmiSensorsCollector(BlockingCollector):
             Specification(
                 name="ipmimonitoring_command_success",
                 documentation="Indicates if the ipmimonitoring command succeeded or not",
-                labels=[],
                 metric_class=GaugeMetricFamily,
             ),
         ]
@@ -226,9 +222,9 @@ class IpmiSensorsCollector(BlockingCollector):
 
         if not sensor_data:
             logger.error("Failed to get ipmi sensor data.")
-            return [Payload(name="ipmimonitoring_command_success", labels=[], value=0.0)]
+            return [Payload(name="ipmimonitoring_command_success", value=0.0)]
 
-        payloads = [Payload(name="ipmimonitoring_command_success", labels=[], value=1.0)]
+        payloads = [Payload(name="ipmimonitoring_command_success", value=1.0)]
         for sensor_data_item in sensor_data:
             current_item_unit = sensor_data_item.get("Units")
             if current_item_unit == "C":
@@ -330,7 +326,6 @@ class IpmiSelCollector(BlockingCollector):
             Specification(
                 name="ipmi_sel_command_success",
                 documentation="Indicates if the ipmi sel command succeeded or not",
-                labels=[],
                 metric_class=GaugeMetricFamily,
             ),
         ]
@@ -341,11 +336,11 @@ class IpmiSelCollector(BlockingCollector):
 
         if not sel_entries:
             logger.error("Failed to get ipmi sel entries.")
-            return [Payload(name="ipmi_sel_command_success", labels=[], value=0.0)]
+            return [Payload(name="ipmi_sel_command_success", value=0.0)]
 
         sel_states_dict = {"NOMINAL": 0, "WARNING": 1, "CRITICAL": 2}
 
-        payloads = [Payload(name="ipmi_sel_command_success", labels=[], value=1.0)]
+        payloads = [Payload(name="ipmi_sel_command_success", value=1.0)]
 
         for sel_entry in sel_entries:
             payloads.append(
