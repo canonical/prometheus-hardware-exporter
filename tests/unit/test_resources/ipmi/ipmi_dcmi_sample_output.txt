@@ -1,0 +1,7 @@
+Current Power                        : 105 Watts
+Minimum Power over sampling duration : 0 watts
+Maximum Power over sampling duration : 0 watts
+Average Power over sampling duration : 0 watts
+Time Stamp                           : 05/29/2023 - 14:33:12
+Statistics reporting time period     : 300000 milliseconds
+Power Measurement                    : Not Available
