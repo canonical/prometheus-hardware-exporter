@@ -1,9 +1,10 @@
 """Module for helper functions."""
 
+import json
 import subprocess
 from dataclasses import dataclass
 from logging import getLogger
-from typing import Optional
+from typing import Optional, Union
 
 logger = getLogger(__name__)
 
@@ -65,3 +66,12 @@ class Command:
             logger.error(err)
             result.error = err
         return result
+
+
+def get_json_output(content: str) -> Union[dict, Exception]:
+    """Load json string and return Result."""
+    try:
+        data = json.loads(content)
+        return data
+    except ValueError as err:
+        return err

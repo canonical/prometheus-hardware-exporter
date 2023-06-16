@@ -3,7 +3,7 @@ import unittest
 from unittest.mock import patch
 
 from prometheus_hardware_exporter import utils
-from prometheus_hardware_exporter.utils import Command, Result
+from prometheus_hardware_exporter.utils import Command, Result, get_json_output
 
 
 class TestCommand(unittest.TestCase):
@@ -39,3 +39,13 @@ class TestCommand(unittest.TestCase):
         self.assertEqual(result.data, "")
         self.assertEqual(str(result.error), "Command 'cmd' returned non-zero exit status 1.")
         self.assertEqual(type(result.error), subprocess.CalledProcessError)
+
+
+def test_get_json_output():
+    result = get_json_output("""{"a": 1, "b": 2}""")
+    assert result == {"a": 1, "b": 2}
+
+
+def test_get_json_output_err():
+    result = get_json_output("""{"a": 1, "b": 2}123""")
+    assert isinstance(result, Exception)

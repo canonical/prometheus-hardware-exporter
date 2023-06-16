@@ -8,11 +8,158 @@ from prometheus_client.metrics_core import GaugeMetricFamily, InfoMetricFamily
 from .collectors.ipmi_dcmi import IpmiDcmi
 from .collectors.ipmi_sel import IpmiSel
 from .collectors.ipmimonitoring import IpmiMonitoring
+from .collectors.perccli import PercCLI
 from .collectors.sasircu import LSISASCollectorHelper, Sasircu
 from .collectors.storcli import StorCLI
 from .core import BlockingCollector, Payload, Specification
 
 logger = getLogger(__name__)
+
+
+class PowerEdgeRAIDCollector(BlockingCollector):
+    """Collector for PowerEdge RAID controller."""
+
+    perccli = PercCLI()
+
+    @property
+    def specifications(self) -> List[Specification]:
+        return [
+            Specification(
+                name="perccli_command_success",
+                documentation="Indicates if the command is successful or not",
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="perccli_command_ctrl_success",
+                documentation="Indicates if the command for each controller is successful or not",
+                labels=["controller_id"],
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="poweredgeraid_controllers",
+                documentation="Total number of controllers",
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="poweredgeraid_virtual_drives",
+                documentation="Number of virtual drives",
+                labels=["controller_id"],
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="poweredgeraid_virtual_drive",
+                documentation="Indicates the state of virtual drive",
+                metric_class=InfoMetricFamily,
+            ),
+            Specification(
+                name="poweredgeraid_physical_devices",
+                documentation="Number of physical devices",
+                labels=["controller_id"],
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="poweredgeraid_physical_device",
+                documentation="Indicates the state of physical devices",
+                metric_class=InfoMetricFamily,
+            ),
+        ]
+
+    def fetch(self) -> List[Payload]:
+        """Load the PowerEdgeRAID related information."""
+        payloads = []
+        success = self.perccli.success()
+        payloads.append(
+            Payload(
+                name="perccli_command_success",
+                value=1.0 if success else 0.0,
+            ),
+        )
+        if not success:
+            return payloads
+
+        ctrl_exists = self.perccli.ctrl_exists()
+        if not ctrl_exists:
+            payloads.append(
+                Payload(
+                    name="poweredgeraid_controllers",
+                    value=0.0,
+                )
+            )
+            return payloads
+
+        ctrl_sussesses = self.perccli.ctrl_successes()
+        for ctrl_id, success in ctrl_sussesses.items():
+            payloads.append(
+                Payload(
+                    name="perccli_command_ctrl_success",
+                    labels=[str(ctrl_id)],
+                    value=1.0 if success else 0.0,
+                ),
+            )
+
+        controller_payload = self.perccli.get_controllers()
+
+        payloads.append(
+            Payload(
+                name="poweredgeraid_controllers",
+                value=controller_payload["count"],
+            )
+        )
+        # virtual drive
+        virtual_drive_payloads = self.perccli.get_virtual_drives()
+        for ctrl_id, vd_payloads in virtual_drive_payloads.items():
+            ctrl_id_str = str(ctrl_id)
+            payloads.append(
+                Payload(
+                    name="poweredgeraid_virtual_drives",
+                    labels=[ctrl_id_str],
+                    value=len(vd_payloads),
+                )
+            )
+            for vd_payload in vd_payloads:
+                payloads.append(
+                    Payload(
+                        name="poweredgeraid_virtual_drive",
+                        value={
+                            "controller_id": ctrl_id_str,
+                            "device_group": vd_payload["DG"],
+                            "virtual_drive_id": vd_payload["VD"],
+                            "state": vd_payload["state"],
+                            "cache_policy": vd_payload["cache"],
+                        },
+                    )
+                )
+        # physical device
+        physical_device_payloads = self.perccli.get_physical_devices()
+        for ctrl_id, pd_payloads in physical_device_payloads.items():
+            ctrl_id_str = str(ctrl_id)
+            payloads.append(
+                Payload(
+                    name="poweredgeraid_physical_devices",
+                    labels=[ctrl_id_str],
+                    value=len(pd_payloads),
+                )
+            )
+            for pd_payload in pd_payloads:
+                payloads.append(
+                    Payload(
+                        name="poweredgeraid_physical_device",
+                        value={
+                            "controller_id": ctrl_id_str,
+                            "device_group": pd_payload["DG"],
+                            "enclosure_device_id": pd_payload["eid"],
+                            "slot": pd_payload["slt"],
+                            "size": pd_payload["size"],
+                            "media_type": pd_payload["media_type"],
+                            "state": pd_payload["state"],
+                        },
+                    )
+                )
+        return payloads
+
+    def process(self, payloads: List[Payload], datastore: Dict[str, Payload]) -> List[Payload]:
+        """Process the payload if needed."""
+        return payloads
 
 
 class MegaRAIDCollector(BlockingCollector):

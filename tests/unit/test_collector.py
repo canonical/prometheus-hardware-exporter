@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from prometheus_hardware_exporter.collector import (
     IpmiDcmiCollector,
@@ -7,6 +7,7 @@ from prometheus_hardware_exporter.collector import (
     IpmiSensorsCollector,
     LSISASControllerCollector,
     MegaRAIDCollector,
+    PowerEdgeRAIDCollector,
 )
 
 SAMPLE_IPMI_SEL_ENTRIES = [
@@ -435,3 +436,143 @@ class TestCustomCollector(unittest.TestCase):
         self.assertEqual(len(list(payloads)), len(mock_sensor_data) + 1)
         for payload in payloads:
             self.assertIn(payload.name, available_metrics)
+
+    def test_101_perccli_collector_command_success(self):
+        with patch.object(PowerEdgeRAIDCollector, "perccli") as mock_cli:
+            # 1 success, 1 fail
+            mock_cli.ctrl_exists.return_value = True
+            mock_cli.ctrl_successes.return_value = {0: False, 1: True}
+            mock_cli.get_controllers.return_value = {"count": 1}
+            mock_cli.get_virtual_drives.return_value = {}
+
+            power_edge_collector = PowerEdgeRAIDCollector()
+            payloads = list(power_edge_collector.collect())
+        assert len(payloads) >= 4
+
+        assert payloads[0].samples[0].value == 1.0
+        assert payloads[0].samples[0].name == "perccli_command_success"
+
+        assert payloads[1].samples[0].value == 0.0
+        assert payloads[1].samples[0].labels["controller_id"] == "0"
+        assert payloads[1].samples[0].name == "perccli_command_ctrl_success"
+        assert payloads[2].samples[0].value == 1.0
+        assert payloads[2].samples[0].labels["controller_id"] == "1"
+        assert payloads[2].samples[0].name == "perccli_command_ctrl_success"
+
+    def test_102_perccli_virtual_device_command_success(self):
+        with patch.object(PowerEdgeRAIDCollector, "perccli") as mock_cli:
+            mock_cli.success.return_value = True
+            mock_cli.ctrl_successes.return_value = {0: False, 1: True}
+            mock_cli.get_controllers.return_value = {"count": 1}
+            mock_cli.get_virtual_drives.return_value = {
+                0: [{"DG": "0", "VD": "0", "cache": "NRWTD", "state": "Optl"}]
+            }
+
+            power_edge_collector = PowerEdgeRAIDCollector()
+            payloads = list(power_edge_collector.collect())
+
+        get_payloads = []
+
+        for payload in payloads:
+            payload_sample = payload.samples[0]
+            get_payloads.append(payload_sample.name)
+            if payload_sample.name == "poweredgeraid_virtual_drive":
+                assert payload_sample.labels == {"controller_id": "0"}
+                assert payload_sample.value == 1
+            if payload_sample.name == "poweredgeraid_virtual_drive_info":
+                assert payload_sample.labels == {
+                    "controller_id": "0",
+                    "device_group": "0",
+                    "virtual_drive_id": "0",
+                    "state": "Optl",
+                    "cache_policy": "NRWTD",
+                }
+                assert payload_sample.value == 1.0
+        for name in [
+            "poweredgeraid_virtual_drives",
+            "poweredgeraid_virtual_drive_info",
+        ]:
+            assert name in get_payloads
+
+    def test_103_perccli_cmd_fail(self):
+        with patch.object(PowerEdgeRAIDCollector, "perccli") as mock_cli:
+            mock_cli.success.return_value = False
+            power_edge_collector = PowerEdgeRAIDCollector()
+            payloads = list(power_edge_collector.collect())
+            assert len(payloads) == 1
+            assert payloads[0].samples[0].value == 0.0
+
+    def test_104_perccli_no_controller_exists(self):
+        with patch.object(PowerEdgeRAIDCollector, "perccli") as mock_cli:
+            mock_cli.success.return_value = True
+            mock_cli.ctrl_exists.return_value = False
+            power_edge_collector = PowerEdgeRAIDCollector()
+            payloads = list(power_edge_collector.collect())
+            assert len(payloads) == 2
+            assert payloads[1].samples[0].value == 0.0
+
+    def test_105_perccli_physical_device_command_success(self):
+        with patch.object(PowerEdgeRAIDCollector, "perccli") as mock_cli:
+            mock_cli.success.return_value = True
+            mock_cli.ctrl_successes.return_value = {0: False, 1: True}
+            mock_cli.get_controllers.return_value = {"count": 1}
+            mock_cli.get_physical_devices.return_value = {
+                0: [
+                    {
+                        "eid": "69",
+                        "slt": "0",
+                        "state": "Onln",
+                        "DG": 0,
+                        "size": "558.375 GB",
+                        "media_type": "HDD",
+                    },
+                    {
+                        "eid": "69",
+                        "slt": "1",
+                        "state": "Onln",
+                        "DG": 0,
+                        "size": "558.375 GB",
+                        "media_type": "HDD",
+                    },
+                ]
+            }
+
+            power_edge_collector = PowerEdgeRAIDCollector()
+            payloads = list(power_edge_collector.collect())
+
+        get_payloads = []
+
+        for payload in payloads:
+            payload_sample = payload.samples[0]
+            get_payloads.append(payload_sample.name)
+            if payload_sample.name == "poweredgeraid_physical_device":
+                assert payload_sample.labels == {"controller_id": "0"}
+                assert payload_sample.value == 2
+            if payload_sample.name == "poweredgeraid_physical_device_info":
+                labels = payload_sample.labels
+                if labels["enclosure_device_id"] == "69" and labels["slot"] == "0":
+                    assert payload_sample.labels == {
+                        "controller_id": "0",
+                        "enclosure_device_id": "69",
+                        "slot": "0",
+                        "state": "Onln",
+                        "device_group": 0,
+                        "size": "558.375 GB",
+                        "media_type": "HDD",
+                    }
+                if labels["enclosure_device_id"] == "69" and labels["slot"] == "1":
+                    assert payload_sample.labels == {
+                        "controller_id": "0",
+                        "enclosure_device_id": "69",
+                        "slot": "1",
+                        "state": "Onln",
+                        "device_group": 0,
+                        "size": "558.375 GB",
+                        "media_type": "HDD",
+                    }
+                assert payload_sample.value == 1.0
+        for name in [
+            "poweredgeraid_physical_devices",
+            "poweredgeraid_physical_device_info",
+        ]:
+            assert name in get_payloads

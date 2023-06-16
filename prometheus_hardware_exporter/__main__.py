@@ -9,6 +9,7 @@ from .collector import (
     IpmiSensorsCollector,
     LSISASControllerCollector,
     MegaRAIDCollector,
+    PowerEdgeRAIDCollector,
 )
 from .config import DEFAULT_CONFIG, Config
 from .exporter import Exporter
@@ -47,6 +48,7 @@ def main() -> None:
     exporter.register(IpmiSelCollector())
     exporter.register(LSISASControllerCollector(2))
     exporter.register(LSISASControllerCollector(3))
+    exporter.register(PowerEdgeRAIDCollector())
     exporter.run()
 
 
