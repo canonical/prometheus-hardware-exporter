@@ -5,10 +5,13 @@
 name: SonarCloud
 on:
   workflow_run:
-    workflows: [PR workflow running lint checkers, unit and functional tests]
+    workflows: 
+      - PR workflow running lint checkers, unit and functional tests
     types: [completed]
 
 jobs:
   sonar:
     uses: canonical/bootstack-actions/.github/workflows/sonar.yaml@main
     secrets: inherit
+    with:
+      workflow-name: PR workflow running lint checkers, unit and functional tests
