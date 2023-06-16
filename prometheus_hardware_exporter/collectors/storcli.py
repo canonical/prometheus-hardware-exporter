@@ -1,20 +1,12 @@
 """Collector for MegaRAID controller."""
 
-import re
+import json
 from logging import getLogger
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Set, Tuple
 
 from ..utils import Command
 
 logger = getLogger(__name__)
-
-
-CACHE_REGEX = re.compile(r'"Cache"\s*:\s*"(\w*)"')
-CONTROLLER_CNT_REGEX = re.compile(r'"Controller Count"\s*:\s*(?P<num>\d*)')
-DG_VD_REGEX = re.compile(r'"DG\/VD"\s*:\s*"(\d*)\/(\d*)"')
-HOSTENAME_REGEX = re.compile(r'"Host Name"\s*:\s*"(?P<hostname>\w*)"')
-NUM_CONTROLLER_REGEX = re.compile(r'"Number of Controllers"\s*:\s*(?P<num>\d*)')
-STATE_REGEX = re.compile(r'"State"\s*:\s*"(\w*)"')
 
 
 class StorCLI(Command):
@@ -23,102 +15,145 @@ class StorCLI(Command):
     prefix = ""
     command = "storcli"
 
-    def _get_all_virtual_drives(self, controller: int) -> List[Dict[str, str]]:
-        """Get all virtual drive information in this controller.
+    def _extract_enclosures(
+        self, response: Dict[str, List[Dict[str, str]]]
+    ) -> List[Dict[str, str]]:
+        """Get all enclosures information in this controller.
 
-        Equivalent to running `storcli /cx/vall show all` for controller "x".
+        Returns:
+            payloads: list of enclosures information or []
+        """
+        if "Enclosure LIST" not in response:
+            logger.error("Cannot enclosure information.")
+            return []
+        return response["Enclosure LIST"]
+
+    def _extract_virtual_drives(
+        self, response: Dict[str, List[Dict[str, str]]]
+    ) -> List[Dict[str, str]]:
+        """Get all virtual drives information in this controller.
 
         Returns:
             payloads: list of virtual drives information or []
         """
-        result = self(f"/c{controller}/vall show J")
+        if "VD LIST" not in response:
+            logger.error("Cannot virtual drive information.")
+            return []
+        return response["VD LIST"]
+
+    def _extract_physical_drives(
+        self, response: Dict[str, List[Dict[str, str]]]
+    ) -> List[Dict[str, str]]:
+        """Get all physical drives information in this controller.
+
+        Returns:
+            payloads: list of physical drives information or []
+        """
+        if "PD LIST" not in response:
+            logger.error("Cannot physical drive information.")
+            return []
+        return response["PD LIST"]
+
+    def get_all_information(self) -> Dict[str, Dict[str, List[Dict[str, str]]]]:
+        """Get the information about all controllers.
+
+        Returns:
+            An extracted output of `storcli /cALL show all J`
+        """
+        result = self("/cALL show all J")
         if result.error:
             logger.error(result.error)
-            return []
+            return {}
 
-        dg_vd_matches = DG_VD_REGEX.findall(result.data)
-        state_matches = STATE_REGEX.findall(result.data)
-        cache_matches = CACHE_REGEX.findall(result.data)
-        if not all([dg_vd_matches, state_matches, cache_matches]):
-            logger.error("Controller %d: cannot get virtual drive information.", controller)
-            return []
+        data = json.loads(result.data)["Controllers"]
 
-        payloads = []
-        for ctrl_id, virtual_device, state, cache in zip(
-            [i[0] for i in dg_vd_matches],
-            [i[1] for i in dg_vd_matches],
-            state_matches,
-            cache_matches,
-        ):
-            payloads.append(
+        final_output: Dict[str, Dict[str, List[Dict[str, str]]]] = {}
+        for controller in data:
+            if "Response Data" not in controller:
+                logger.error("Cannot get controller information.")
+                continue
+            response = controller["Response Data"]
+            idx = response["Basics"]["Controller"]
+            final_output[idx] = {
+                "enclosures": self._extract_enclosures(response),
+                "virtual_drives": self._extract_virtual_drives(response),
+                "physical_drives": self._extract_physical_drives(response),
+            }
+        return final_output
+
+
+class MegaRAIDCollectorHelper:
+    """Helper class to generate payloads."""
+
+    def count_virtual_drive_state(
+        self, virtual_drives: List[Dict[str, str]], state: Set
+    ) -> Tuple[int, int, int]:
+        """Count the number of virtual drive in a particular state."""
+        ready_virtual_drives = 0
+        unready_virtual_drives = 0
+        for virtual_drive in virtual_drives:
+            ready = virtual_drive["state"] in state
+            ready_virtual_drives += ready
+            unready_virtual_drives += not ready
+        return (
+            ready_virtual_drives + unready_virtual_drives,
+            ready_virtual_drives,
+            unready_virtual_drives,
+        )
+
+    def extract_enclosures(
+        self, idx: str, enclosures: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Extract the enclosures payloads."""
+        data = []
+        for encl in enclosures:
+            data.append(
                 {
-                    "DG": ctrl_id,
-                    "VD": virtual_device,
-                    "state": state,
-                    "cache": cache,
+                    "controller_id": idx,
+                    "enclosure_id": str(encl["EID"]),
+                    "num_slots": str(encl["Slots"]),
+                    "state": encl["State"],
                 }
             )
-        return payloads
+        return data
 
-    def _get_controller_ids(self) -> List[int]:
-        """Get controller ids.
+    def extract_virtual_drives(
+        self, idx: str, virtual_drives: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Extract the virtual drives payloads."""
+        data = []
+        for virtual_drive in virtual_drives:
+            dg_vd = virtual_drive["DG/VD"].split("/")
+            drive_group = str(dg_vd[0])
+            virtual_drive_group = str(dg_vd[1])
+            data.append(
+                {
+                    "controller_id": idx,
+                    "drive_group": drive_group,
+                    "virtual_drive_group": virtual_drive_group,
+                    "state": virtual_drive["State"],
+                    "raid_level": virtual_drive["TYPE"],
+                    "name": virtual_drive["Name"],
+                }
+            )
+        return data
 
-        Returns:
-            ids: list of controller ids or []
-        """
-        result = self("show ctrlcount J")
-        if result.error:
-            logger.error(result.error)
-            return []
-
-        ctrl_count_match = CONTROLLER_CNT_REGEX.search(result.data)
-        if not ctrl_count_match:
-            logger.error("Cannot get controller ids.")
-            return []
-
-        return list(range(int(ctrl_count_match.group("num"))))
-
-    def get_controllers(self) -> Dict[str, Any]:
-        """Get the number of controller.
-
-        Returns:
-            payload: a dictionary of controller count and hostname, or {}
-        """
-        result = self("show all J")
-        if result.error:
-            logger.error(result.error)
-            return {}
-
-        num_match = NUM_CONTROLLER_REGEX.search(result.data)
-        hostname_match = HOSTENAME_REGEX.search(result.data)
-        if not all([num_match, hostname_match]):
-            logger.error("Cannot get controller's information.")
-            return {}
-
-        payload = {
-            "count": int(num_match.group("num")) if num_match else 0,
-            "hostname": hostname_match.group("hostname") if hostname_match else "",
-        }
-        return payload
-
-    def get_all_virtual_drives(
-        self,
-    ) -> Dict[int, List[Dict[str, str]]]:
-        """Get all virtual drive information.
-
-        Equivalent to running `storcli /cx/vall show all` for all controller "x".
-
-        Returns:
-            virtual_drives: dictionary of all virtual drive information or {}
-        """
-        ids = self._get_controller_ids()
-        if not ids:
-            return {}
-
-        payload = {}
-        for controller_id in ids:
-            vd_payload = self._get_all_virtual_drives(controller_id)
-            if not vd_payload:
-                return {}
-            payload[controller_id] = vd_payload
-        return payload
+    def extract_physical_drives(
+        self, idx: str, physical_drives: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Extract the physical drives payloads."""
+        data = []
+        for physical_drive in physical_drives:
+            eid_slt = physical_drive["EID:Slt"].split(":")
+            slot_id = str(eid_slt[1])
+            enclosure_id = str(eid_slt[0])
+            data.append(
+                {
+                    "controller_id": idx,
+                    "enclosure_id": enclosure_id,
+                    "slot_id": slot_id,
+                    "state": physical_drive["State"],
+                    "drive_type": physical_drive["Med"],
+                }
+            )
+        return data
