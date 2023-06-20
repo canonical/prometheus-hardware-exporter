@@ -1,7 +1,10 @@
 from unittest.mock import Mock, patch
 
+import pytest
+
 from prometheus_hardware_exporter import __main__
 from prometheus_hardware_exporter.__main__ import main, parse_command_line
+from prometheus_hardware_exporter.config import Config
 
 
 class TestCli:
@@ -30,3 +33,34 @@ class TestCli:
         mock_main_parse_command_line.assert_called_once()
         mock_config.load_config.assert_called_once()
         mock_exporter.assert_called_once()
+
+    @patch.object(__main__, "parse_command_line")
+    @patch.object(__main__, "Exporter")
+    @patch.object(__main__, "Config")
+    def test_cli_main_with_config(self, mock_config, mock_exporter, mock_main_parse_command_line):
+        mock_config.load_config.return_value = Config(
+            port=10000,
+            level="INFO",
+            enable_collectors=["mega-raid-collector"],
+        )
+        mock_main_parse_command_line.return_value = Mock()
+        main()
+        mock_main_parse_command_line.assert_called_once()
+        mock_exporter.assert_called_once()
+
+    @patch.object(__main__, "parse_command_line")
+    @patch.object(__main__, "Exporter")
+    @patch.object(__main__, "Config")
+    def test_cli_main_with_wrong_config(
+        self, mock_config, mock_exporter, mock_main_parse_command_line
+    ):
+        with pytest.raises(ValueError):
+            mock_main_parse_command_line.return_value = Mock()
+            mock_config.load_config.return_value = Config(
+                port=10000,
+                level="INFO",
+                enable_collectors=["megaraidcollector"],
+            )
+            main()
+            mock_main_parse_command_line.assert_called_once()
+            mock_exporter.assert_called_once()

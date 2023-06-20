@@ -16,6 +16,8 @@ from .core import BlockingCollector, Payload, Specification
 
 logger = getLogger(__name__)
 
+__all__ = ["COLLECTOR_REGISTRIES"]
+
 
 class PowerEdgeRAIDCollector(BlockingCollector):
     """Collector for PowerEdge RAID controller."""
@@ -832,3 +834,15 @@ class SsaCLICollector(BlockingCollector):
     def process(self, payloads: List[Payload], datastore: Dict[str, Payload]) -> List[Payload]:
         """Process the payload if needed."""
         return payloads
+
+
+COLLECTOR_REGISTRIES = {
+    "mega-raid-collector": MegaRAIDCollector(),
+    "ipmi-dcmi-collector": IpmiDcmiCollector(),
+    "ipmi-sensor-collector": IpmiSensorsCollector(),
+    "ipmi-sel-collector": IpmiSelCollector(),
+    "lsi-sas-2-collector": LSISASControllerCollector(2),
+    "lsi-sas-3-collector": LSISASControllerCollector(3),
+    "poweredge-raid-collector": PowerEdgeRAIDCollector(),
+    "hpe-ssa-collector": SsaCLICollector(),
+}

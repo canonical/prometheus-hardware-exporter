@@ -3,19 +3,11 @@
 import argparse
 import logging
 
-from .collector import (
-    IpmiDcmiCollector,
-    IpmiSelCollector,
-    IpmiSensorsCollector,
-    LSISASControllerCollector,
-    MegaRAIDCollector,
-    PowerEdgeRAIDCollector,
-    SsaCLICollector,
-)
+from .collector import COLLECTOR_REGISTRIES
 from .config import DEFAULT_CONFIG, Config
 from .exporter import Exporter
 
-root_logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 def parse_command_line() -> argparse.Namespace:
@@ -40,17 +32,16 @@ def main() -> None:
     """Start the prometheus-hardware-exporter."""
     args = parse_command_line()
     config = Config.load_config(config_file=args.config or DEFAULT_CONFIG)
+
+    root_logger = logging.getLogger()
     root_logger.setLevel(logging.getLevelName(config.level))
 
     exporter = Exporter(config.port)
-    exporter.register(MegaRAIDCollector())
-    exporter.register(IpmiDcmiCollector())
-    exporter.register(IpmiSensorsCollector())
-    exporter.register(IpmiSelCollector())
-    exporter.register(LSISASControllerCollector(2))
-    exporter.register(LSISASControllerCollector(3))
-    exporter.register(PowerEdgeRAIDCollector())
-    exporter.register(SsaCLICollector())
+    enabled_collectors = set(config.enable_collectors)
+    for name, collector in COLLECTOR_REGISTRIES.items():
+        if name.lower() in enabled_collectors:
+            logger.info("collector %s is enabled", name)
+            exporter.register(collector)
     exporter.run()
 
 

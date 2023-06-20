@@ -2,6 +2,7 @@
 
 import os
 from logging import getLogger
+from typing import List
 
 from pydantic import BaseModel, validator
 from yaml import safe_load
@@ -16,6 +17,7 @@ class Config(BaseModel):
 
     port: int = 10000
     level: str = "DEBUG"
+    enable_collectors: List[str] = []
 
     @validator("port")
     def validate_port_range(cls, port: int) -> int:  # noqa: N805 pylint: disable=E0213
@@ -36,6 +38,29 @@ class Config(BaseModel):
             logger.error(msg)
             raise ValueError(msg)
         return level
+
+    @validator("enable_collectors")
+    def validate_enable_collector_choice(  # pylint: disable=E0213
+        cls, enable_collectors: List[str]  # noqa: N805
+    ) -> List[str]:
+        """Validate enable choice."""
+        choices = {
+            "mega-raid-collector",
+            "ipmi-dcmi-collector",
+            "ipmi-sensor-collector",
+            "ipmi-sel-collector",
+            "lsi-sas-2-collector",
+            "lsi-sas-3-collector",
+            "poweredge-raid-collector",
+            "hpe-ssa-collector",
+        }
+        collectors = {collector.lower() for collector in enable_collectors}
+        invalid_choices = collectors.difference(choices)
+        if invalid_choices:
+            msg = f"{collectors} must be in {choices} (case-insensitive)."
+            logger.error(msg)
+            raise ValueError(msg)
+        return enable_collectors
 
     @classmethod
     def load_config(cls, config_file: str = DEFAULT_CONFIG) -> "Config":
