@@ -80,7 +80,7 @@ class SsaCLI(Command):
                 logger.warning(err)
                 continue
             part, status = line.split(":")
-            ctrl_status[part] = status
+            ctrl_status[part] = status.strip().upper()
         return ctrl_status
 
     def _get_ld_status(self, slot: str) -> Dict[str, str]:
@@ -106,7 +106,7 @@ class SsaCLI(Command):
                 continue
             drive_id = line.split()[1]
             status = line.split("):")[1].lstrip().upper()
-            ld_status[drive_id] = status
+            ld_status[drive_id] = status.strip().upper()
 
         return ld_status
 
@@ -132,6 +132,6 @@ class SsaCLI(Command):
                 continue
             drive_id = line.split()[1]
             status = line.split("):")[1].lstrip().upper()
-            pd_status[drive_id] = status
+            pd_status[drive_id] = status.strip().upper()
 
         return pd_status

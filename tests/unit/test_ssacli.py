@@ -35,9 +35,9 @@ class TestSsaCLI(unittest.TestCase):
         ssacli = SsaCLI()
         ctrl_status = ssacli._get_controller_status(1)
         expected_ctrl_status = {
-            "Controller Status": " OK",
-            "Cache Status": " OK",
-            "Battery/Capacitor Status": " OK",
+            "Controller Status": "OK",
+            "Cache Status": "OK",
+            "Battery/Capacitor Status": "OK",
         }
         self.assertEqual(ctrl_status, expected_ctrl_status)
 

@@ -755,10 +755,9 @@ class SsaCLICollector(BlockingCollector):
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
-                name="ssacli_controller_status",
-                documentation="Indicates the status of controller part",
-                labels=["slot", "part"],
-                metric_class=GaugeMetricFamily,
+                name="ssacli_controller_info",
+                documentation="Shows the information about controller part",
+                metric_class=InfoMetricFamily,
             ),
             Specification(
                 name="ssacli_logical_drives",
@@ -773,16 +772,14 @@ class SsaCLICollector(BlockingCollector):
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
-                name="ssacli_ld_status",
-                documentation="Indicates the status of logical drive",
-                labels=["slot", "drive_id"],
-                metric_class=GaugeMetricFamily,
+                name="ssacli_ld_info",
+                documentation="Shows the information about logical drive",
+                metric_class=InfoMetricFamily,
             ),
             Specification(
-                name="ssacli_pd_status",
-                documentation="Indicates the status of physical drive",
-                labels=["slot", "drive_id"],
-                metric_class=GaugeMetricFamily,
+                name="ssacli_pd_info",
+                documentation="Shows the information about physical drive",
+                metric_class=InfoMetricFamily,
             ),
         ]
 
@@ -803,9 +800,8 @@ class SsaCLICollector(BlockingCollector):
             for part, status in ctrl_status.items():
                 payloads.append(
                     Payload(
-                        name="ssacli_controller_status",
-                        labels=[slot, part],
-                        value=self._get_status_value(status),
+                        name="ssacli_controller_info",
+                        value={"slot": slot, "part": part, "status": status},
                     )
                 )
             ld_status = payload["ld_status"]
@@ -815,9 +811,8 @@ class SsaCLICollector(BlockingCollector):
             for drive_id, status in ld_status.items():
                 payloads.append(
                     Payload(
-                        name="ssacli_ld_status",
-                        labels=[slot, drive_id],
-                        value=self._get_status_value(status),
+                        name="ssacli_ld_info",
+                        value={"slot": slot, "drive_id": drive_id, "status": status},
                     )
                 )
             pd_status = payload["pd_status"]
@@ -827,9 +822,8 @@ class SsaCLICollector(BlockingCollector):
             for drive_id, status in pd_status.items():
                 payloads.append(
                     Payload(
-                        name="ssacli_pd_status",
-                        labels=[slot, drive_id],
-                        value=self._get_status_value(status),
+                        name="ssacli_pd_info",
+                        value={"slot": slot, "drive_id": drive_id, "status": status},
                     )
                 )
 
@@ -838,9 +832,3 @@ class SsaCLICollector(BlockingCollector):
     def process(self, payloads: List[Payload], datastore: Dict[str, Payload]) -> List[Payload]:
         """Process the payload if needed."""
         return payloads
-
-    def _get_status_value(self, status: str) -> float:
-        """Return 1.0 of status is 'OK'."""
-        if status.strip().upper() == "OK":
-            return 1.0
-        return 0.0
