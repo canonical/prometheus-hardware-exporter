@@ -61,7 +61,9 @@ class Command:
         full_command = " ".join([prefix, command, args]).strip()
         try:
             logger.debug("Running command: %s", full_command)
-            result.data = subprocess.check_output(full_command, shell=True).decode().strip()
+            result.data = (
+                subprocess.check_output(full_command, shell=True, timeout=30).decode().strip()
+            )
         except subprocess.CalledProcessError as err:
             logger.error(err)
             result.error = err
