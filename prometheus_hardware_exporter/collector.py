@@ -755,7 +755,7 @@ class SsaCLICollector(BlockingCollector):
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
-                name="ssacli_controller_info",
+                name="ssacli_controller",
                 documentation="Shows the information about controller part",
                 metric_class=InfoMetricFamily,
             ),
@@ -772,12 +772,12 @@ class SsaCLICollector(BlockingCollector):
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
-                name="ssacli_ld_info",
+                name="ssacli_ld",
                 documentation="Shows the information about logical drive",
                 metric_class=InfoMetricFamily,
             ),
             Specification(
-                name="ssacli_pd_info",
+                name="ssacli_pd",
                 documentation="Shows the information about physical drive",
                 metric_class=InfoMetricFamily,
             ),
@@ -800,7 +800,7 @@ class SsaCLICollector(BlockingCollector):
             for part, status in ctrl_status.items():
                 payloads.append(
                     Payload(
-                        name="ssacli_controller_info",
+                        name="ssacli_controller",
                         value={"slot": slot, "part": part, "status": status},
                     )
                 )
@@ -811,7 +811,7 @@ class SsaCLICollector(BlockingCollector):
             for drive_id, status in ld_status.items():
                 payloads.append(
                     Payload(
-                        name="ssacli_ld_info",
+                        name="ssacli_ld",
                         value={"slot": slot, "drive_id": drive_id, "status": status},
                     )
                 )
@@ -822,7 +822,7 @@ class SsaCLICollector(BlockingCollector):
             for drive_id, status in pd_status.items():
                 payloads.append(
                     Payload(
-                        name="ssacli_pd_info",
+                        name="ssacli_pd",
                         value={"slot": slot, "drive_id": drive_id, "status": status},
                     )
                 )
