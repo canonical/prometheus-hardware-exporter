@@ -12,6 +12,9 @@ logger = getLogger(__name__)
 DEFAULT_CONFIG = os.path.join(os.environ.get("SNAP_DATA", "./"), "config.yaml")
 
 
+# pylint: disable=E0213
+
+
 class Config(BaseModel):
     """Juju backup all configuration."""
 
@@ -20,7 +23,7 @@ class Config(BaseModel):
     enable_collectors: List[str] = []
 
     @validator("port")
-    def validate_port_range(cls, port: int) -> int:  # noqa: N805 pylint: disable=E0213
+    def validate_port_range(cls, port: int) -> int:
         """Validate port range."""
         if not 1 <= port <= 65535:
             msg = "Port must be in [1, 65535]."
@@ -29,7 +32,7 @@ class Config(BaseModel):
         return port
 
     @validator("level")
-    def validate_level_choice(cls, level: str) -> str:  # noqa: N805 pylint: disable=E0213
+    def validate_level_choice(cls, level: str) -> str:
         """Validate logging level choice."""
         level = level.upper()
         choices = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
@@ -40,9 +43,7 @@ class Config(BaseModel):
         return level
 
     @validator("enable_collectors")
-    def validate_enable_collector_choice(  # pylint: disable=E0213
-        cls, enable_collectors: List[str]  # noqa: N805
-    ) -> List[str]:
+    def validate_enable_collector_choice(cls, enable_collectors: List[str]) -> List[str]:
         """Validate enable choice."""
         choices = {
             "mega-raid-collector",
