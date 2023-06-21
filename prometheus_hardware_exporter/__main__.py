@@ -10,6 +10,7 @@ from .collector import (
     LSISASControllerCollector,
     MegaRAIDCollector,
     PowerEdgeRAIDCollector,
+    SsaCLICollector,
 )
 from .config import DEFAULT_CONFIG, Config
 from .exporter import Exporter
@@ -49,6 +50,7 @@ def main() -> None:
     exporter.register(LSISASControllerCollector(2))
     exporter.register(LSISASControllerCollector(3))
     exporter.register(PowerEdgeRAIDCollector())
+    exporter.register(SsaCLICollector())
     exporter.run()
 
 
