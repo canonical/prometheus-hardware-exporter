@@ -772,12 +772,12 @@ class SsaCLICollector(BlockingCollector):
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
-                name="ssacli_ld",
+                name="ssacli_logical_drive",
                 documentation="Shows the information about logical drive",
                 metric_class=InfoMetricFamily,
             ),
             Specification(
-                name="ssacli_pd",
+                name="ssacli_physical_drive",
                 documentation="Shows the information about physical drive",
                 metric_class=InfoMetricFamily,
             ),
@@ -811,7 +811,7 @@ class SsaCLICollector(BlockingCollector):
             for drive_id, status in ld_status.items():
                 payloads.append(
                     Payload(
-                        name="ssacli_ld",
+                        name="ssacli_logical_drive",
                         value={"slot": slot, "drive_id": drive_id, "status": status},
                     )
                 )
@@ -822,7 +822,7 @@ class SsaCLICollector(BlockingCollector):
             for drive_id, status in pd_status.items():
                 payloads.append(
                     Payload(
-                        name="ssacli_pd",
+                        name="ssacli_physical_drive",
                         value={"slot": slot, "drive_id": drive_id, "status": status},
                     )
                 )
