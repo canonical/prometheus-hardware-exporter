@@ -1,4 +1,4 @@
-"""Module for hardware related configuration."""
+"""Module for hardware exporter related configuration."""
 
 import os
 from logging import getLogger
@@ -16,7 +16,7 @@ DEFAULT_CONFIG = os.path.join(os.environ.get("SNAP_DATA", "./"), "config.yaml")
 
 
 class Config(BaseModel):
-    """Juju backup all configuration."""
+    """Hardware exporter configuration."""
 
     port: int = 10000
     level: str = "DEBUG"
