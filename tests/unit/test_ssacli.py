@@ -8,6 +8,7 @@ from test_resources.ssacli.sample_outputs import (
     CTRL_PD_ALL_SHOW_STATUS,
     CTRL_PD_ALL_SHOW_STATUS_ABSENT,
     CTRL_SHOW_STATUS,
+    CTRL_SHOW_STATUS_BAD,
 )
 
 from prometheus_hardware_exporter.collectors.ssacli import SsaCLI
@@ -44,7 +45,19 @@ class TestSsaCLI(unittest.TestCase):
         self.assertEqual(ctrl_status, expected_ctrl_status)
 
     @patch.object(Command, "__call__")
-    def test_11__get_controller_status_error(self, mock_call):
+    def test_11__get_controller_status_success_bad(self, mock_call):
+        mock_call.return_value = Result(CTRL_SHOW_STATUS_BAD, None)
+        ssacli = SsaCLI()
+        ctrl_status = ssacli._get_controller_status(1)
+        expected_ctrl_status = {
+            "Controller Status": "OK",
+            "Cache Status": "ERROR",
+            "Battery/Capacitor Status": "OK",
+        }
+        self.assertEqual(ctrl_status, expected_ctrl_status)
+
+    @patch.object(Command, "__call__")
+    def test_12__get_controller_status_error(self, mock_call):
         mock_call.return_value = Result("", True)
         ssacli = SsaCLI()
         ctrl_status = ssacli._get_controller_status(1)

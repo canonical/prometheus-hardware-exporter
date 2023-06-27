@@ -14,6 +14,16 @@ Smart Array P222 in Slot 2
 
 
 """
+CTRL_SHOW_STATUS_BAD = """
+
+Smart HBA P22 in Slot 3
+   Random bad output line
+   Controller Status: OK
+   Cache Status: ERROR
+   Battery/Capacitor Status: OK
+
+
+"""
 CTRL_LD_ALL_SHOW_STATUS = """
 
    logicaldrive 1 (931.48 GB, RAID 1): OK
@@ -29,11 +39,13 @@ CTRL_PD_ALL_SHOW_STATUS = """
 CTRL_LD_ALL_SHOW_STATUS_ABSENT = """
 
 Error: The specified controller does not have any logical drive.
+Arbitrary line
 
 """
 
 CTRL_PD_ALL_SHOW_STATUS_ABSENT = """
 
 Error: The specified controller does not have any physical drive.
+Arbitrary line
 
 """
