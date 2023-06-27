@@ -8,6 +8,7 @@ from prometheus_hardware_exporter.collector import (
     LSISASControllerCollector,
     MegaRAIDCollector,
     PowerEdgeRAIDCollector,
+    SsaCLICollector,
 )
 
 SAMPLE_IPMI_SEL_ENTRIES = [
@@ -472,6 +473,33 @@ class TestCustomCollector(unittest.TestCase):
 
         available_metrics = [spec.name for spec in ipmi_sensors_collector.specifications]
         self.assertEqual(len(list(payloads)), len(mock_sensor_data) + 1)
+        for payload in payloads:
+            self.assertIn(payload.name, available_metrics)
+
+    def test_60_ssacli_not_installed(self):
+        ssacli_collector = SsaCLICollector()
+        ssacli_collector.ssacli = Mock()
+        ssacli_collector.ssacli.installed = False
+        ssacli_collector.ssacli.get_payload.return_value = {}
+        payloads = ssacli_collector.collect()
+
+        self.assertEqual(len(list(payloads)), 1)
+
+    def test_61_ssacli_installed_and_okay(self):
+        ssacli_collector = SsaCLICollector()
+        ssacli_collector.ssacli = Mock()
+        mock_payload = {
+            "2": {
+                "controller_status": {"Battery/Capacitor Status": " OK"},
+                "ld_status": {"1": "OK"},
+                "pd_status": {"2I:0:1": "corrupt"},
+            }
+        }
+        ssacli_collector.ssacli.get_payload.return_value = mock_payload
+        payloads = ssacli_collector.collect()
+
+        available_metrics = [spec.name for spec in ssacli_collector.specifications]
+        self.assertEqual(len(list(payloads)), len(available_metrics))
         for payload in payloads:
             self.assertIn(payload.name, available_metrics)
 

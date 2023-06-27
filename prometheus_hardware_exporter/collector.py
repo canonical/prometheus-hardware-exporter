@@ -10,6 +10,7 @@ from .collectors.ipmi_sel import IpmiSel
 from .collectors.ipmimonitoring import IpmiMonitoring
 from .collectors.perccli import PercCLI
 from .collectors.sasircu import LSISASCollectorHelper, Sasircu
+from .collectors.ssacli import SsaCLI
 from .collectors.storcli import MegaRAIDCollectorHelper, StorCLI
 from .core import BlockingCollector, Payload, Specification
 
@@ -728,6 +729,104 @@ class LSISASControllerCollector(BlockingCollector):
                     for enclosure in self.lsi_sas_helper.extract_enclosures(idx, info)
                 ]
             )
+        return payloads
+
+    def process(self, payloads: List[Payload], datastore: Dict[str, Payload]) -> List[Payload]:
+        """Process the payload if needed."""
+        return payloads
+
+
+class SsaCLICollector(BlockingCollector):
+    """Collector for storage arrays that support ssacli."""
+
+    ssacli = SsaCLI()
+
+    @property
+    def specifications(self) -> List[Specification]:
+        return [
+            Specification(
+                name="ssacli_command_success",
+                documentation="Indicates if the command is successful or not",
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="ssacli_controllers",
+                documentation="Total number of controllers",
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="ssacli_controller",
+                documentation="Shows the information about controller part",
+                metric_class=InfoMetricFamily,
+            ),
+            Specification(
+                name="ssacli_logical_drives",
+                documentation="The number of logical drives in the slot",
+                labels=["slot"],
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="ssacli_physical_drives",
+                documentation="The number of physical drives in the slot",
+                labels=["slot"],
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="ssacli_logical_drive",
+                documentation="Shows the information about logical drive",
+                metric_class=InfoMetricFamily,
+            ),
+            Specification(
+                name="ssacli_physical_drive",
+                documentation="Shows the information about physical drive",
+                metric_class=InfoMetricFamily,
+            ),
+        ]
+
+    def fetch(self) -> List[Payload]:
+        """Load the controller and drive status using ssacli tool."""
+        ssacli_payload = self.ssacli.get_payload()
+
+        if not ssacli_payload:
+            logger.error("Failed to get controllers info using ssacli.")
+            return [Payload(name="ssacli_command_success", value=0.0)]
+        payloads = [
+            Payload(name="ssacli_command_success", value=1.0),
+            Payload(name="ssacli_controllers", value=len(ssacli_payload)),
+        ]
+
+        for slot, payload in ssacli_payload.items():
+            ctrl_status = payload["controller_status"]
+            for part, status in ctrl_status.items():
+                payloads.append(
+                    Payload(
+                        name="ssacli_controller",
+                        value={"slot": slot, "part": part, "status": status},
+                    )
+                )
+            ld_status = payload["ld_status"]
+            payloads.append(
+                Payload(name="ssacli_logical_drives", labels=[slot], value=len(ld_status))
+            )
+            for drive_id, status in ld_status.items():
+                payloads.append(
+                    Payload(
+                        name="ssacli_logical_drive",
+                        value={"slot": slot, "drive_id": drive_id, "status": status},
+                    )
+                )
+            pd_status = payload["pd_status"]
+            payloads.append(
+                Payload(name="ssacli_physical_drives", labels=[slot], value=len(pd_status))
+            )
+            for drive_id, status in pd_status.items():
+                payloads.append(
+                    Payload(
+                        name="ssacli_physical_drive",
+                        value={"slot": slot, "drive_id": drive_id, "status": status},
+                    )
+                )
+
         return payloads
 
     def process(self, payloads: List[Payload], datastore: Dict[str, Payload]) -> List[Payload]:
