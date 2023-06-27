@@ -4,8 +4,11 @@ from unittest.mock import patch
 from test_resources.ssacli.sample_outputs import (
     CTRL_ALL_SHOW,
     CTRL_LD_ALL_SHOW_STATUS,
+    CTRL_LD_ALL_SHOW_STATUS_ABSENT,
     CTRL_PD_ALL_SHOW_STATUS,
+    CTRL_PD_ALL_SHOW_STATUS_ABSENT,
     CTRL_SHOW_STATUS,
+    CTRL_SHOW_STATUS_BAD,
 )
 
 from prometheus_hardware_exporter.collectors.ssacli import SsaCLI
@@ -20,7 +23,7 @@ class TestSsaCLI(unittest.TestCase):
         mock_call.return_value = Result(CTRL_ALL_SHOW, None)
         ssacli = SsaCLI()
         slots = ssacli._get_controller_slots()
-        self.assertEqual(slots, ["2"])
+        self.assertEqual(slots, ["2", "3"])
 
     @patch.object(Command, "__call__")
     def test_01__get_controller_slots_error(self, mock_call):
@@ -42,7 +45,19 @@ class TestSsaCLI(unittest.TestCase):
         self.assertEqual(ctrl_status, expected_ctrl_status)
 
     @patch.object(Command, "__call__")
-    def test_11__get_controller_status_error(self, mock_call):
+    def test_11__get_controller_status_success_bad(self, mock_call):
+        mock_call.return_value = Result(CTRL_SHOW_STATUS_BAD, None)
+        ssacli = SsaCLI()
+        ctrl_status = ssacli._get_controller_status(1)
+        expected_ctrl_status = {
+            "Controller Status": "OK",
+            "Cache Status": "ERROR",
+            "Battery/Capacitor Status": "OK",
+        }
+        self.assertEqual(ctrl_status, expected_ctrl_status)
+
+    @patch.object(Command, "__call__")
+    def test_12__get_controller_status_error(self, mock_call):
         mock_call.return_value = Result("", True)
         ssacli = SsaCLI()
         ctrl_status = ssacli._get_controller_status(1)
@@ -64,6 +79,13 @@ class TestSsaCLI(unittest.TestCase):
         self.assertEqual(ld_status, {})
 
     @patch.object(Command, "__call__")
+    def test_22__get_ld_status_absent(self, mock_call):
+        mock_call.return_value = Result(CTRL_LD_ALL_SHOW_STATUS_ABSENT, None)
+        ssacli = SsaCLI()
+        ld_status = ssacli._get_ld_status(1)
+        self.assertEqual(ld_status, {})
+
+    @patch.object(Command, "__call__")
     def test_30__get_pd_status_success(self, mock_call):
         mock_call.return_value = Result(CTRL_PD_ALL_SHOW_STATUS, None)
         ssacli = SsaCLI()
@@ -74,6 +96,13 @@ class TestSsaCLI(unittest.TestCase):
     @patch.object(Command, "__call__")
     def test_31__get_pd_status_error(self, mock_call):
         mock_call.return_value = Result("", True)
+        ssacli = SsaCLI()
+        pd_status = ssacli._get_pd_status(1)
+        self.assertEqual(pd_status, {})
+
+    @patch.object(Command, "__call__")
+    def test_32__get_pd_status_absent(self, mock_call):
+        mock_call.return_value = Result(CTRL_PD_ALL_SHOW_STATUS_ABSENT, None)
         ssacli = SsaCLI()
         pd_status = ssacli._get_pd_status(1)
         self.assertEqual(pd_status, {})
