@@ -53,9 +53,9 @@ dev-environment:
 	@echo "Creating virtualenv and installing pre-commit"
 	@tox -r -e dev-environment
 
-functional: build
-	@echo "Executing functional tests using built snap"
-	@TEST_SNAP=${SNAP_FILE} tox -e func -- ${FUNC_ARGS}
+functional:
+	@echo "Executing functional tests"
+	@tox -e func -- ${FUNC_ARGS}
 
 pre-commit:
 	@tox -e pre-commit
