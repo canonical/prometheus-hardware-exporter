@@ -26,9 +26,6 @@ class Command:
     def __init__(self) -> None:
         """Initialize the Command class."""
         self.installed = False
-        result = self.check_output(prefix="", command=f"which {self.command}")
-        if not result.error:
-            self.installed = True
 
     def __call__(self, args: Optional[str] = None) -> Result:
         """Run the command, and return the result and error.
@@ -37,9 +34,12 @@ class Command:
             result: an instance of Result class
         """
         if not self.installed:
-            error = ValueError(f"{self.command} not installed.")
-            logger.error(error)
-            return Result(error=error)
+            result = self.check_output(prefix="", command=f"which {self.command}")
+            if result.error:
+                error = ValueError(f"{self.command} not installed.")
+                logger.error(error)
+                return Result(error=error)
+            self.installed = True
 
         return self.check_output(args=args)
 
