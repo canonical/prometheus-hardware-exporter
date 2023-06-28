@@ -7,6 +7,7 @@ ignore = ["C901", "D100", "D101", "D102", "D103", "W503", "W504"]
 exclude = ['.eggs', '.git', '.tox', '.venv', '.build', 'build', 'report']
 max-line-length = 99
 max-complexity = 10
+classmethod-decorators = ["classmethod", "validator"]
 
 [tool.black]
 line-length = 99

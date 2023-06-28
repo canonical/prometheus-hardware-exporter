@@ -25,10 +25,12 @@ class TestConfig(unittest.TestCase):
         mock_safe_load.return_value = {
             "port": 10000,
             "level": "INFO",
+            "enable_collectors": ["mega-raid-collector"],
         }
         config = Config.load_config()
-        assert config.port == 10000
-        assert config.level == "INFO"
+        self.assertEqual(config.port, 10000)
+        self.assertEqual(config.level, "INFO")
+        self.assertEqual(config.enable_collectors, ["mega-raid-collector"])
 
     @patch("prometheus_hardware_exporter.config.safe_load")
     def test_invalid_config(self, mock_safe_load):
@@ -36,6 +38,7 @@ class TestConfig(unittest.TestCase):
         mock_safe_load.return_value = {
             "port": -10000,
             "level": "RANDOM",
+            "enable_collectors": ["megaraidcollector"],
         }
         with pytest.raises(ValueError):
             Config.load_config()
