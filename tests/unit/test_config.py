@@ -22,23 +22,38 @@ class TestConfig(unittest.TestCase):
     @patch("prometheus_hardware_exporter.config.safe_load")
     def test_valid_config(self, mock_safe_load):
         """Test valid config."""
+        mock_port = 10000
+        mock_level = "INFO"
+        mock_enable_collectors = [
+            "collector.hpe_ssa",
+            "collector.ipmi_dcmi",
+            "collector.ipmi_sel",
+            "collector.ipmi_sensor",
+            "collector.lsi_sas_2",
+            "collector.lsi_sas_3",
+            "collector.mega_raid",
+            "collector.poweredge_raid",
+        ]
         mock_safe_load.return_value = {
-            "port": 10000,
-            "level": "INFO",
-            "enable_collectors": ["mega-raid-collector"],
+            "port": mock_port,
+            "level": mock_level,
+            "enable_collectors": mock_enable_collectors,
         }
         config = Config.load_config()
-        self.assertEqual(config.port, 10000)
-        self.assertEqual(config.level, "INFO")
-        self.assertEqual(config.enable_collectors, ["mega-raid-collector"])
+        self.assertEqual(config.port, mock_port)
+        self.assertEqual(config.level, mock_level)
+        self.assertEqual(config.enable_collectors, mock_enable_collectors)
 
     @patch("prometheus_hardware_exporter.config.safe_load")
     def test_invalid_config(self, mock_safe_load):
         """Test invalid config."""
+        mock_port = -10000
+        mock_level = "RANDOM"
+        mock_enable_collectors = ["collector.unknown"]
         mock_safe_load.return_value = {
-            "port": -10000,
-            "level": "RANDOM",
-            "enable_collectors": ["megaraidcollector"],
+            "port": mock_port,
+            "level": mock_level,
+            "enable_collectors": mock_enable_collectors,
         }
         with pytest.raises(ValueError):
             Config.load_config()
