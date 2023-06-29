@@ -45,15 +45,17 @@ class Config(BaseModel):
     @validator("enable_collectors")
     def validate_enable_collector_choice(cls, enable_collectors: List[str]) -> List[str]:
         """Validate enable choice."""
+        # We may need to update this set if collector.COLLECTOR_REGISTRIES is
+        # changed.
         choices = {
-            "mega-raid-collector",
-            "ipmi-dcmi-collector",
-            "ipmi-sensor-collector",
-            "ipmi-sel-collector",
-            "lsi-sas-2-collector",
-            "lsi-sas-3-collector",
-            "poweredge-raid-collector",
-            "hpe-ssa-collector",
+            "collector.hpe_ssa",
+            "collector.ipmi_dcmi",
+            "collector.ipmi_sel",
+            "collector.ipmi_sensor",
+            "collector.lsi_sas_2",
+            "collector.lsi_sas_3",
+            "collector.mega_raid",
+            "collector.poweredge_raid",
         }
         collectors = {collector.lower() for collector in enable_collectors}
         invalid_choices = collectors.difference(choices)

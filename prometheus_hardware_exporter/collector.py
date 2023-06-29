@@ -837,12 +837,12 @@ class SsaCLICollector(BlockingCollector):
 
 
 COLLECTOR_REGISTRIES = {
-    "mega-raid-collector": MegaRAIDCollector(),
-    "ipmi-dcmi-collector": IpmiDcmiCollector(),
-    "ipmi-sensor-collector": IpmiSensorsCollector(),
-    "ipmi-sel-collector": IpmiSelCollector(),
-    "lsi-sas-2-collector": LSISASControllerCollector(2),
-    "lsi-sas-3-collector": LSISASControllerCollector(3),
-    "poweredge-raid-collector": PowerEdgeRAIDCollector(),
-    "hpe-ssa-collector": SsaCLICollector(),
+    "collector.hpe_ssa": SsaCLICollector(),
+    "collector.ipmi_dcmi": IpmiDcmiCollector(),
+    "collector.ipmi_sel": IpmiSelCollector(),
+    "collector.ipmi_sensor": IpmiSensorsCollector(),
+    "collector.lsi_sas_2": LSISASControllerCollector(2),
+    "collector.lsi_sas_3": LSISASControllerCollector(3),
+    "collector.mega_raid": MegaRAIDCollector(),
+    "collector.poweredge_raid": PowerEdgeRAIDCollector(),
 }
