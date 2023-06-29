@@ -4,7 +4,7 @@ import argparse
 import logging
 from typing import List
 
-from .collector import COLLECTOR_REGISTRIES
+from .collector import COLLECTOR_REGISTRIES, RedfishCollector
 from .config import DEFAULT_CONFIG, Config
 from .exporter import Exporter
 

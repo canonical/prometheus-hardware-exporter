@@ -22,6 +22,10 @@ class Config(BaseModel):
     level: str = "DEBUG"
     enable_collectors: List[str] = []
 
+    bmc_host = "127.0.0.1"
+    bmc_username = ""
+    bmc_password = ""
+
     @validator("port")
     def validate_port_range(cls, port: int) -> int:
         """Validate port range."""

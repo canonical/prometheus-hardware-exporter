@@ -1,6 +1,8 @@
 import unittest
 from unittest.mock import Mock, patch
 
+from test_resources.redfish.redfish_sample_data import SAMPLE_RF_SENSOR_DATA
+
 from prometheus_hardware_exporter.collector import (
     IpmiDcmiCollector,
     IpmiSelCollector,
@@ -8,6 +10,7 @@ from prometheus_hardware_exporter.collector import (
     LSISASControllerCollector,
     MegaRAIDCollector,
     PowerEdgeRAIDCollector,
+    RedfishCollector,
     SsaCLICollector,
 )
 
@@ -642,3 +645,27 @@ class TestCustomCollector(unittest.TestCase):
             "poweredgeraid_physical_device_info",
         ]:
             assert name in get_payloads
+
+    def test_200_redfish_not_installed(self):
+        """Test redfish collector when redfish-utilitites is not installed."""
+        redfish_collector = RedfishCollector("", "", "")
+        redfish_collector.redfish_sensors = Mock()
+        redfish_collector.redfish_sensors.installed = False
+        redfish_collector.redfish_status.installed = False
+        redfish_collector.redfish_sensors.get_sensor_data.return_value = []
+        payloads = redfish_collector.collect()
+
+        self.assertEqual(len(list(payloads)), 2)
+
+    def test_201_redfish_installed_and_okay(self):
+        """Test redfish collector when redfish-utilitites is installed."""
+        redfish_collector = RedfishCollector("", "", "")
+        redfish_collector.redfish_sensors = Mock()
+        mock_sensor_data = SAMPLE_RF_SENSOR_DATA
+        redfish_collector.redfish_sensors.get_sensor_data.return_value = mock_sensor_data
+        payloads = redfish_collector.collect()
+
+        available_metrics = [spec.name for spec in redfish_collector.specifications]
+        self.assertEqual(len(list(payloads)), 5)
+        for payload in payloads:
+            self.assertIn(payload.name, available_metrics)

@@ -9,6 +9,7 @@ from .collectors.ipmi_dcmi import IpmiDcmi
 from .collectors.ipmi_sel import IpmiSel
 from .collectors.ipmimonitoring import IpmiMonitoring
 from .collectors.perccli import PercCLI
+from .collectors.redfish import RedfishSensors, RedfishServiceStatus
 from .collectors.sasircu import LSISASCollectorHelper, Sasircu
 from .collectors.ssacli import SsaCLI
 from .collectors.storcli import MegaRAIDCollectorHelper, StorCLI
@@ -826,6 +827,76 @@ class SsaCLICollector(BlockingCollector):
                     Payload(
                         name="ssacli_physical_drive",
                         value={"slot": slot, "drive_id": drive_id, "status": status},
+                    )
+                )
+
+        return payloads
+
+    def process(self, payloads: List[Payload], datastore: Dict[str, Payload]) -> List[Payload]:
+        """Process the payload if needed."""
+        return payloads
+
+
+class RedfishCollector(BlockingCollector):
+    """Collector for redfish status and data."""
+
+    def __init__(self, bmc_host: str, bmc_username: str, bmc_password: str) -> None:
+        """Initialize the collector."""
+        self.bmc_host = bmc_host
+        self.bmc_username = bmc_username
+        self.bmc_password = bmc_password
+        super().__init__()
+
+    redfish_sensors = RedfishSensors()
+    redfish_status = RedfishServiceStatus()
+
+    @property
+    def specifications(self) -> List[Specification]:
+        """Define specs for redfish metrics."""
+        return [
+            Specification(
+                name="redfish_call_success",
+                documentation="Indicates if call to the redfish API succeeded or not.",
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="redfish_service_available",
+                documentation="Indicates if redfish service is available or not on the system.",
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="redfish_sensor",
+                documentation="Sensor information obtained from redfish.",
+                metric_class=InfoMetricFamily,
+            ),
+        ]
+
+    def fetch(self) -> List[Payload]:
+        """Load redfish data."""
+        payloads = []
+        service_status = self.redfish_status.get_service_status()
+        payloads.append(Payload(name="redfish_service_available", value=float(service_status)))
+
+        sensor_data = self.redfish_sensors.get_sensor_data(
+            self.bmc_username, self.bmc_password, self.bmc_host
+        )
+        if not sensor_data:
+            logger.error("Failed to get sensor data via redfish.")
+            payloads.append(Payload(name="redfish_call_success", value=0.0))
+            return payloads
+
+        payloads.append(Payload(name="redfish_call_success", value=1.0))
+        for chassis_name, curr_sensor_data in sensor_data.items():
+            for sensor_data_item in curr_sensor_data:
+                payloads.append(
+                    Payload(
+                        name="redfish_sensor",
+                        value={
+                            "chassis": chassis_name,
+                            "sensor": sensor_data_item["Sensor"],
+                            "reading": sensor_data_item["Reading"],
+                            "health": sensor_data_item["Health"],
+                        },
                     )
                 )
 
