@@ -2,6 +2,9 @@
 
 import argparse
 import logging
+from typing import Dict
+
+from prometheus_client.registry import Collector
 
 from .collector import (
     IpmiDcmiCollector,
@@ -108,14 +111,9 @@ def parse_command_line() -> argparse.Namespace:
     return args
 
 
-def start_exporter(config: Config, daemon: bool = False) -> None:
-    """Start the prometheus-hardware-exporter."""
-    root_logger = logging.getLogger()
-    root_logger.setLevel(logging.getLevelName(config.level))
-
-    exporter = Exporter(config.port)
-    enable_collectors_set = set(config.enable_collectors)
-    collector_registries = {
+def get_collector_registries(config: Config) -> Dict[str, Collector]:
+    """Get collector_registries simple factory."""
+    return {
         "collector.hpe_ssa": SsaCLICollector(config),
         "collector.ipmi_dcmi": IpmiDcmiCollector(config),
         "collector.ipmi_sel": IpmiSelCollector(config),
@@ -126,6 +124,17 @@ def start_exporter(config: Config, daemon: bool = False) -> None:
         "collector.poweredge_raid": PowerEdgeRAIDCollector(config),
         "collector.redfish": RedfishCollector(config),
     }
+
+
+def start_exporter(config: Config, daemon: bool = False) -> None:
+    """Start the prometheus-hardware-exporter."""
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.getLevelName(config.level))
+
+    exporter = Exporter(config.port)
+    enable_collectors_set = set(config.enable_collectors)
+    collector_registries = get_collector_registries(config)
+
     for name, collector in collector_registries.items():
         if name.lower() in enable_collectors_set:
             logger.info("%s is enabled", name)
