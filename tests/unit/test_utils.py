@@ -44,6 +44,16 @@ class TestCommand(unittest.TestCase):
         self.assertEqual(str(result.error), "Command 'cmd' returned non-zero exit status 1.")
         self.assertEqual(type(result.error), subprocess.CalledProcessError)
 
+    @patch.object(utils.subprocess, "check_output")
+    def test_check_output_timeout(self, mock_subprocess_check_output):
+        command = Command()
+        command.installed = True
+        command()
+
+        # We don't actually test the timeout but make sure the timeout argument
+        # is been passed to subprocess
+        mock_subprocess_check_output.assert_called_with("", shell=True, timeout=30)
+
 
 def test_get_json_output():
     result = get_json_output("""{"a": 1, "b": 2}""")
