@@ -41,19 +41,19 @@ def parse_command_line() -> argparse.Namespace:
         type=int,
     )
     parser.add_argument(
-        "--redfish_host",
+        "--redfish-host",
         help="Hostname for redfish collector",
         default="127.0.0.1",
         type=str,
     )
     parser.add_argument(
-        "--redfish_username",
+        "--redfish-username",
         help="BMC username for redfish collector",
         default="",
         type=str,
     )
     parser.add_argument(
-        "--redfish_password",
+        "--redfish-password",
         help="BMC password for redfish collector",
         default="",
         type=str,
@@ -98,6 +98,11 @@ def parse_command_line() -> argparse.Namespace:
         help="Enable PowerEdge RAID controller collector (default: disabled)",
         action="store_true",
     )
+    parser.add_argument(
+        "--collector.redfish",
+        help="Enable redfish collector (default: disabled)",
+        action="store_true",
+    )
     args = parser.parse_args()
 
     return args
@@ -137,7 +142,14 @@ if __name__ == "__main__":  # pragma: no cover
         for args_name, enable in ns.__dict__.items():
             if args_name.startswith("collector") and enable:
                 collectors.append(args_name)
-        exporter_config = Config(port=ns.port, level=ns.level, enable_collectors=collectors)
+        exporter_config = Config(
+            port=ns.port,
+            level=ns.level,
+            enable_collectors=collectors,
+            redfish_host=ns.redfish_host,
+            redfish_username=ns.redfish_username,
+            redfish_password=ns.redfish_password,
+        )
 
     # Start the exporter
     main(exporter_config)

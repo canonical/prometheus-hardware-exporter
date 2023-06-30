@@ -22,9 +22,9 @@ class Config(BaseModel):
     level: str = "DEBUG"
     enable_collectors: List[str] = []
 
-    redfish_host = "127.0.0.1"
-    redfish_username = ""
-    redfish_password = ""
+    redfish_host: str = "127.0.0.1"
+    redfish_username: str = ""
+    redfish_password: str = ""
 
     @validator("port")
     def validate_port_range(cls, port: int) -> int:
