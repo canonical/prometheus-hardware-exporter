@@ -1,6 +1,8 @@
 import unittest
 from unittest.mock import Mock, patch
 
+from test_resources.redfish.redfish_sample_data import SAMPLE_RF_SENSOR_DATA
+
 from prometheus_hardware_exporter.collector import (
     IpmiDcmiCollector,
     IpmiSelCollector,
@@ -8,6 +10,7 @@ from prometheus_hardware_exporter.collector import (
     LSISASControllerCollector,
     MegaRAIDCollector,
     PowerEdgeRAIDCollector,
+    RedfishCollector,
     SsaCLICollector,
 )
 
@@ -139,7 +142,7 @@ class TestCustomCollector(unittest.TestCase):
 
     def test_00_mega_raid_collector_not_installed(self):
         """Test mega raid collector when storcli is not installed."""
-        mega_raid_collector = MegaRAIDCollector()
+        mega_raid_collector = MegaRAIDCollector(Mock())
         mega_raid_collector.sasircu = Mock()
         mega_raid_collector.sasircu.installed = False
         payloads = mega_raid_collector.collect()
@@ -148,7 +151,7 @@ class TestCustomCollector(unittest.TestCase):
 
     def test_01_mega_raid_collector_installed_and_okay(self):
         """Test mega raid collector can fetch correct number of metrics."""
-        mega_raid_collector = MegaRAIDCollector()
+        mega_raid_collector = MegaRAIDCollector(Mock())
         mega_raid_collector.storcli = Mock()
         mega_raid_collector.storcli.installed = True
 
@@ -212,7 +215,7 @@ class TestCustomCollector(unittest.TestCase):
 
     def test_10_lsi_sas_2_collector_not_installed(self):
         """Test LSI SAS 2 collector when sas2ircu is not installed."""
-        lsi_sas_2_collector = LSISASControllerCollector(2)
+        lsi_sas_2_collector = LSISASControllerCollector(2, Mock())
         lsi_sas_2_collector.sasircu = Mock()
         lsi_sas_2_collector.sasircu.installed = False
         lsi_sas_2_collector.sasircu.get_adapters.return_value = {}
@@ -223,7 +226,7 @@ class TestCustomCollector(unittest.TestCase):
 
     def test_11_lsi_sas_2_collector_installed_and_okay(self):
         """Test LSI SAS 2 collector can fetch correct number of metrics."""
-        lsi_sas_2_collector = LSISASControllerCollector(2)
+        lsi_sas_2_collector = LSISASControllerCollector(2, Mock())
         lsi_sas_2_collector.sasircu = Mock()
         mock_adapters = {
             "0": {
@@ -306,7 +309,7 @@ class TestCustomCollector(unittest.TestCase):
 
     def test_20_lsi_sas_3_collector_not_installed(self):
         """Test LSI SAS 3 collector when sas3ircu is not installed."""
-        lsi_sas_3_collector = LSISASControllerCollector(3)
+        lsi_sas_3_collector = LSISASControllerCollector(3, Mock())
         lsi_sas_3_collector.sasircu = Mock()
         lsi_sas_3_collector.sasircu.installed = False
         lsi_sas_3_collector.sasircu.get_adapters.return_value = {}
@@ -317,7 +320,7 @@ class TestCustomCollector(unittest.TestCase):
 
     def test_21_lsi_sas_3_collector_installed_and_okay(self):
         """Test LSI SAS 3 collector can fetch correct number of metrics."""
-        lsi_sas_3_collector = LSISASControllerCollector(3)
+        lsi_sas_3_collector = LSISASControllerCollector(3, Mock())
         lsi_sas_3_collector.sasircu = Mock()
         mock_adapters = {
             "0": {
@@ -401,7 +404,7 @@ class TestCustomCollector(unittest.TestCase):
 
     def test_30_ipmi_dcmi_collector_not_installed(self):
         """Test ipmi dcmi collector when ipmi-dcmi is not installed."""
-        ipmi_dcmi_collector = IpmiDcmiCollector()
+        ipmi_dcmi_collector = IpmiDcmiCollector(Mock())
         ipmi_dcmi_collector.ipmi_dcmi = Mock()
         ipmi_dcmi_collector.ipmi_dcmi.installed = False
         ipmi_dcmi_collector.ipmi_dcmi.get_current_power.return_value = {}
@@ -411,7 +414,7 @@ class TestCustomCollector(unittest.TestCase):
 
     def test_31_ipmi_dcmi_collector_installed_and_okay(self):
         """Test ipmi dcmi collector can fetch correct number of metrics."""
-        ipmi_dcmi_collector = IpmiDcmiCollector()
+        ipmi_dcmi_collector = IpmiDcmiCollector(Mock())
         ipmi_dcmi_collector.ipmi_dcmi = Mock()
 
         mock_dcmi_payload = {"current_power": 105}
@@ -427,7 +430,7 @@ class TestCustomCollector(unittest.TestCase):
 
     def test_40_ipmi_sel_not_installed(self):
         """Test ipmi sel collector when ipmi sel is not installed."""
-        ipmi_sel_collector = IpmiSelCollector()
+        ipmi_sel_collector = IpmiSelCollector(Mock())
         ipmi_sel_collector.ipmi_sel = Mock()
         ipmi_sel_collector.ipmi_sel.installed = False
         ipmi_sel_collector.ipmi_sel.get_sel_entries.return_value = []
@@ -437,7 +440,7 @@ class TestCustomCollector(unittest.TestCase):
 
     def test_41_ipmi_sel_installed_and_okay(self):
         """Test ipmi sel collector can fetch correct number of metrics."""
-        ipmi_sel_collector = IpmiSelCollector()
+        ipmi_sel_collector = IpmiSelCollector(Mock())
         ipmi_sel_collector.ipmi_sel = Mock()
 
         mock_sel_entries = SAMPLE_IPMI_SEL_ENTRIES
@@ -453,7 +456,7 @@ class TestCustomCollector(unittest.TestCase):
 
     def test_50_ipmimonitoring_not_installed(self):
         """Test ipmi sensor collector when ipmimonitoring is not installed."""
-        ipmi_sensors_collector = IpmiSensorsCollector()
+        ipmi_sensors_collector = IpmiSensorsCollector(Mock())
         ipmi_sensors_collector.ipmimonitoring = Mock()
         ipmi_sensors_collector.ipmimonitoring.installed = False
         ipmi_sensors_collector.ipmimonitoring.get_sensor_data.return_value = []
@@ -463,7 +466,7 @@ class TestCustomCollector(unittest.TestCase):
 
     def test_51_ipmimonitoring_installed_and_okay(self):
         """Test ipmi sensors collector can fetch correct number of metrics."""
-        ipmi_sensors_collector = IpmiSensorsCollector()
+        ipmi_sensors_collector = IpmiSensorsCollector(Mock())
         ipmi_sensors_collector.ipmimonitoring = Mock()
 
         mock_sensor_data = SAMPLE_IPMI_SENSOR_ENTRIES
@@ -477,7 +480,7 @@ class TestCustomCollector(unittest.TestCase):
             self.assertIn(payload.name, available_metrics)
 
     def test_60_ssacli_not_installed(self):
-        ssacli_collector = SsaCLICollector()
+        ssacli_collector = SsaCLICollector(Mock())
         ssacli_collector.ssacli = Mock()
         ssacli_collector.ssacli.installed = False
         ssacli_collector.ssacli.get_payload.return_value = {}
@@ -486,7 +489,7 @@ class TestCustomCollector(unittest.TestCase):
         self.assertEqual(len(list(payloads)), 1)
 
     def test_61_ssacli_installed_and_okay(self):
-        ssacli_collector = SsaCLICollector()
+        ssacli_collector = SsaCLICollector(Mock())
         ssacli_collector.ssacli = Mock()
         mock_payload = {
             "2": {
@@ -511,7 +514,7 @@ class TestCustomCollector(unittest.TestCase):
             mock_cli.get_controllers.return_value = {"count": 1}
             mock_cli.get_virtual_drives.return_value = {}
 
-            power_edge_collector = PowerEdgeRAIDCollector()
+            power_edge_collector = PowerEdgeRAIDCollector(Mock())
             payloads = list(power_edge_collector.collect())
         assert len(payloads) >= 4
 
@@ -534,7 +537,7 @@ class TestCustomCollector(unittest.TestCase):
                 0: [{"DG": "0", "VD": "0", "cache": "NRWTD", "state": "Optl"}]
             }
 
-            power_edge_collector = PowerEdgeRAIDCollector()
+            power_edge_collector = PowerEdgeRAIDCollector(Mock())
             payloads = list(power_edge_collector.collect())
 
         get_payloads = []
@@ -563,7 +566,7 @@ class TestCustomCollector(unittest.TestCase):
     def test_103_perccli_cmd_fail(self):
         with patch.object(PowerEdgeRAIDCollector, "perccli") as mock_cli:
             mock_cli.success.return_value = False
-            power_edge_collector = PowerEdgeRAIDCollector()
+            power_edge_collector = PowerEdgeRAIDCollector(Mock())
             payloads = list(power_edge_collector.collect())
             assert len(payloads) == 1
             assert payloads[0].samples[0].value == 0.0
@@ -572,7 +575,7 @@ class TestCustomCollector(unittest.TestCase):
         with patch.object(PowerEdgeRAIDCollector, "perccli") as mock_cli:
             mock_cli.success.return_value = True
             mock_cli.ctrl_exists.return_value = False
-            power_edge_collector = PowerEdgeRAIDCollector()
+            power_edge_collector = PowerEdgeRAIDCollector(Mock())
             payloads = list(power_edge_collector.collect())
             assert len(payloads) == 2
             assert payloads[1].samples[0].value == 0.0
@@ -603,7 +606,7 @@ class TestCustomCollector(unittest.TestCase):
                 ]
             }
 
-            power_edge_collector = PowerEdgeRAIDCollector()
+            power_edge_collector = PowerEdgeRAIDCollector(Mock())
             payloads = list(power_edge_collector.collect())
 
         get_payloads = []
@@ -642,3 +645,27 @@ class TestCustomCollector(unittest.TestCase):
             "poweredgeraid_physical_device_info",
         ]:
             assert name in get_payloads
+
+    def test_200_redfish_not_installed(self):
+        """Test redfish collector when redfish-utilitites is not installed."""
+        redfish_collector = RedfishCollector(Mock())
+        redfish_collector.redfish_sensors = Mock()
+        redfish_collector.redfish_sensors.installed = False
+        redfish_collector.redfish_status.installed = False
+        redfish_collector.redfish_sensors.get_sensor_data.return_value = []
+        payloads = redfish_collector.collect()
+
+        self.assertEqual(len(list(payloads)), 2)
+
+    def test_201_redfish_installed_and_okay(self):
+        """Test redfish collector when redfish-utilitites is installed."""
+        redfish_collector = RedfishCollector(Mock())
+        redfish_collector.redfish_sensors = Mock()
+        mock_sensor_data = SAMPLE_RF_SENSOR_DATA
+        redfish_collector.redfish_sensors.get_sensor_data.return_value = mock_sensor_data
+        payloads = redfish_collector.collect()
+
+        available_metrics = [spec.name for spec in redfish_collector.specifications]
+        self.assertEqual(len(list(payloads)), 5)
+        for payload in payloads:
+            self.assertIn(payload.name, available_metrics)

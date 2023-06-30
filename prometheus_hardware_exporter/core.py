@@ -3,7 +3,7 @@
 from abc import abstractmethod
 from dataclasses import dataclass, field
 from logging import getLogger
-from typing import Any, Dict, Iterable, List, Optional, Type
+from typing import Any, Dict, Iterable, List, Type
 
 from prometheus_client.metrics_core import Metric
 from prometheus_client.registry import Collector
@@ -45,7 +45,7 @@ class BlockingCollector(Collector):
     is reading data from files.
     """
 
-    def __init__(self, config: Optional[Config] = None) -> None:
+    def __init__(self, config: Config) -> None:
         """Initialize the class."""
         self.config = config
         self._datastore: Dict[str, Payload] = {}

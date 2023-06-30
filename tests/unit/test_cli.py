@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 from prometheus_hardware_exporter import __main__
 from prometheus_hardware_exporter.__main__ import main, parse_command_line
+from prometheus_hardware_exporter.config import Config
 
 
 class TestCli:
@@ -17,5 +18,6 @@ class TestCli:
         mock_port = 10000
         mock_level = "INFO"
         mock_enable_collectors = ["collector.mega_raid"]
-        main(mock_port, mock_level, mock_enable_collectors)
+        config = Config(port=mock_port, level=mock_level, enable_collectors=mock_enable_collectors)
+        main(config)
         mock_exporter.assert_called_once_with(mock_port)

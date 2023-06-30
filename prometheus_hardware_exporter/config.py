@@ -22,6 +22,10 @@ class Config(BaseModel):
     level: str = "DEBUG"
     enable_collectors: List[str] = []
 
+    redfish_host: str = "127.0.0.1"
+    redfish_username: str = ""
+    redfish_password: str = ""
+
     @validator("port")
     def validate_port_range(cls, port: int) -> int:
         """Validate port range."""
@@ -45,7 +49,7 @@ class Config(BaseModel):
     @validator("enable_collectors")
     def validate_enable_collector_choice(cls, enable_collectors: List[str]) -> List[str]:
         """Validate enable choice."""
-        # We may need to update this set if collector.COLLECTOR_REGISTRIES is
+        # We may need to update this set if COLLECTOR_REGISTRIES is
         # changed.
         choices = {
             "collector.hpe_ssa",
@@ -56,6 +60,7 @@ class Config(BaseModel):
             "collector.lsi_sas_3",
             "collector.mega_raid",
             "collector.poweredge_raid",
+            "collector.redfish",
         }
         collectors = {collector.lower() for collector in enable_collectors}
         invalid_choices = collectors.difference(choices)

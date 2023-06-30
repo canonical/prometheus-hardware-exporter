@@ -9,14 +9,14 @@ from .collectors.ipmi_dcmi import IpmiDcmi
 from .collectors.ipmi_sel import IpmiSel
 from .collectors.ipmimonitoring import IpmiMonitoring
 from .collectors.perccli import PercCLI
+from .collectors.redfish import RedfishSensors, RedfishServiceStatus
 from .collectors.sasircu import LSISASCollectorHelper, Sasircu
 from .collectors.ssacli import SsaCLI
 from .collectors.storcli import MegaRAIDCollectorHelper, StorCLI
+from .config import Config
 from .core import BlockingCollector, Payload, Specification
 
 logger = getLogger(__name__)
-
-__all__ = ["COLLECTOR_REGISTRIES"]
 
 
 class PowerEdgeRAIDCollector(BlockingCollector):
@@ -560,12 +560,12 @@ class IpmiSelCollector(BlockingCollector):
 class LSISASControllerCollector(BlockingCollector):
     """Collector for LSI SAS controllers."""
 
-    def __init__(self, version: int) -> None:
+    def __init__(self, version: int, config: Config) -> None:
         """Initialize the collector."""
         self.version = version
         self.sasircu = Sasircu(version)
         self.lsi_sas_helper = LSISASCollectorHelper()
-        super().__init__()
+        super().__init__(config)
 
     @property
     def specifications(self) -> List[Specification]:
@@ -836,13 +836,67 @@ class SsaCLICollector(BlockingCollector):
         return payloads
 
 
-COLLECTOR_REGISTRIES = {
-    "collector.hpe_ssa": SsaCLICollector(),
-    "collector.ipmi_dcmi": IpmiDcmiCollector(),
-    "collector.ipmi_sel": IpmiSelCollector(),
-    "collector.ipmi_sensor": IpmiSensorsCollector(),
-    "collector.lsi_sas_2": LSISASControllerCollector(2),
-    "collector.lsi_sas_3": LSISASControllerCollector(3),
-    "collector.mega_raid": MegaRAIDCollector(),
-    "collector.poweredge_raid": PowerEdgeRAIDCollector(),
-}
+class RedfishCollector(BlockingCollector):
+    """Collector for redfish status and data."""
+
+    redfish_sensors = RedfishSensors()
+    redfish_status = RedfishServiceStatus()
+
+    @property
+    def specifications(self) -> List[Specification]:
+        """Define specs for redfish metrics."""
+        return [
+            Specification(
+                name="redfish_call_success",
+                documentation="Indicates if call to the redfish API succeeded or not.",
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="redfish_service_available",
+                documentation="Indicates if redfish service is available or not on the system.",
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="redfish_sensor",
+                documentation="Sensor information obtained from redfish.",
+                metric_class=InfoMetricFamily,
+            ),
+        ]
+
+    def fetch(self) -> List[Payload]:
+        """Load redfish data."""
+        redfish_host = self.config.redfish_host
+        redfish_username = self.config.redfish_username
+        redfish_password = self.config.redfish_password
+        payloads = []
+        service_status = self.redfish_status.get_service_status()
+        payloads.append(Payload(name="redfish_service_available", value=float(service_status)))
+
+        sensor_data = self.redfish_sensors.get_sensor_data(
+            redfish_username, redfish_password, redfish_host
+        )
+        if not sensor_data:
+            logger.error("Failed to get sensor data via redfish.")
+            payloads.append(Payload(name="redfish_call_success", value=0.0))
+            return payloads
+
+        payloads.append(Payload(name="redfish_call_success", value=1.0))
+        for chassis_name, curr_sensor_data in sensor_data.items():
+            for sensor_data_item in curr_sensor_data:
+                payloads.append(
+                    Payload(
+                        name="redfish_sensor",
+                        value={
+                            "chassis": chassis_name,
+                            "sensor": sensor_data_item["Sensor"],
+                            "reading": sensor_data_item["Reading"],
+                            "health": sensor_data_item["Health"],
+                        },
+                    )
+                )
+
+        return payloads
+
+    def process(self, payloads: List[Payload], datastore: Dict[str, Payload]) -> List[Payload]:
+        """Process the payload if needed."""
+        return payloads

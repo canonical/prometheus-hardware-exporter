@@ -2,9 +2,17 @@
 
 import argparse
 import logging
-from typing import List
 
-from .collector import COLLECTOR_REGISTRIES
+from .collector import (
+    IpmiDcmiCollector,
+    IpmiSelCollector,
+    IpmiSensorsCollector,
+    LSISASControllerCollector,
+    MegaRAIDCollector,
+    PowerEdgeRAIDCollector,
+    RedfishCollector,
+    SsaCLICollector,
+)
 from .config import DEFAULT_CONFIG, Config
 from .exporter import Exporter
 
@@ -31,6 +39,24 @@ def parse_command_line() -> argparse.Namespace:
         help="Address on which to expose metrics and web interface.",
         default=10000,
         type=int,
+    )
+    parser.add_argument(
+        "--redfish-host",
+        help="Hostname for redfish collector",
+        default="127.0.0.1",
+        type=str,
+    )
+    parser.add_argument(
+        "--redfish-username",
+        help="BMC username for redfish collector",
+        default="",
+        type=str,
+    )
+    parser.add_argument(
+        "--redfish-password",
+        help="BMC password for redfish collector",
+        default="",
+        type=str,
     )
     parser.add_argument(
         "--collector.hpe_ssa",
@@ -72,19 +98,35 @@ def parse_command_line() -> argparse.Namespace:
         help="Enable PowerEdge RAID controller collector (default: disabled)",
         action="store_true",
     )
+    parser.add_argument(
+        "--collector.redfish",
+        help="Enable redfish collector (default: disabled)",
+        action="store_true",
+    )
     args = parser.parse_args()
 
     return args
 
 
-def main(port: int, level: str, enable_collectors: List[str], daemon: bool = False) -> None:
+def main(config: Config, daemon: bool = False) -> None:
     """Start the prometheus-hardware-exporter."""
     root_logger = logging.getLogger()
-    root_logger.setLevel(logging.getLevelName(level))
+    root_logger.setLevel(logging.getLevelName(config.level))
 
-    exporter = Exporter(port)
-    enable_collectors_set = set(enable_collectors)
-    for name, collector in COLLECTOR_REGISTRIES.items():
+    exporter = Exporter(config.port)
+    enable_collectors_set = set(config.enable_collectors)
+    collector_registries = {
+        "collector.hpe_ssa": SsaCLICollector(config),
+        "collector.ipmi_dcmi": IpmiDcmiCollector(config),
+        "collector.ipmi_sel": IpmiSelCollector(config),
+        "collector.ipmi_sensor": IpmiSensorsCollector(config),
+        "collector.lsi_sas_2": LSISASControllerCollector(version=2, config=config),
+        "collector.lsi_sas_3": LSISASControllerCollector(version=3, config=config),
+        "collector.mega_raid": MegaRAIDCollector(config),
+        "collector.poweredge_raid": PowerEdgeRAIDCollector(config),
+        "collector.redfish": RedfishCollector(config),
+    }
+    for name, collector in collector_registries.items():
         if name.lower() in enable_collectors_set:
             logger.info("%s is enabled", name)
             exporter.register(collector)
@@ -94,13 +136,20 @@ def main(port: int, level: str, enable_collectors: List[str], daemon: bool = Fal
 if __name__ == "__main__":  # pragma: no cover
     ns = parse_command_line()
     if ns.config:
-        config = Config.load_config(config_file=ns.config or DEFAULT_CONFIG)
+        exporter_config = Config.load_config(config_file=ns.config or DEFAULT_CONFIG)
     else:
         collectors = []
         for args_name, enable in ns.__dict__.items():
             if args_name.startswith("collector") and enable:
                 collectors.append(args_name)
-        config = Config(port=ns.port, level=ns.level, enable_collectors=collectors)
+        exporter_config = Config(
+            port=ns.port,
+            level=ns.level,
+            enable_collectors=collectors,
+            redfish_host=ns.redfish_host,
+            redfish_username=ns.redfish_username,
+            redfish_password=ns.redfish_password,
+        )
 
     # Start the exporter
-    main(config.port, config.level, config.enable_collectors)
+    main(exporter_config)
