@@ -56,7 +56,11 @@ class RedfishServiceStatus(Command):
     command = "rf_discover.py"
 
     def get_service_status(self) -> bool:
-        """Return whether redfish service is available or not."""
+        """Return whether redfish service is available or not.
+
+        Based on the output from here:
+        https://github.com/DMTF/Redfish-Tacklebox/blob/a9bcd9bdb6621619ee260b82458c5bac20dc5f6f/scripts/rf_discover.py#L25
+        """
         result = self()
         if result.error:
             logger.error(result.error)

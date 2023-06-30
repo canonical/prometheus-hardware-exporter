@@ -13,11 +13,10 @@ from .collectors.redfish import RedfishSensors, RedfishServiceStatus
 from .collectors.sasircu import LSISASCollectorHelper, Sasircu
 from .collectors.ssacli import SsaCLI
 from .collectors.storcli import MegaRAIDCollectorHelper, StorCLI
+from .config import Config
 from .core import BlockingCollector, Payload, Specification
 
 logger = getLogger(__name__)
-
-__all__ = ["COLLECTOR_REGISTRIES"]
 
 
 class PowerEdgeRAIDCollector(BlockingCollector):
@@ -561,12 +560,12 @@ class IpmiSelCollector(BlockingCollector):
 class LSISASControllerCollector(BlockingCollector):
     """Collector for LSI SAS controllers."""
 
-    def __init__(self, version: int) -> None:
+    def __init__(self, version: int, config: Config) -> None:
         """Initialize the collector."""
         self.version = version
         self.sasircu = Sasircu(version)
         self.lsi_sas_helper = LSISASCollectorHelper()
-        super().__init__()
+        super().__init__(config)
 
     @property
     def specifications(self) -> List[Specification]:
@@ -840,13 +839,6 @@ class SsaCLICollector(BlockingCollector):
 class RedfishCollector(BlockingCollector):
     """Collector for redfish status and data."""
 
-    def __init__(self, bmc_host: str, bmc_username: str, bmc_password: str) -> None:
-        """Initialize the collector."""
-        self.bmc_host = bmc_host
-        self.bmc_username = bmc_username
-        self.bmc_password = bmc_password
-        super().__init__()
-
     redfish_sensors = RedfishSensors()
     redfish_status = RedfishServiceStatus()
 
@@ -873,12 +865,15 @@ class RedfishCollector(BlockingCollector):
 
     def fetch(self) -> List[Payload]:
         """Load redfish data."""
+        redfish_host = self.config.redfish_host
+        redfish_username = self.config.redfish_username
+        redfish_password = self.config.redfish_password
         payloads = []
         service_status = self.redfish_status.get_service_status()
         payloads.append(Payload(name="redfish_service_available", value=float(service_status)))
 
         sensor_data = self.redfish_sensors.get_sensor_data(
-            self.bmc_username, self.bmc_password, self.bmc_host
+            redfish_username, redfish_password, redfish_host
         )
         if not sensor_data:
             logger.error("Failed to get sensor data via redfish.")
@@ -905,15 +900,3 @@ class RedfishCollector(BlockingCollector):
     def process(self, payloads: List[Payload], datastore: Dict[str, Payload]) -> List[Payload]:
         """Process the payload if needed."""
         return payloads
-
-
-COLLECTOR_REGISTRIES = {
-    "collector.hpe_ssa": SsaCLICollector(),
-    "collector.ipmi_dcmi": IpmiDcmiCollector(),
-    "collector.ipmi_sel": IpmiSelCollector(),
-    "collector.ipmi_sensor": IpmiSensorsCollector(),
-    "collector.lsi_sas_2": LSISASControllerCollector(2),
-    "collector.lsi_sas_3": LSISASControllerCollector(3),
-    "collector.mega_raid": MegaRAIDCollector(),
-    "collector.poweredge_raid": PowerEdgeRAIDCollector(),
-}
