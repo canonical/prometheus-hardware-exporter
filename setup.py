@@ -12,7 +12,7 @@ configs = {
     "url": "https://github.com/canonical/prometheus-hardware-exporter",
     "entry_points": {
         "console_scripts": [
-            "prometheus-hardware-exporter=" + "prometheus_hardware_exporter.__main__:main",
+            "prometheus-hardware-exporter=prometheus_hardware_exporter.__main__:main",
         ]
     },
 }
