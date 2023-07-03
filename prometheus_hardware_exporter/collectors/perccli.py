@@ -10,8 +10,8 @@ logger = getLogger(__name__)
 class PercCLI(Command):
     """Command line tool for PowerEdge RAID Controller."""
 
-    prefix = "sudo"
-    command = "/opt/MegaRAID/perccli/perccli64"
+    prefix = ""
+    command = "perccli"
 
     def _get_controllers(self) -> Union[dict, Exception]:
         result = self("/call show j")
