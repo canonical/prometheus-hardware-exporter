@@ -1,6 +1,7 @@
 import pytest
 
-from prometheus_hardware_exporter.__main__ import main
+from prometheus_hardware_exporter.__main__ import start_exporter
+from prometheus_hardware_exporter.config import Config
 
 
 @pytest.fixture(scope="session")
@@ -21,4 +22,5 @@ def enable_collectors():
 @pytest.fixture(scope="session", autouse=True)
 def exporter(port, level, enable_collectors):
     """Start the exporter service as a daemon service."""
-    return main(port, level, enable_collectors, daemon=True)
+    config = Config(port=port, level=level, enable_collectors=enable_collectors)
+    return start_exporter(config, daemon=True)

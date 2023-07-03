@@ -108,7 +108,7 @@ def parse_command_line() -> argparse.Namespace:
     return args
 
 
-def main(config: Config, daemon: bool = False) -> None:
+def start_exporter(config: Config, daemon: bool = False) -> None:
     """Start the prometheus-hardware-exporter."""
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.getLevelName(config.level))
@@ -133,23 +133,28 @@ def main(config: Config, daemon: bool = False) -> None:
     exporter.run(daemon)
 
 
-if __name__ == "__main__":  # pragma: no cover
-    ns = parse_command_line()
-    if ns.config:
-        exporter_config = Config.load_config(config_file=ns.config or DEFAULT_CONFIG)
+def main() -> None:
+    """Entrypoint of the package."""
+    namespace = parse_command_line()
+    if namespace.config:
+        exporter_config = Config.load_config(config_file=namespace.config or DEFAULT_CONFIG)
     else:
         collectors = []
-        for args_name, enable in ns.__dict__.items():
+        for args_name, enable in namespace.__dict__.items():
             if args_name.startswith("collector") and enable:
                 collectors.append(args_name)
         exporter_config = Config(
-            port=ns.port,
-            level=ns.level,
+            port=namespace.port,
+            level=namespace.level,
             enable_collectors=collectors,
-            redfish_host=ns.redfish_host,
-            redfish_username=ns.redfish_username,
-            redfish_password=ns.redfish_password,
+            redfish_host=namespace.redfish_host,
+            redfish_username=namespace.redfish_username,
+            redfish_password=namespace.redfish_password,
         )
 
     # Start the exporter
-    main(exporter_config)
+    start_exporter(exporter_config)
+
+
+if __name__ == "__main__":  # pragma: no cover
+    main()
