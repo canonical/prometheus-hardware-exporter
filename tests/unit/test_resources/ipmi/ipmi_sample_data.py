@@ -23,7 +23,7 @@ SAMPLE_IPMI_SEL_ENTRIES = [
         "Time": "19:57:38",
         "Name": "System Board ACPI_Stat",
         "Type": "System ACPI Power State",
-        "State": "Nominal",
+        "State": "Warning",
         "Event": "S4/S5 soft-off",
     },
     {
@@ -33,6 +33,15 @@ SAMPLE_IPMI_SEL_ENTRIES = [
         "Name": "System Board ACPI_Stat",
         "Type": "System ACPI Power State",
         "State": "Nominal",
+        "Event": "S0/G0",
+    },
+    {
+        "ID": "497",
+        "Date": "Oct-06-2022",
+        "Time": "19:57:51",
+        "Name": "System Board ACPI_Stat",
+        "Type": "System ACPI Power State",
+        "State": "N/A",
         "Event": "S0/G0",
     },
 ]
