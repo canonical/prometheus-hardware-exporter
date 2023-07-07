@@ -1,7 +1,10 @@
 from unittest.mock import Mock, patch
 
+import pytest
+
 from prometheus_hardware_exporter import __main__
 from prometheus_hardware_exporter.__main__ import (
+    get_collector_registries,
     main,
     parse_command_line,
     start_exporter,
@@ -48,3 +51,57 @@ class TestCli:
         config = Config(port=mock_port, level=mock_level, enable_collectors=mock_enable_collectors)
         start_exporter(config)
         mock_exporter.assert_called_once_with(mock_port)
+
+    @pytest.mark.parametrize(
+        "enable_collectors",
+        [
+            (["collector.mega_raid"]),
+            (["collector.ipmi_dcmi", "collector.ipmi_sel", "collector.ipmi_sensor"]),
+            (["collector.lsi_sas_2", "collector.lsi_sas_3"]),
+            (["collector.mega_raid", "collector.poweredge_raid"]),
+        ],
+    )
+    @patch.object(__main__, "Exporter")
+    def test_cli_start_exporter_enable_collector(self, mock_exporter, enable_collectors):
+        config = Config(port=10000, level="INFO", enable_collectors=enable_collectors)
+
+        collector_registries = get_collector_registries(config)
+
+        for collector in enable_collectors:
+            if collector in collector_registries:
+                collector_registries[collector] = Mock()
+
+        with patch.object(__main__, "get_collector_registries", return_value=collector_registries):
+            start_exporter(config)
+
+        for collector in enable_collectors:
+            mock_exporter.return_value.register.assert_any_call(
+                collector_registries.get(collector)
+            )
+
+        for name, collector in collector_registries.items():
+            if name.lower() not in enable_collectors:
+                with pytest.raises(AssertionError):
+                    mock_exporter.return_value.register.assert_called_with(collector)
+
+
+def test_get_collector_registries():
+    """Assert all the keys."""
+    config = Config(port=10000, level="INFO", enable_collectors=[])
+
+    # Every time someone add/remove collector should change this.
+    collector_registries = get_collector_registries(config)
+
+    assert set(collector_registries.keys()) == set(
+        [
+            "collector.hpe_ssa",
+            "collector.ipmi_dcmi",
+            "collector.ipmi_sel",
+            "collector.ipmi_sensor",
+            "collector.lsi_sas_2",
+            "collector.lsi_sas_3",
+            "collector.mega_raid",
+            "collector.poweredge_raid",
+            "collector.redfish",
+        ]
+    )
