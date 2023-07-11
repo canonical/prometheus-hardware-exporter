@@ -149,7 +149,7 @@ class PowerEdgeRAIDCollector(BlockingCollector):
                         name="poweredgeraid_physical_device",
                         value={
                             "controller_id": ctrl_id_str,
-                            "device_group": pd_payload["DG"],
+                            "device_group": str(pd_payload["DG"]),
                             "enclosure_device_id": pd_payload["eid"],
                             "slot": pd_payload["slt"],
                             "size": pd_payload["size"],
