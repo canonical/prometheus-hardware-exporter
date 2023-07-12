@@ -332,7 +332,7 @@ class TestCustomCollector(unittest.TestCase):
         payloads = ipmi_sel_collector.collect()
 
         available_metrics = [spec.name for spec in ipmi_sel_collector.specifications]
-        self.assertEqual(len(list(payloads)), len(mock_sel_entries) + 1)
+        self.assertEqual(len(list(payloads)), 4)
         for payload in payloads:
             self.assertIn(payload.name, available_metrics)
 

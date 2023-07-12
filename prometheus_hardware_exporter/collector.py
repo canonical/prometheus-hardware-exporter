@@ -529,16 +529,17 @@ class IpmiSelCollector(BlockingCollector):
 
     def fetch(self) -> List[Payload]:
         """Load ipmi sel entries."""
-        sel_entries = self.ipmi_sel.get_sel_entries()
+        sel_entries = self.ipmi_sel.get_sel_entries(5 * 60)
 
         if not sel_entries:
-            logger.error("Failed to get ipmi sel entries.")
+            logger.warning("No recent ipmi sel entries to collect.")
             return [Payload(name="ipmi_sel_command_success", value=0.0)]
 
         sel_states_dict = {"NOMINAL": 0, "WARNING": 1, "CRITICAL": 2}
 
         payloads = [Payload(name="ipmi_sel_command_success", value=1.0)]
 
+        sel_entries_tuples = set()
         for sel_entry in sel_entries:
             if sel_entry["State"].upper() in sel_states_dict:
                 sel_state_value = sel_states_dict[sel_entry["State"].upper()]
@@ -547,14 +548,17 @@ class IpmiSelCollector(BlockingCollector):
                     "Unknown ipmi SEL state: %s. Treating it as Nominal.", sel_entry["State"]
                 )
                 sel_state_value = sel_states_dict["NOMINAL"]
+            sel_entries_tuples.add((sel_entry["Name"], sel_entry["Type"], sel_state_value))
+
+        for sel_item in sel_entries_tuples:
             payloads.append(
                 Payload(
                     name="ipmi_sel_state",
                     labels=[
-                        sel_entry["Name"],
-                        sel_entry["Type"],
+                        sel_item[0],  # name
+                        sel_item[1],  # type
                     ],
-                    value=sel_state_value,
+                    value=sel_item[2],  # sel_state_value
                 )
             )
         return payloads
