@@ -507,7 +507,7 @@ class TestCustomCollector(unittest.TestCase):
                         "enclosure_device_id": "69",
                         "slot": "0",
                         "state": "Onln",
-                        "device_group": 0,
+                        "device_group": "0",
                         "size": "558.375 GB",
                         "media_type": "HDD",
                     }
@@ -517,7 +517,7 @@ class TestCustomCollector(unittest.TestCase):
                         "enclosure_device_id": "69",
                         "slot": "1",
                         "state": "Onln",
-                        "device_group": 0,
+                        "device_group": "0",
                         "size": "558.375 GB",
                         "media_type": "HDD",
                     }
