@@ -1,59 +1,246 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
-from test_resources.redfish.redfish_sample_data import (
-    SAMPLE_RF_DISCOVER_OUTPUT,
-    SAMPLE_RF_SENSOR_DATA,
-)
+from redfish.rest.v1 import InvalidCredentialsError, SessionCreationError
 
-from prometheus_hardware_exporter.collectors.redfish import (
-    RedfishSensors,
-    RedfishServiceStatus,
-)
-from prometheus_hardware_exporter.utils import Command, Result
-
-SAMPLE_RF_SENSORS_OUTPUT = "tests/unit/test_resources/redfish/redfish_sensors_sample_output.txt"
+from prometheus_hardware_exporter.collectors.redfish import RedfishHelper
 
 
 class TestRedfishSensors(unittest.TestCase):
     """Test the RedfishSensors class."""
 
-    @patch.object(Command, "__call__")
-    def test_00_get_sensor_data_success(self, mock_call):
-        with open(SAMPLE_RF_SENSORS_OUTPUT, "r") as content:
-            mock_call.return_value = Result(content.read(), None)
-            rf_sensors = RedfishSensors()
-            sensor_data = rf_sensors.get_sensor_data("username", "password", "localhost")
-            self.assertEqual(sensor_data, SAMPLE_RF_SENSOR_DATA)
+    @patch.object(
+        RedfishHelper,
+        "_get_sensor_data",
+        return_value=[
+            {
+                "ChassisName": 1,
+                "Readings": [
+                    {
+                        "Name": "State",
+                        "Reading": "Enabled",
+                        "Units": None,
+                        "State": "Enabled",
+                        "Health": "OK",
+                        "LowerFatal": None,
+                        "LowerCritical": None,
+                        "LowerCaution": None,
+                        "UpperCaution": None,
+                        "UpperCritical": None,
+                        "UpperFatal": None,
+                    },
+                    {
+                        "Name": "HpeServerPowerSupply State",
+                        "Reading": "Enabled",
+                        "Units": None,
+                        "State": "Enabled",
+                        "Health": "OK",
+                        "LowerFatal": None,
+                        "LowerCritical": None,
+                        "LowerCaution": None,
+                        "UpperCaution": None,
+                        "UpperCritical": None,
+                        "UpperFatal": None,
+                    },
+                    {
+                        "Name": "HpeServerPowerSupply LineInputVoltage",
+                        "Reading": 208,
+                        "Units": "V",
+                        "State": None,
+                        "Health": None,
+                        "LowerFatal": None,
+                        "LowerCritical": None,
+                        "LowerCaution": None,
+                        "UpperCaution": None,
+                        "UpperCritical": None,
+                        "UpperFatal": None,
+                    },
+                    {
+                        "Name": "HpeServerPowerSupply PowerCapacityWatts",
+                        "Reading": 800,
+                        "Units": "W",
+                        "State": None,
+                        "Health": None,
+                        "LowerFatal": None,
+                        "LowerCritical": None,
+                        "LowerCaution": None,
+                        "UpperCaution": None,
+                        "UpperCritical": None,
+                        "UpperFatal": None,
+                    },
+                ],
+            }
+        ],
+    )
+    def test_00_get_sensor_data_success(self, mock_get_sensor_data):
+        helper = RedfishHelper()
+        data = helper.get_sensor_data("", "", "")
+        self.assertEqual(
+            data,
+            {
+                "1": [
+                    {"Sensor": "State", "Reading": "Enabled", "Health": "OK"},
+                    {"Sensor": "HpeServerPowerSupply State", "Reading": "Enabled", "Health": "OK"},
+                    {
+                        "Sensor": "HpeServerPowerSupply LineInputVoltage",
+                        "Reading": "208V",
+                        "Health": "N/A",
+                    },
+                    {
+                        "Sensor": "HpeServerPowerSupply PowerCapacityWatts",
+                        "Reading": "800W",
+                        "Health": "N/A",
+                    },
+                ]
+            },
+        )
 
-    @patch.object(Command, "__call__")
-    def test_01_get_sensor_data_error(self, mock_call):
-        mock_call.return_value = Result("", True)
-        rf_sensors = RedfishSensors()
-        sensor_data = rf_sensors.get_sensor_data("username", "password", "localhost")
-        self.assertEqual(sensor_data, {})
+    @patch.object(
+        RedfishHelper,
+        "_get_sensor_data",
+        return_value=[
+            {
+                "ChassisName": 1,
+                "Readings": [
+                    {
+                        "Name": "State",
+                        "Reading": "Enabled",
+                        "Units": None,
+                        "State": "Enabled",
+                        "Health": "OK",
+                        "LowerFatal": None,
+                        "LowerCritical": None,
+                        "LowerCaution": None,
+                        "UpperCaution": None,
+                        "UpperCritical": None,
+                        "UpperFatal": None,
+                    },
+                    {
+                        "Name": "HpeServerPowerSupply State",
+                        "Reading": "Enabled",
+                        "Units": None,
+                        "State": "Enabled",
+                        "Health": "OK",
+                        "LowerFatal": None,
+                        "LowerCritical": None,
+                        "LowerCaution": None,
+                        "UpperCaution": None,
+                        "UpperCritical": None,
+                        "UpperFatal": None,
+                    },
+                ],
+            },
+            {
+                "ChassisName": 2,
+                "Readings": [
+                    {
+                        "Name": "HpeServerPowerSupply LineInputVoltage",
+                        "Reading": 208,
+                        "Units": "V",
+                        "State": None,
+                        "Health": None,
+                        "LowerFatal": None,
+                        "LowerCritical": None,
+                        "LowerCaution": None,
+                        "UpperCaution": None,
+                        "UpperCritical": None,
+                        "UpperFatal": None,
+                    },
+                    {
+                        "Name": "HpeServerPowerSupply PowerCapacityWatts",
+                        "Reading": 800,
+                        "Units": "W",
+                        "State": None,
+                        "Health": None,
+                        "LowerFatal": None,
+                        "LowerCritical": None,
+                        "LowerCaution": None,
+                        "UpperCaution": None,
+                        "UpperCritical": None,
+                        "UpperFatal": None,
+                    },
+                ],
+            },
+        ],
+    )
+    def test_01_get_multiple_chassis_sensor_data_success(self, mock_get_sensor_data):
+        helper = RedfishHelper()
+        data = helper.get_sensor_data("", "", "")
+        self.assertEqual(
+            data,
+            {
+                "1": [
+                    {"Sensor": "State", "Reading": "Enabled", "Health": "OK"},
+                    {"Sensor": "HpeServerPowerSupply State", "Reading": "Enabled", "Health": "OK"},
+                ],
+                "2": [
+                    {
+                        "Sensor": "HpeServerPowerSupply LineInputVoltage",
+                        "Reading": "208V",
+                        "Health": "N/A",
+                    },
+                    {
+                        "Sensor": "HpeServerPowerSupply PowerCapacityWatts",
+                        "Reading": "800W",
+                        "Health": "N/A",
+                    },
+                ],
+            },
+        )
+
+    @patch.object(RedfishHelper, "_get_sensor_data", return_value=[])
+    def test_02_get_sensor_data_fail(self, mock_get_sensor_data):
+        helper = RedfishHelper()
+        data = helper.get_sensor_data("", "", "")
+        self.assertEqual(data, {})
+
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_utilities")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish")
+    def test_03__get_sensor_data_success(self, mock_redfish, mock_redfish_utilities):
+        mock_redfish_utilities.get_sensors.return_value = ["return_data"]
+
+        mock_redfish_client = Mock()
+        mock_redfish.redfish_client.return_value = mock_redfish_client
+        helper = RedfishHelper()
+        data = helper._get_sensor_data("", "", "")
+        self.assertEqual(data, ["return_data"])
+        mock_redfish_client.logout.assert_called()
+
+    @patch("prometheus_hardware_exporter.collectors.redfish.logger")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_utilities")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish")
+    def test_04__get_sensor_data_fail(self, mock_redfish, mock_redfish_utilities, mock_logger):
+        for err in [InvalidCredentialsError(), SessionCreationError()]:
+            mock_redfish_utilities.get_sensors.side_effect = err
+
+            mock_redfish_client = Mock()
+            mock_redfish.redfish_client.return_value = mock_redfish_client
+
+            helper = RedfishHelper()
+            data = helper._get_sensor_data("", "", "")
+            self.assertEqual(data, None)
+            mock_redfish_client.logout.assert_called()
+            mock_logger.exception.assert_called_with(
+                mock_redfish_utilities.get_sensors.side_effect
+            )
 
 
 class TestRedfishServiceStatus(unittest.TestCase):
     """Test the RedfishServiceStatus class."""
 
-    @patch.object(Command, "__call__")
-    def test_00_get_service_status_good(self, mock_call):
-        mock_call.return_value = Result(SAMPLE_RF_DISCOVER_OUTPUT, None)
-        rf_discover = RedfishServiceStatus()
-        rf_status = rf_discover.get_service_status()
-        self.assertEqual(rf_status, True)
+    @patch(
+        "prometheus_hardware_exporter.collectors.redfish.redfish.discover_ssdp",
+        return_value=[1, 2, 3],
+    )
+    def test_00_get_service_status_good(self, mock_discover_ssdp):
+        helper = RedfishHelper()
+        ok = helper.discover()
+        self.assertEqual(ok, True)
 
-    @patch.object(Command, "__call__")
+    @patch(
+        "prometheus_hardware_exporter.collectors.redfish.redfish.discover_ssdp", return_value=[]
+    )
     def test_01_get_service_status_bad(self, mock_call):
-        mock_call.return_value = Result("No Redfish services discovered\n", None)
-        rf_discover = RedfishServiceStatus()
-        rf_status = rf_discover.get_service_status()
-        self.assertEqual(rf_status, False)
-
-    @patch.object(Command, "__call__")
-    def test_02_get_service_status_error(self, mock_call):
-        mock_call.return_value = Result("", True)
-        rf_discover = RedfishServiceStatus()
-        rf_status = rf_discover.get_service_status()
-        self.assertEqual(rf_status, False)
+        helper = RedfishHelper()
+        ok = helper.discover()
+        self.assertEqual(ok, False)

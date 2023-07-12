@@ -9,7 +9,7 @@ from .collectors.ipmi_dcmi import IpmiDcmi
 from .collectors.ipmi_sel import IpmiSel
 from .collectors.ipmimonitoring import IpmiMonitoring
 from .collectors.perccli import PercCLI
-from .collectors.redfish import RedfishSensors, RedfishServiceStatus
+from .collectors.redfish import RedfishHelper
 from .collectors.sasircu import LSISASCollectorHelper, Sasircu
 from .collectors.ssacli import SsaCLI
 from .collectors.storcli import MegaRAIDCollectorHelper, StorCLI
@@ -846,8 +846,7 @@ class SsaCLICollector(BlockingCollector):
 class RedfishCollector(BlockingCollector):
     """Collector for redfish status and data."""
 
-    redfish_sensors = RedfishSensors()
-    redfish_status = RedfishServiceStatus()
+    redfish_helper = RedfishHelper()
 
     @property
     def specifications(self) -> List[Specification]:
@@ -876,11 +875,13 @@ class RedfishCollector(BlockingCollector):
         redfish_username = self.config.redfish_username
         redfish_password = self.config.redfish_password
         payloads = []
-        service_status = self.redfish_status.get_service_status()
+        service_status = self.redfish_helper.discover()
         payloads.append(Payload(name="redfish_service_available", value=float(service_status)))
 
-        sensor_data = self.redfish_sensors.get_sensor_data(
-            redfish_username, redfish_password, redfish_host
+        sensor_data = self.redfish_helper.get_sensor_data(
+            host=redfish_host,
+            username=redfish_username,
+            password=redfish_password,
         )
         if not sensor_data:
             logger.error("Failed to get sensor data via redfish.")
