@@ -529,7 +529,7 @@ class IpmiSelCollector(BlockingCollector):
 
     def fetch(self) -> List[Payload]:
         """Load ipmi sel entries."""
-        sel_entries = self.ipmi_sel.get_sel_entries(5 * 60)
+        sel_entries = self.ipmi_sel.get_sel_entries(self.config.ipmi_sel_interval)
 
         if not sel_entries:
             logger.warning("No recent ipmi sel entries to collect.")

@@ -62,6 +62,12 @@ def parse_command_line() -> argparse.Namespace:
         type=str,
     )
     parser.add_argument(
+        "--ipmi-sel-interval",
+        help="The duration for how many seconds to collect SEL records",
+        default=300,
+        type=int,
+    )
+    parser.add_argument(
         "--collector.hpe_ssa",
         help="Enable HPE Smart Array Controller collector (default: disabled)",
         action="store_true",
@@ -159,6 +165,7 @@ def main() -> None:
             redfish_host=namespace.redfish_host,
             redfish_username=namespace.redfish_username,
             redfish_password=namespace.redfish_password,
+            ipmi_sel_interval=namespace.ipmi_sel_interval,
         )
 
     # Start the exporter
