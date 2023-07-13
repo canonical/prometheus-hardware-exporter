@@ -550,15 +550,15 @@ class IpmiSelCollector(BlockingCollector):
                 sel_state_value = sel_states_dict["NOMINAL"]
             sel_entries_tuples.add((sel_entry["Name"], sel_entry["Type"], sel_state_value))
 
-        for sel_item in sel_entries_tuples:
+        for sel_name, sel_type, sel_state_value in sel_entries_tuples:
             payloads.append(
                 Payload(
                     name="ipmi_sel_state",
                     labels=[
-                        sel_item[0],  # name
-                        sel_item[1],  # type
+                        sel_name,
+                        sel_type,
                     ],
-                    value=sel_item[2],  # sel_state_value
+                    value=sel_state_value,
                 )
             )
         return payloads
