@@ -539,7 +539,7 @@ class IpmiSelCollector(BlockingCollector):
 
         payloads = [Payload(name="ipmi_sel_command_success", value=1.0)]
 
-        sel_entries_tuples = set()
+        sel_entries_dict: Dict[tuple, int] = {}
         for sel_entry in sel_entries:
             if sel_entry["State"].upper() in sel_states_dict:
                 sel_state_value = sel_states_dict[sel_entry["State"].upper()]
@@ -548,16 +548,16 @@ class IpmiSelCollector(BlockingCollector):
                     "Unknown ipmi SEL state: %s. Treating it as Nominal.", sel_entry["State"]
                 )
                 sel_state_value = sel_states_dict["NOMINAL"]
-            sel_entries_tuples.add((sel_entry["Name"], sel_entry["Type"], sel_state_value))
 
-        for sel_name, sel_type, sel_state_value in sel_entries_tuples:
+            key = (sel_entry["Name"], sel_entry["Type"])
+            if key not in sel_entries_dict or sel_entries_dict[key] < sel_state_value:
+                sel_entries_dict[key] = sel_state_value
+
+        for sel_labels, sel_state_value in sel_entries_dict.items():
             payloads.append(
                 Payload(
                     name="ipmi_sel_state",
-                    labels=[
-                        sel_name,
-                        sel_type,
-                    ],
+                    labels=list(sel_labels),
                     value=sel_state_value,
                 )
             )
