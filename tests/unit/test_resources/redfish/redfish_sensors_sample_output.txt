@@ -1,6 +1,0 @@
-Chassis '1' Status
-  Sensor                    | Reading    | Health   | LF       | LC       | LNC      | UNC      | UC       | UF      
-  State                     | Enabled    | OK       | N/A      | N/A      | N/A      | N/A      | N/A      | N/A     
-  16-VR P1                  | 29Cel      | OK       | N/A      | N/A      | N/A      | N/A      | 110      | 115     
-  17-VR P2                  | 30Cel      | OK       | N/A      | N/A      | N/A      | N/A      | 110      | 115     
-random line

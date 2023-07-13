@@ -1,70 +1,65 @@
 """Redfish collector."""
-
 from logging import getLogger
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
 
-from ..utils import Command
+import redfish
+import redfish_utilities
+from redfish.rest.v1 import HttpClient, InvalidCredentialsError, SessionCreationError
 
 logger = getLogger(__name__)
 
 
-class RedfishSensors(Command):
-    """Command line tool for getting sensor data using redfish."""
+class RedfishHelper:
+    """Helper function for redfish."""
 
-    prefix = ""
-    command = "rf_sensor_list.py"
-
-    def get_sensor_data(self, username: str, password: str, rhost: str) -> Dict[str, List]:
+    def get_sensor_data(self, host: str, username: str, password: str) -> Dict[str, List]:
         """Get sensor data.
 
         Returns:
             sensor_data: a dictionary where key, value maps to chassis name, sensor data.
         """
-        result = self(f"-u {username} -p {password} -r {rhost}")
-        if result.error:
-            logger.error(result.error)
+        data = self._get_sensor_data(host=host, username=username, password=password)
+        if not data:
             return {}
+        output = {}
+        for chassis in data:
+            name = str(chassis["ChassisName"])
+            sensors = []
+            for sensor in chassis["Readings"]:
+                reading: str = str(sensor["Reading"]) + (sensor["Units"] or "")
 
-        raw_sensor_data = result.data.strip().split("\n")
-        sensor_data = {}
-        sensor_data_fields = ["Sensor", "Reading", "Health", "LF", "LC", "LNC", "UNC", "UC", "UF"]
-        curr_chassis_name = ""
-        curr_chassis_data: List[Dict] = []
-        for line in raw_sensor_data:
-            line = line.strip()
-            if line.startswith("Chassis ") and line.endswith(" Status"):
-                curr_chassis_name = line[9:][:-8]
-                curr_chassis_data = []
-                continue
-            curr_sensor_data = line.split("|")
-            if len(curr_sensor_data) != 9:
-                logger.warning("Ignored line in redfish sensor output: %s", line)
-                continue
-            sensor_data_item = [entry.strip() for entry in curr_sensor_data]
-            sensor_data_map = dict(zip(sensor_data_fields, sensor_data_item))
-            if any((k != v) for k, v in sensor_data_map.items()):
-                curr_chassis_data.append(sensor_data_map)
-                sensor_data[curr_chassis_name] = curr_chassis_data
+                sensors.append(
+                    {
+                        "Sensor": sensor["Name"],
+                        "Reading": reading,
+                        "Health": sensor["Health"] or "N/A",
+                    }
+                )
+            output[name] = sensors
+        return output
 
-        return sensor_data
+    def _get_sensor_data(self, host: str, username: str, password: str) -> Optional[List[Any]]:
+        """Return sensor if sensor exists else None."""
+        sensors: Optional[List[Any]] = None
+        redfish_obj: Optional[HttpClient] = None
+        try:
+            redfish_obj = redfish.redfish_client(
+                base_url=host, username=username, password=password
+            )
+            redfish_obj.login(auth="session")
+            sensors = redfish_utilities.get_sensors(redfish_obj)
+            return sensors
+        except (InvalidCredentialsError, SessionCreationError, ConnectionError) as err:
+            logger.exception(err)
+        finally:
+            # Log out
+            if redfish_obj:
+                redfish_obj.logout()
+        return sensors
 
-
-class RedfishServiceStatus(Command):
-    """Command line tool for getting redfish service status."""
-
-    prefix = ""
-    command = "rf_discover.py"
-
-    def get_service_status(self) -> bool:
-        """Return whether redfish service is available or not.
-
-        Based on the output from here:
-        https://github.com/DMTF/Redfish-Tacklebox/blob/a9bcd9bdb6621619ee260b82458c5bac20dc5f6f/scripts/rf_discover.py#L25
-        """
-        result = self()
-        if result.error:
-            logger.error(result.error)
+    def discover(self) -> bool:
+        """Return true if redfish is been discovered."""
+        services = redfish.discover_ssdp()
+        if len(services) == 0:
             return False
-
-        rf_services = result.data.strip()
-        return "No Redfish services discovered" not in rf_services
+        return True

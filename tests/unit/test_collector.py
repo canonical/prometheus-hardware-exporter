@@ -5,7 +5,6 @@ from test_resources.ipmi.ipmi_sample_data import (
     SAMPLE_IPMI_SEL_ENTRIES,
     SAMPLE_IPMI_SENSOR_ENTRIES,
 )
-from test_resources.redfish.redfish_sample_data import SAMPLE_RF_SENSOR_DATA
 
 from prometheus_hardware_exporter.collector import (
     IpmiDcmiCollector,
@@ -17,6 +16,7 @@ from prometheus_hardware_exporter.collector import (
     RedfishCollector,
     SsaCLICollector,
 )
+from prometheus_hardware_exporter.collectors.redfish import RedfishHelper
 
 
 class TestCustomCollector(unittest.TestCase):
@@ -531,10 +531,9 @@ class TestCustomCollector(unittest.TestCase):
     def test_200_redfish_not_installed(self):
         """Test redfish collector when redfish-utilitites is not installed."""
         redfish_collector = RedfishCollector(Mock())
-        redfish_collector.redfish_sensors = Mock()
-        redfish_collector.redfish_sensors.installed = False
-        redfish_collector.redfish_status.installed = False
-        redfish_collector.redfish_sensors.get_sensor_data.return_value = []
+        redfish_collector.redfish_helper = Mock(spec=RedfishHelper)
+        redfish_collector.redfish_helper.discover.return_value = False
+        redfish_collector.redfish_helper.get_sensor_data.return_value = []
         payloads = redfish_collector.collect()
 
         self.assertEqual(len(list(payloads)), 2)
@@ -542,9 +541,20 @@ class TestCustomCollector(unittest.TestCase):
     def test_201_redfish_installed_and_okay(self):
         """Test redfish collector when redfish-utilitites is installed."""
         redfish_collector = RedfishCollector(Mock())
-        redfish_collector.redfish_sensors = Mock()
-        mock_sensor_data = SAMPLE_RF_SENSOR_DATA
-        redfish_collector.redfish_sensors.get_sensor_data.return_value = mock_sensor_data
+        redfish_collector.redfish_helper = Mock(spec=RedfishHelper)
+        redfish_collector.redfish_helper.discover.return_value = False
+        redfish_collector.redfish_helper.get_sensor_data.return_value = {
+            "1": [
+                {"Sensor": "State", "Reading": "Enabled", "Health": "OK"},
+                {"Sensor": "HpeServerPowerSupply State", "Reading": "Enabled", "Health": "OK"},
+                {
+                    "Sensor": "HpeServerPowerSupply LineInputVoltage",
+                    "Reading": "208V",
+                    "Health": "N/A",
+                },
+            ]
+        }
+
         payloads = redfish_collector.collect()
 
         available_metrics = [spec.name for spec in redfish_collector.specifications]
