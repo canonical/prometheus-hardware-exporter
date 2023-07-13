@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 
 import redfish
 import redfish_utilities
-from redfish.rest.v1 import InvalidCredentialsError, SessionCreationError
+from redfish.rest.v1 import HttpClient, InvalidCredentialsError, SessionCreationError
 
 logger = getLogger(__name__)
 
@@ -41,6 +41,7 @@ class RedfishHelper:
     def _get_sensor_data(self, host: str, username: str, password: str) -> Optional[List[Any]]:
         """Return sensor if sensor exists else None."""
         sensors: Optional[List[Any]] = None
+        redfish_obj: Optional[HttpClient] = None
         try:
             redfish_obj = redfish.redfish_client(
                 base_url=host, username=username, password=password
@@ -48,13 +49,12 @@ class RedfishHelper:
             redfish_obj.login(auth="session")
             sensors = redfish_utilities.get_sensors(redfish_obj)
             return sensors
-        except InvalidCredentialsError as err:
-            logger.exception(err)
-        except SessionCreationError as err:
+        except (InvalidCredentialsError, SessionCreationError, ConnectionError) as err:
             logger.exception(err)
         finally:
             # Log out
-            redfish_obj.logout()
+            if redfish_obj:
+                redfish_obj.logout()
         return sensors
 
     def discover(self) -> bool:

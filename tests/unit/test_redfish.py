@@ -211,18 +211,21 @@ class TestRedfishSensors(unittest.TestCase):
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish")
     def test_04__get_sensor_data_fail(self, mock_redfish, mock_redfish_utilities, mock_logger):
         for err in [InvalidCredentialsError(), SessionCreationError()]:
-            mock_redfish_utilities.get_sensors.side_effect = err
-
             mock_redfish_client = Mock()
+            mock_redfish_client.login.side_effect = err
             mock_redfish.redfish_client.return_value = mock_redfish_client
 
             helper = RedfishHelper()
-            data = helper._get_sensor_data("", "", "")
-            self.assertEqual(data, None)
+            helper._get_sensor_data("", "", "")
             mock_redfish_client.logout.assert_called()
-            mock_logger.exception.assert_called_with(
-                mock_redfish_utilities.get_sensors.side_effect
-            )
+            mock_logger.exception.assert_called_with(mock_redfish_client.login.side_effect)
+
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish")
+    def test_05__get_sensor_data_connection_error(self, mock_redfish):
+        """Shouldn't raise error if connection fail."""
+        mock_redfish.redfish_client.side_effect = ConnectionError()
+        helper = RedfishHelper()
+        helper._get_sensor_data("", "", "")
 
 
 class TestRedfishServiceStatus(unittest.TestCase):
