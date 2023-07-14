@@ -53,8 +53,15 @@ class TestIpmiSel(unittest.TestCase):
             self.assertEqual(payloads, expected_sel_entries)
 
     @patch.object(Command, "__call__")
-    def test_01_get_sel_entries_error(self, mock_call):
-        mock_call.return_value = Result("", True)
+    def test_01_get_sel_entries_zero_records(self, mock_call):
+        mock_call.return_value = Result("", None)
         ipmi_sel = IpmiSel()
         payloads = ipmi_sel.get_sel_entries(300)
         self.assertEqual(payloads, [])
+
+    @patch.object(Command, "__call__")
+    def test_02_get_sel_entries_error(self, mock_call):
+        mock_call.return_value = Result("", Exception())
+        ipmi_sel = IpmiSel()
+        payloads = ipmi_sel.get_sel_entries(300)
+        self.assertEqual(payloads, None)
