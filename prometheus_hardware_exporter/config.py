@@ -22,6 +22,8 @@ class Config(BaseModel):
     level: str = "DEBUG"
     enable_collectors: List[str] = []
 
+    ipmi_sel_interval: int = 300
+
     redfish_host: str = "127.0.0.1"
     redfish_username: str = ""
     redfish_password: str = ""

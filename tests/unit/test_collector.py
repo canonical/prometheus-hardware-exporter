@@ -331,10 +331,18 @@ class TestCustomCollector(unittest.TestCase):
 
         payloads = ipmi_sel_collector.collect()
 
-        available_metrics = [spec.name for spec in ipmi_sel_collector.specifications]
-        self.assertEqual(len(list(payloads)), len(mock_sel_entries) + 1)
+        payloads_labels_value_map = {}
         for payload in payloads:
-            self.assertIn(payload.name, available_metrics)
+            if payload.name == "ipmi_sel_state":
+                payloads_labels_value_map[
+                    tuple(payload.samples[0].labels.values())
+                ] = payload.samples[0].value
+        expected_payloads_label_value_map = {
+            ("System Board ACPI_Stat", "System ACPI Power State"): 1,
+            ("System Chassis SysHealth_Stat", "Chassis"): 2,
+        }
+
+        self.assertDictEqual(payloads_labels_value_map, expected_payloads_label_value_map)
 
     def test_50_ipmimonitoring_not_installed(self):
         """Test ipmi sensor collector when ipmimonitoring is not installed."""
