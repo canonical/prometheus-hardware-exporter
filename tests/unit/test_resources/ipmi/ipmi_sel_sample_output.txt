@@ -1,4 +1,5 @@
 ID   | Date        | Time     | Name                                   | Type                     | State    | Event
+14   | PostInit    | PostInit | Disk Drive Bay 1 Cable SAS A           | Cable/Interconnect       | Critical | Configuration Error - Incorrect cable connected
 493  | Oct-06-2022 | 19:47:13 | System Board ACPI_Stat                 | System ACPI Power State  | Nominal  | S0/G0
 494  | Jul-09-2023 | 13:56:23 | System Chassis SysHealth_Stat          | Chassis                  | Critical | transition to Non-recoverable from less severe
 495  | Oct-06-2022 | 19:57:38 | System Board ACPI_Stat                 | System ACPI Power State  | Nominal  | S4/S5 soft-off

@@ -531,8 +531,8 @@ class IpmiSelCollector(BlockingCollector):
         """Load ipmi sel entries."""
         sel_entries = self.ipmi_sel.get_sel_entries(self.config.ipmi_sel_interval)
 
-        if not sel_entries:
-            logger.warning("No recent ipmi sel entries to collect.")
+        if sel_entries is None:
+            logger.warning("Fail to get ipmi sel entries.")
             return [Payload(name="ipmi_sel_command_success", value=0.0)]
 
         sel_states_dict = {"NOMINAL": 0, "WARNING": 1, "CRITICAL": 2}

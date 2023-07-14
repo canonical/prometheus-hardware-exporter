@@ -2,7 +2,7 @@
 
 import datetime
 from logging import getLogger
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from ..utils import Command
 
@@ -15,7 +15,7 @@ class IpmiSel(Command):
     prefix = ""
     command = "ipmi-sel"
 
-    def get_sel_entries(self, time_range: int) -> List[Dict[str, str]]:
+    def get_sel_entries(self, time_range: int) -> Optional[List[Dict[str, str]]]:
         """Get SEL entries along with state.
 
         :param time_range int: Time in seconds, to determine from how far back the SEL
@@ -26,7 +26,7 @@ class IpmiSel(Command):
         result = self("--output-event-state --interpret-oem-data --entity-sensor-names")
         if result.error:
             logger.error(result.error)
-            return []
+            return None
 
         oldest_log_time = datetime.datetime.now() - datetime.timedelta(seconds=time_range)
 
@@ -37,10 +37,13 @@ class IpmiSel(Command):
             sel_item_values = sel_item.split("|")
             sel_item_values = [entry.strip() for entry in sel_item_values]
             sel_item_dict = dict(zip(sel_data_fields, sel_item_values))
-            sel_item_datetime_str = sel_item_dict["Date"] + sel_item_dict["Time"]
-            sel_item_datetime = datetime.datetime.strptime(
-                sel_item_datetime_str, "%b-%d-%Y%H:%M:%S"
-            )
-            if sel_item_datetime > oldest_log_time:
+            if sel_item_dict["Date"] == "PostInit":
                 sel_entries.append(sel_item_dict)
+            else:
+                sel_item_datetime_str = sel_item_dict["Date"] + sel_item_dict["Time"]
+                sel_item_datetime = datetime.datetime.strptime(
+                    sel_item_datetime_str, "%b-%d-%Y%H:%M:%S"
+                )
+                if sel_item_datetime > oldest_log_time:
+                    sel_entries.append(sel_item_dict)
         return sel_entries

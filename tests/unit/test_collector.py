@@ -344,6 +344,17 @@ class TestCustomCollector(unittest.TestCase):
 
         self.assertDictEqual(payloads_labels_value_map, expected_payloads_label_value_map)
 
+    def test_42_ipmi_sel_cmd_fail(self):
+        """Test ipmi sel collector when ipmi sel is not installed."""
+        ipmi_sel_collector = IpmiSelCollector(Mock())
+        ipmi_sel_collector.ipmi_sel = Mock()
+
+        ipmi_sel_collector.ipmi_sel.get_sel_entries.return_value = None
+
+        payloads = list(ipmi_sel_collector.collect())
+        assert payloads[0].name == "ipmi_sel_command_success"
+        assert payloads[0].samples[0].value == 0.0
+
     def test_50_ipmimonitoring_not_installed(self):
         """Test ipmi sensor collector when ipmimonitoring is not installed."""
         ipmi_sensors_collector = IpmiSensorsCollector(Mock())
