@@ -4,9 +4,25 @@ from typing import Any, Dict, List, Optional
 
 import redfish
 import redfish_utilities
-from redfish.rest.v1 import HttpClient, InvalidCredentialsError, SessionCreationError
+from cachetools import TTLCache, cached
+from redfish.rest.v1 import (
+    HttpClient,
+    InvalidCredentialsError,
+    RetriesExhaustedError,
+    SessionCreationError,
+)
 
 logger = getLogger(__name__)
+
+# timeout in seconds for initial connection
+REDFISH_CLIENT_TIMEOUT = 3
+# Number of times a request will retry after a timeout
+REDFISH_CLIENT_MAX_RETRY = 1
+
+# maximum size of cache before old items are removed
+CACHE_MAXSIZE = 5
+# how long should the cache be stored in seconds
+CACHE_TTL = 86400
 
 
 class RedfishHelper:
@@ -44,12 +60,21 @@ class RedfishHelper:
         redfish_obj: Optional[HttpClient] = None
         try:
             redfish_obj = redfish.redfish_client(
-                base_url=host, username=username, password=password
+                base_url=host,
+                username=username,
+                password=password,
+                timeout=REDFISH_CLIENT_TIMEOUT,
+                max_retry=REDFISH_CLIENT_MAX_RETRY,
             )
             redfish_obj.login(auth="session")
             sensors = redfish_utilities.get_sensors(redfish_obj)
             return sensors
-        except (InvalidCredentialsError, SessionCreationError, ConnectionError) as err:
+        except (
+            InvalidCredentialsError,
+            SessionCreationError,
+            ConnectionError,
+            RetriesExhaustedError,
+        ) as err:
             logger.exception(err)
         finally:
             # Log out
@@ -57,8 +82,10 @@ class RedfishHelper:
                 redfish_obj.logout()
         return sensors
 
+    @cached(cache=TTLCache(maxsize=CACHE_MAXSIZE, ttl=CACHE_TTL))
     def discover(self) -> bool:
         """Return true if redfish is been discovered."""
+        logger.info("Discovering redfish services")
         services = redfish.discover_ssdp()
         if len(services) == 0:
             return False
