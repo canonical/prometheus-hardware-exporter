@@ -850,7 +850,10 @@ class SsaCLICollector(BlockingCollector):
 class RedfishCollector(BlockingCollector):
     """Collector for redfish status and data."""
 
-    redfish_helper = RedfishHelper()
+    def __init__(self, config: Config) -> None:
+        """Initialize RedfishHelper instance."""
+        super().__init__(config)
+        self.redfish_helper = RedfishHelper(self.config.redfish_discover_cache_ttl)
 
     @property
     def specifications(self) -> List[Specification]:
@@ -886,6 +889,8 @@ class RedfishCollector(BlockingCollector):
             host=redfish_host,
             username=redfish_username,
             password=redfish_password,
+            timeout=self.config.redfish_client_timeout,
+            max_retry=self.config.redfish_client_max_retry,
         )
         if not sensor_data:
             logger.error("Failed to get sensor data via redfish.")

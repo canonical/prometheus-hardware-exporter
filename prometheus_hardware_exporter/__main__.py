@@ -16,7 +16,13 @@ from .collector import (
     RedfishCollector,
     SsaCLICollector,
 )
-from .config import DEFAULT_CONFIG, Config
+from .config import (
+    DEFAULT_CONFIG,
+    DEFAULT_REDFISH_CLIENT_MAX_RETRY,
+    DEFAULT_REDFISH_CLIENT_TIMEOUT,
+    DEFAULT_REDFISH_DISCOVER_CACHE_TTL,
+    Config,
+)
 from .exporter import Exporter
 
 logger = logging.getLogger(__name__)
@@ -112,6 +118,27 @@ def parse_command_line() -> argparse.Namespace:
         help="Enable redfish collector (default: disabled)",
         action="store_true",
     )
+    parser.add_argument(
+        "--redfish-client-timeout",
+        help="Redfish client timeout in seconds for initial connection (default: 3) ",
+        default=DEFAULT_REDFISH_CLIENT_TIMEOUT,
+        type=int,
+    )
+    parser.add_argument(
+        "--redfish-client-max-retry",
+        help="Number of times the redfish client will retry after timeout (default: 1) ",
+        default=DEFAULT_REDFISH_CLIENT_MAX_RETRY,
+        type=int,
+    )
+    parser.add_argument(
+        "--redfish-discover-cache-ttl",
+        help=(
+            "How long should the cached redfish discovery services "
+            "be stored in seconds (default: 86400) "
+        ),
+        default=DEFAULT_REDFISH_DISCOVER_CACHE_TTL,
+        type=int,
+    )
     args = parser.parse_args()
 
     return args
@@ -166,6 +193,9 @@ def main() -> None:
             redfish_username=namespace.redfish_username,
             redfish_password=namespace.redfish_password,
             ipmi_sel_interval=namespace.ipmi_sel_interval,
+            redfish_client_timeout=namespace.redfish_client_timeout,
+            redfish_client_max_retry=namespace.redfish_client_max_retry,
+            redfish_discover_cache_ttl=namespace.redfish_discover_cache_ttl,
         )
 
     # Start the exporter

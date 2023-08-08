@@ -11,6 +11,9 @@ logger = getLogger(__name__)
 
 DEFAULT_CONFIG = os.path.join(os.environ.get("SNAP_DATA", "./"), "config.yaml")
 
+DEFAULT_REDFISH_CLIENT_TIMEOUT = 3
+DEFAULT_REDFISH_CLIENT_MAX_RETRY = 1
+DEFAULT_REDFISH_DISCOVER_CACHE_TTL = 86400
 
 # pylint: disable=E0213
 
@@ -27,6 +30,9 @@ class Config(BaseModel):
     redfish_host: str = "127.0.0.1"
     redfish_username: str = ""
     redfish_password: str = ""
+    redfish_client_timeout: int = DEFAULT_REDFISH_CLIENT_TIMEOUT
+    redfish_client_max_retry: int = DEFAULT_REDFISH_CLIENT_MAX_RETRY
+    redfish_discover_cache_ttl: int = DEFAULT_REDFISH_DISCOVER_CACHE_TTL
 
     @validator("port")
     def validate_port_range(cls, port: int) -> int:
