@@ -1,4 +1,5 @@
 import unittest
+from time import sleep
 from unittest.mock import Mock, patch
 
 from redfish.rest.v1 import InvalidCredentialsError, SessionCreationError
@@ -8,6 +9,16 @@ from prometheus_hardware_exporter.collectors.redfish import RedfishHelper
 
 class TestRedfishSensors(unittest.TestCase):
     """Test the RedfishSensors class."""
+
+    def mock_helper(self):
+        mock_ttl = 10
+        return RedfishHelper(mock_ttl)
+
+    def mock_redfish_client_args(self):
+        host, username, password = "", "", ""
+        mock_timeout = 3
+        mock_max_retry = 1
+        return host, username, password, mock_timeout, mock_max_retry
 
     @patch.object(
         RedfishHelper,
@@ -73,8 +84,9 @@ class TestRedfishSensors(unittest.TestCase):
         ],
     )
     def test_00_get_sensor_data_success(self, mock_get_sensor_data):
-        helper = RedfishHelper()
-        data = helper.get_sensor_data("", "", "")
+        helper = self.mock_helper()
+        mock_args = self.mock_redfish_client_args()
+        data = helper.get_sensor_data(*mock_args)
         self.assertEqual(
             data,
             {
@@ -164,8 +176,9 @@ class TestRedfishSensors(unittest.TestCase):
         ],
     )
     def test_01_get_multiple_chassis_sensor_data_success(self, mock_get_sensor_data):
-        helper = RedfishHelper()
-        data = helper.get_sensor_data("", "", "")
+        helper = self.mock_helper()
+        mock_args = self.mock_redfish_client_args()
+        data = helper.get_sensor_data(*mock_args)
         self.assertEqual(
             data,
             {
@@ -190,8 +203,9 @@ class TestRedfishSensors(unittest.TestCase):
 
     @patch.object(RedfishHelper, "_get_sensor_data", return_value=[])
     def test_02_get_sensor_data_fail(self, mock_get_sensor_data):
-        helper = RedfishHelper()
-        data = helper.get_sensor_data("", "", "")
+        helper = self.mock_helper()
+        mock_args = self.mock_redfish_client_args()
+        data = helper.get_sensor_data(*mock_args)
         self.assertEqual(data, {})
 
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_utilities")
@@ -201,8 +215,9 @@ class TestRedfishSensors(unittest.TestCase):
 
         mock_redfish_client = Mock()
         mock_redfish.redfish_client.return_value = mock_redfish_client
-        helper = RedfishHelper()
-        data = helper._get_sensor_data("", "", "")
+        helper = self.mock_helper()
+        mock_args = self.mock_redfish_client_args()
+        data = helper._get_sensor_data(*mock_args)
         self.assertEqual(data, ["return_data"])
         mock_redfish_client.logout.assert_called()
 
@@ -210,13 +225,14 @@ class TestRedfishSensors(unittest.TestCase):
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_utilities")
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish")
     def test_04__get_sensor_data_fail(self, mock_redfish, mock_redfish_utilities, mock_logger):
+        mock_args = self.mock_redfish_client_args()
         for err in [InvalidCredentialsError(), SessionCreationError()]:
             mock_redfish_client = Mock()
             mock_redfish_client.login.side_effect = err
             mock_redfish.redfish_client.return_value = mock_redfish_client
 
-            helper = RedfishHelper()
-            helper._get_sensor_data("", "", "")
+            helper = self.mock_helper()
+            helper._get_sensor_data(*mock_args)
             mock_redfish_client.logout.assert_called()
             mock_logger.exception.assert_called_with(mock_redfish_client.login.side_effect)
 
@@ -224,19 +240,24 @@ class TestRedfishSensors(unittest.TestCase):
     def test_05__get_sensor_data_connection_error(self, mock_redfish):
         """Shouldn't raise error if connection fail."""
         mock_redfish.redfish_client.side_effect = ConnectionError()
-        helper = RedfishHelper()
-        helper._get_sensor_data("", "", "")
+        helper = self.mock_helper()
+        mock_args = self.mock_redfish_client_args()
+        helper._get_sensor_data(*mock_args)
 
 
 class TestRedfishServiceStatus(unittest.TestCase):
     """Test the RedfishServiceStatus class."""
+
+    def mock_helper(self):
+        mock_ttl = 10
+        return RedfishHelper(mock_ttl)
 
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.redfish.discover_ssdp",
         return_value=[1, 2, 3],
     )
     def test_00_get_service_status_good(self, mock_discover_ssdp):
-        helper = RedfishHelper()
+        helper = self.mock_helper()
         ok = helper.discover()
         self.assertEqual(ok, True)
 
@@ -244,6 +265,30 @@ class TestRedfishServiceStatus(unittest.TestCase):
         "prometheus_hardware_exporter.collectors.redfish.redfish.discover_ssdp", return_value=[]
     )
     def test_01_get_service_status_bad(self, mock_call):
-        helper = RedfishHelper()
+        helper = self.mock_helper()
         ok = helper.discover()
         self.assertEqual(ok, False)
+
+    @patch(
+        "prometheus_hardware_exporter.collectors.redfish.redfish.discover_ssdp",
+        return_value=[1, 2, 3],
+    )
+    def test_02_discover_cache(self, mock_discover):
+        ttl = 1
+        helper = RedfishHelper(ttl)
+
+        output = helper.discover()
+        self.assertEqual(output, True)
+        mock_discover.assert_called()
+        mock_discover.reset_mock()
+
+        # output from cache
+        output = helper.discover()
+        self.assertEqual(output, True)
+        mock_discover.assert_not_called()
+
+        # wait till cache expires
+        sleep(ttl + 1)
+        output = helper.discover()
+        self.assertEqual(output, True)
+        mock_discover.assert_called()
