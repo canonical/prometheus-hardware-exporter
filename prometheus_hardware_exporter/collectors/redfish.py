@@ -30,7 +30,7 @@ class RedfishHelper:
         max_retry: int,
         discover_cache_ttl: int,
     ) -> None:
-        """Initialize disover method with TTL value."""
+        """Initialize redfish login args and cache TTL value for discover method."""
         self.host = host
         self.username = username
         self.password = password
