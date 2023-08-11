@@ -16,7 +16,6 @@ from prometheus_hardware_exporter.collector import (
     RedfishCollector,
     SsaCLICollector,
 )
-from prometheus_hardware_exporter.collectors.redfish import RedfishHelper
 
 
 class TestCustomCollector(unittest.TestCase):
@@ -550,7 +549,7 @@ class TestCustomCollector(unittest.TestCase):
     def test_200_redfish_not_installed(self):
         """Test redfish collector when redfish-utilitites is not installed."""
         redfish_collector = RedfishCollector(Mock())
-        redfish_collector.redfish_helper = Mock(spec=RedfishHelper)
+        redfish_collector.redfish_helper = Mock()
         redfish_collector.redfish_helper.discover.return_value = False
         redfish_collector.redfish_helper.get_sensor_data.return_value = []
         payloads = redfish_collector.collect()
@@ -560,7 +559,7 @@ class TestCustomCollector(unittest.TestCase):
     def test_201_redfish_installed_and_okay(self):
         """Test redfish collector when redfish-utilitites is installed."""
         redfish_collector = RedfishCollector(Mock())
-        redfish_collector.redfish_helper = Mock(spec=RedfishHelper)
+        redfish_collector.redfish_helper = Mock()
         redfish_collector.redfish_helper.discover.return_value = False
         redfish_collector.redfish_helper.get_sensor_data.return_value = {
             "1": [
