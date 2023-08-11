@@ -853,14 +853,7 @@ class RedfishCollector(BlockingCollector):
     def __init__(self, config: Config) -> None:
         """Initialize RedfishHelper instance."""
         super().__init__(config)
-        self.redfish_helper = RedfishHelper(
-            host=self.config.redfish_host,
-            username=self.config.redfish_username,
-            password=self.config.redfish_password,
-            timeout=self.config.redfish_client_timeout,
-            max_retry=self.config.redfish_client_max_retry,
-            discover_cache_ttl=self.config.redfish_discover_cache_ttl,
-        )
+        self.redfish_helper = RedfishHelper(config)
 
     @property
     def specifications(self) -> List[Specification]:
