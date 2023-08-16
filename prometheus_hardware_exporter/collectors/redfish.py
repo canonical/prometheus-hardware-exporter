@@ -110,7 +110,8 @@ class RedfishHelper:
         """Return processor data and count.
 
         Returns:
-            processor_count: Dict of system ids mapped to the total number of processors on that system.
+            processor_count: Dict of system ids mapped to the total number
+            of processors on that system.
             processor_data: Dict of system ids mapped to list of processors on that system.
         """
         processor_data: Dict[str, List] = {}
@@ -157,8 +158,10 @@ class RedfishHelper:
         """Return storage controller data and count.
 
         Returns:
-            storage_controller_count: Dict of system ids mapped to the total number of storage controllers on that system.
-            storage_controller_data: Dict of system ids mapped to list of storage controllers on that system.
+            storage_controller_count: Dict of system ids mapped to the total number
+            of storage controllers on that system.
+            storage_controller_data: Dict of system ids mapped to list of storage
+            controllers on that system.
         """
         storage_controller_data: Dict[str, List] = {}
         # storage controllers on each system
@@ -243,7 +246,8 @@ class RedfishHelper:
     def get_chassis_data(self) -> Dict[str, Dict]:
         """Return chassis data.
 
-        The returned chassis_data is a dict of chassis ids each mapped to a dict of data for that chassis.
+        The returned chassis_data is a dict of chassis ids each mapped to a
+        dict of data for that chassis.
         """
         chassis_data: Dict[str, Dict] = {}
         chassis_root_uri_pattern = "/redfish/v1/Chassis/{}"
@@ -275,8 +279,10 @@ class RedfishHelper:
         """Return storage drive data and count.
 
         Returns:
-            storage_drive_count: Dict of system ids mapped to the total number of storage drives on that system.
-            storage_drive_data: Dict of system ids mapped to list of storage drives on that system.
+            storage_drive_count: Dict of system ids mapped to the total number
+            of storage drives on that system.
+            storage_drive_data: Dict of system ids mapped to list of storage
+            drives on that system.
         """
         storage_drive_data: Dict[str, List] = {}
         # storage drives on each system
@@ -336,8 +342,10 @@ class RedfishHelper:
         """Return memory dimm data and count.
 
         Returns:
-            memory_dimm_count: Dict of system ids mapped to the total number of memory dimms on that system.
-            memory_dimm_data: Dict of system ids mapped to list of memory dimms on that system.
+            memory_dimm_count: Dict of system ids mapped to the total number
+            of memory dimms on that system.
+            memory_dimm_data: Dict of system ids mapped to list of memory dimms
+            on that system.
         """
         memory_dimm_data: Dict[str, List] = {}
         memory_dimm_count: Dict[str, int] = {}
