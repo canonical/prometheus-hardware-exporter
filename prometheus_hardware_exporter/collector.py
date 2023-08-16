@@ -1,7 +1,7 @@
 """Module for a collection of hardware collecters."""
 
 from logging import getLogger
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from prometheus_client.metrics_core import GaugeMetricFamily, InfoMetricFamily
 
@@ -874,6 +874,61 @@ class RedfishCollector(BlockingCollector):
                 documentation="Sensor information obtained from redfish.",
                 metric_class=InfoMetricFamily,
             ),
+            Specification(
+                name="redfish_processors",
+                documentation="Total number of processors obtained from redfish.",
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="redfish_processor",
+                documentation="Processor information obtained from redfish.",
+                metric_class=InfoMetricFamily,
+            ),
+            Specification(
+                name="redfish_storage_controllers",
+                documentation="Total number of storage controllers obtained from redfish.",
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="redfish_storage_controller",
+                documentation="Storage Controller information obtained from redfish.",
+                metric_class=InfoMetricFamily,
+            ),
+            Specification(
+                name="redfish_network_adapters",
+                documentation="Total number of network adapters obtained from redfish.",
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="redfish_chassis",
+                documentation="Chassis information obtained from redfish.",
+                metric_class=InfoMetricFamily,
+            ),
+            Specification(
+                name="redfish_storage_drives",
+                documentation="Total number of storage drives obtained from redfish.",
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="redfish_storage_drive",
+                documentation="Storage information obtained from redfish.",
+                metric_class=InfoMetricFamily,
+            ),
+            Specification(
+                name="redfish_memory_dimms",
+                documentation="Total memory DIMMs obtained from redfish.",
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="redfish_memory_dimm",
+                documentation="Memory DIMM information obtained from redfish.",
+                metric_class=InfoMetricFamily,
+            ),
+            Specification(
+                name="redfish_smart_storage_health",
+                documentation="Indicates if Smart Storage (if present) is healthy.",
+                metric_class=GaugeMetricFamily,
+            ),
         ]
 
     def fetch(self) -> List[Payload]:
@@ -882,13 +937,64 @@ class RedfishCollector(BlockingCollector):
         service_status = self.redfish_helper.discover()
         payloads.append(Payload(name="redfish_service_available", value=float(service_status)))
 
-        sensor_data = self.redfish_helper.get_sensor_data()
+        processor_count: Dict[str, int]
+        processor_data: Dict[str, List]
+        storage_controller_count: Dict[str, int]
+        storage_controller_data: Dict[str, List]
+        storage_drive_count: Dict[str, int]
+        storage_drive_data: Dict[str, List]
+        memory_dimm_count: Dict[str, int]
+        memory_dimm_data: Dict[str, List]
+
+        sensor_data: Dict[str, List] = self.redfish_helper.get_sensor_data()
+        processor_count, processor_data = self.redfish_helper.get_processor_data()
+        (
+            storage_controller_count,
+            storage_controller_data,
+        ) = self.redfish_helper.get_storage_controller_data()
+        network_adapter_count: Dict[str, Any] = self.redfish_helper.get_network_adapter_data()
+        chassis_data: Dict[str, Dict] = self.redfish_helper.get_chassis_data()
+        storage_drive_count, storage_drive_data = self.redfish_helper.get_storage_drive_data()
+        memory_dimm_count, memory_dimm_data = self.redfish_helper.get_memory_dimm_data()
+        smart_storage_health_data: Dict[
+            str, Any
+        ] = self.redfish_helper.get_smart_storage_health_data()
+
         if not sensor_data:
             logger.error("Failed to get sensor data via redfish.")
             payloads.append(Payload(name="redfish_call_success", value=0.0))
             return payloads
+        if not processor_data:
+            logger.error("Failed to get processor data via redfish.")
+            payloads.append(Payload(name="redfish_call_success", value=0.0))
+            return payloads
+        if not storage_controller_data:
+            logger.error("Failed to get storage controller data via redfish.")
+            payloads.append(Payload(name="redfish_call_success", value=0.0))
+            return payloads
+        if not network_adapter_count:
+            logger.error("Failed to get network adapter data via redfish.")
+            payloads.append(Payload(name="redfish_call_success", value=0.0))
+            return payloads
+        if not chassis_data:
+            logger.error("Failed to get chassis data via redfish.")
+            payloads.append(Payload(name="redfish_call_success", value=0.0))
+            return payloads
+        if not storage_drive_data:
+            logger.error("Failed to get storage drive data via redfish.")
+            payloads.append(Payload(name="redfish_call_success", value=0.0))
+            return payloads
+        if not memory_dimm_data:
+            logger.error("Failed to get memory DIMM data via redfish.")
+            payloads.append(Payload(name="redfish_call_success", value=0.0))
+            return payloads
+
+        if not smart_storage_health_data:
+            logger.info("Failed to get smart storage health data via redfish.")
 
         payloads.append(Payload(name="redfish_call_success", value=1.0))
+
+        # Appending sensor data to payload
         for chassis_name, curr_sensor_data in sensor_data.items():
             for sensor_data_item in curr_sensor_data:
                 payloads.append(
@@ -903,6 +1009,116 @@ class RedfishCollector(BlockingCollector):
                     )
                 )
 
+        # Appending processor data to payload
+        for system_id, curr_processor_data in processor_data.items():
+            payloads.append(
+                Payload(
+                    name="redfish_processors",
+                    value=processor_count[system_id],
+                    labels=[system_id],
+                )
+            )
+            for processor in curr_processor_data:
+                payloads.append(
+                    Payload(
+                        name="redfish_processor",
+                        value={
+                            "system_id": system_id,
+                            "processor_id": processor["processor_id"],
+                            "model": processor["model"],
+                            "health": processor["health"],
+                            "state": processor["state"],
+                        },
+                    )
+                )
+        # Appending storage controller data to payload
+        for system_id, curr_storage_controller_data in storage_controller_data.items():
+            payloads.append(
+                Payload(
+                    name="redfish_storage_controllers",
+                    value=int(storage_controller_count[system_id]),
+                    labels=[system_id],
+                )
+            )
+            for controller in curr_storage_controller_data:
+                payloads.append(
+                    Payload(
+                        name="redfish_storage_controller",
+                        value={
+                            "system_id": system_id,
+                            "storage_id": controller["storage_id"],
+                            "controller_id": controller["controller_id"],
+                            "health": controller["health"],
+                            "state": controller["state"],
+                        },
+                    )
+                )
+
+        # Appending chassis data to payload
+        for chassis_id, count in network_adapter_count.items():
+            payloads.append(
+                Payload(
+                    name="redfish_network_adapters",
+                    value=int(count),
+                    labels=[chassis_id],
+                )
+            )
+
+        # Appending storage drive data to payload
+        for system_id, curr_storage_drive_data in storage_drive_data.items():
+            payloads.append(
+                Payload(
+                    name="redfish_storage_drives",
+                    value=int(storage_drive_count[system_id]),
+                    labels=[system_id],
+                )
+            )
+            for drive in curr_storage_drive_data:
+                payloads.append(
+                    Payload(
+                        name="redfish_storage_drive",
+                        value={
+                            "system_id": system_id,
+                            "storage_id": drive["storage_id"],
+                            "drive_id": drive["drive_id"],
+                            "health": drive["health"],
+                            "state": drive["state"],
+                        },
+                    )
+                )
+
+        # Appending memory DIMM data to payload
+        for system_id, curr_memory_dimm_data in memory_dimm_data.items():
+            payloads.append(
+                Payload(
+                    name="redfish_memory_dimms",
+                    value=int(memory_dimm_count[system_id]),
+                    labels=[system_id],
+                )
+            )
+            for memory_dimm in curr_memory_dimm_data:
+                payloads.append(
+                    Payload(
+                        name="redfish_memory_dimm",
+                        value={
+                            "system_id": system_id,
+                            "memory_id": memory_dimm["memory_id"],
+                            "health": memory_dimm["health"],
+                            "state": memory_dimm["state"],
+                        },
+                    )
+                )
+
+        # Appending smart storage health data to payload (if present)
+        if smart_storage_health_data:
+            for chassis_id, curr_smart_storage_health_data in smart_storage_health_data.items():
+                payloads.append(
+                    Payload(
+                        name="redfish_smart_storage_health",
+                        value=1.0 if curr_smart_storage_health_data["health"] == "OK" else 0.0,
+                        labels=[chassis_id],
+                    )
+                )
         return payloads
 
     def process(self, payloads: List[Payload], datastore: Dict[str, Payload]) -> List[Payload]:
