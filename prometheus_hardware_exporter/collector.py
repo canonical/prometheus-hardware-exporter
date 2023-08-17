@@ -853,7 +853,7 @@ class RedfishCollector(BlockingCollector):
     def __init__(self, config: Config) -> None:
         """Initialize RedfishHelper instance."""
         super().__init__(config)
-        self.redfish_helper = RedfishHelper(config)
+        self.config = config
 
     @property
     def specifications(self) -> List[Specification]:
@@ -934,31 +934,32 @@ class RedfishCollector(BlockingCollector):
     def fetch(self) -> List[Payload]:
         """Load redfish data."""
         payloads = []
-        service_status = self.redfish_helper.discover()
-        payloads.append(Payload(name="redfish_service_available", value=float(service_status)))
+        with RedfishHelper(self.config) as redfish_helper:
+            service_status = redfish_helper.discover()
+            payloads.append(Payload(name="redfish_service_available", value=float(service_status)))
 
-        processor_count: Dict[str, int]
-        processor_data: Dict[str, List]
-        storage_controller_count: Dict[str, int]
-        storage_controller_data: Dict[str, List]
-        storage_drive_count: Dict[str, int]
-        storage_drive_data: Dict[str, List]
-        memory_dimm_count: Dict[str, int]
-        memory_dimm_data: Dict[str, List]
+            processor_count: Dict[str, int]
+            processor_data: Dict[str, List]
+            storage_controller_count: Dict[str, int]
+            storage_controller_data: Dict[str, List]
+            storage_drive_count: Dict[str, int]
+            storage_drive_data: Dict[str, List]
+            memory_dimm_count: Dict[str, int]
+            memory_dimm_data: Dict[str, List]
 
-        sensor_data: Dict[str, List] = self.redfish_helper.get_sensor_data()
-        processor_count, processor_data = self.redfish_helper.get_processor_data()
-        (
-            storage_controller_count,
-            storage_controller_data,
-        ) = self.redfish_helper.get_storage_controller_data()
-        network_adapter_count: Dict[str, Any] = self.redfish_helper.get_network_adapter_data()
-        chassis_data: Dict[str, Dict] = self.redfish_helper.get_chassis_data()
-        storage_drive_count, storage_drive_data = self.redfish_helper.get_storage_drive_data()
-        memory_dimm_count, memory_dimm_data = self.redfish_helper.get_memory_dimm_data()
-        smart_storage_health_data: Dict[
-            str, Any
-        ] = self.redfish_helper.get_smart_storage_health_data()
+            sensor_data: Dict[str, List] = redfish_helper.get_sensor_data()
+            processor_count, processor_data = redfish_helper.get_processor_data()
+            (
+                storage_controller_count,
+                storage_controller_data,
+            ) = redfish_helper.get_storage_controller_data()
+            network_adapter_count: Dict[str, Any] = redfish_helper.get_network_adapter_data()
+            chassis_data: Dict[str, Dict] = redfish_helper.get_chassis_data()
+            storage_drive_count, storage_drive_data = redfish_helper.get_storage_drive_data()
+            memory_dimm_count, memory_dimm_data = redfish_helper.get_memory_dimm_data()
+            smart_storage_health_data: Dict[
+                str, Any
+            ] = redfish_helper.get_smart_storage_health_data()
 
         if not sensor_data:
             logger.error("Failed to get sensor data via redfish.")
