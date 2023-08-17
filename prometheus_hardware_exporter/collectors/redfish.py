@@ -31,7 +31,6 @@ class RedfishHelper:
         self.timeout = config.redfish_client_timeout
         self.max_retry = config.redfish_client_max_retry
         self.discover = self.get_discover(config.redfish_discover_cache_ttl)
-        self.sys_inventory: Optional[List[Dict[str, Any]]] = None
         self.redfish_obj: HttpClient = self._get_redfish_obj()
 
     def __enter__(self):
@@ -104,7 +103,7 @@ class RedfishHelper:
         resp: RestResponse = redfish_obj.get(uri)
         if resp.status == 200:
             return resp.dict
-        logger.info("Not able to query from URI: %s.", uri)
+        logger.debug("Not able to query from URI: %s.", uri)
         return None
 
     def get_processor_data(self) -> Tuple[Dict[str, int], Dict[str, List]]:
@@ -114,15 +113,44 @@ class RedfishHelper:
             processor_count: Dict of system ids mapped to the total number
             of processors on that system.
             processor_data: Dict of system ids mapped to list of processors on that system.
+
+        Example of processor_count: {"sys1": 2, "sys2": 1}
+
+        Example of processor_data:
+        {
+            "sys1": [
+                {
+                    "processor_id": "p11",
+                    "model": "Processor sys1 Model 1",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+                {
+                    "processor_id": "p12",
+                    "model": "Processor sys1 Model 2",
+                    "health": "Warning",
+                    "state": "Disabled",
+                },
+            ],
+            "sys2": [
+                {
+                    "processor_id": "p21",
+                    "model": "Processor sys2 Model 1",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+            ],
+        }
         """
         processor_data: Dict[str, List] = {}
         processor_count: Dict[str, int] = {}
         processors_root_uri_pattern = "/redfish/v1/Systems/{}/Processors"
+        logger.info("Getting processor data...")
 
         try:
             system_ids: List[str] = redfish_utilities.systems.get_system_ids(self.redfish_obj)
         except redfish_utilities.systems.RedfishSystemNotFoundError:
-            logger.info("No system instances found.")
+            logger.debug("No system instances found.")
             return processor_count, processor_data
 
         for system_id in system_ids:
@@ -148,8 +176,8 @@ class RedfishHelper:
                     }
                 )
             processor_data[system_id] = processor_data_in_curr_system
-        logger.info("Processor count: %s", processor_count)
-        logger.info("Processor data: %s", processor_data)
+        logger.debug("Processor count: %s", processor_count)
+        logger.debug("Processor data: %s", processor_data)
         return processor_count, processor_data
 
     def get_storage_controller_data(self) -> Tuple[Dict[str, int], Dict[str, List]]:
@@ -160,16 +188,38 @@ class RedfishHelper:
             of storage controllers on that system.
             storage_controller_data: Dict of system ids mapped to list of storage
             controllers on that system.
+
+        Example of storage_controller_count: {"sys1": 2}
+
+        Example of storage_controller_data:
+        {
+            "sys1": [
+                {
+                    "storage_id": "STOR1",
+                    "controller_id": "sc0",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+                {
+                    "storage_id": "STOR2",
+                    "controller_id": "sc1",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+            ],
+        }
+
         """
         storage_controller_data: Dict[str, List] = {}
         # storage controllers on each system
         storage_controller_count: Dict[str, int] = {}
         storage_root_uri_pattern = "/redfish/v1/Systems/{}/Storage"
+        logger.info("Getting storage controller data...")
 
         try:
             system_ids: List[str] = redfish_utilities.systems.get_system_ids(self.redfish_obj)
         except redfish_utilities.systems.RedfishSystemNotFoundError:
-            logger.info("No system instances found.")
+            logger.debug("No system instances found.")
             return storage_controller_count, storage_controller_data
 
         for system_id in system_ids:
@@ -182,43 +232,44 @@ class RedfishHelper:
             storage_controller_data_in_curr_system = []
             for storage_id in storage_ids:
                 # eg: /redfish/v1/Systems/1/Storage/XYZ123
-                curr_storage_uri = (
-                    storage_root_uri_pattern.format(system_id) + "/" + storage_id
+                curr_storage_uri = storage_root_uri_pattern.format(system_id) + "/" + storage_id
+
+            # list of storage controllers for that storage id
+            storage_controllers_list: List[Dict] = self.redfish_obj.get(curr_storage_uri).dict[
+                "StorageControllers"
+            ]
+            storage_controller_count[system_id] += len(storage_controllers_list)
+
+            # picking out the required data from each storage controller in the list
+            for data in storage_controllers_list:
+                storage_controller_data_in_curr_system.append(
+                    {
+                        "storage_id": storage_id,
+                        "controller_id": data["MemberId"],
+                        "state": data["Status"]["State"],
+                        "health": data["Status"]["Health"] or "NA",
+                    }
                 )
-
-                # list of storage controllers for that storage id
-                storage_controllers_list: List[Dict] = self.redfish_obj.get(curr_storage_uri).dict[
-                    "StorageControllers"
-                ]
-                storage_controller_count[system_id] += len(storage_controllers_list)
-
-                # picking out the required data from each storage controller in the list
-                for data in storage_controllers_list:
-                    storage_controller_data_in_curr_system.append(
-                        {
-                            "storage_id": storage_id,
-                            "controller_id": data["MemberId"],
-                            "state": data["Status"]["State"],
-                            "health": data["Status"]["Health"] or "NA",
-                        }
-                    )
 
             storage_controller_data[system_id] = storage_controller_data_in_curr_system
 
-
-        logger.info("storage controller count: %s", storage_controller_count)
-        logger.info("storage controller data: %s", storage_controller_data)
+        logger.debug("storage controller count: %s", storage_controller_count)
+        logger.debug("storage controller data: %s", storage_controller_data)
         return storage_controller_count, storage_controller_data
 
     def get_network_adapter_data(self) -> Dict[str, int]:
-        """Return dict of chassis ids mapped to number of network adapters on that chassis."""
+        """Return dict of chassis ids mapped to number of network adapters on that chassis.
+
+        Example of network_adapter_count: {"chass1": 1, "chass2": 2}
+        """
         network_adapter_count: Dict[str, int] = {}
         network_adapters_root_uri_pattern = "/redfish/v1/Chassis/{}/NetworkAdapters"
+        logger.info("Getting network adapter data...")
 
         try:
             chassis_ids: List[str] = redfish_utilities.inventory.get_chassis_ids(self.redfish_obj)
         except redfish_utilities.inventory.RedfishChassisNotFoundError:
-            logger.info("No chassis instances found.")
+            logger.debug("No chassis instances found.")
             return network_adapter_count
 
         for chassis_id in chassis_ids:
@@ -228,12 +279,12 @@ class RedfishHelper:
                 self.redfish_obj, network_adapters_root_uri
             )
             if not network_adapters:
-                logger.info("No network adapters could be found on chassis id: %s", chassis_id)
+                logger.debug("No network adapters could be found on chassis id: %s", chassis_id)
                 continue
-            logger.info("Network adapters: %s", network_adapters)
+            logger.debug("Network adapters: %s", network_adapters)
             network_adapter_count[chassis_id] = len(network_adapters["Members"])
 
-        logger.info("Network adapter count: %s", network_adapter_count)
+        logger.debug("Network adapter count: %s", network_adapter_count)
         return network_adapter_count
 
     def get_chassis_data(self) -> Dict[str, Dict]:
@@ -241,13 +292,35 @@ class RedfishHelper:
 
         The returned chassis_data is a dict of chassis ids each mapped to a
         dict of data for that chassis.
+
+        Example of chassis_data:
+        {
+            "chass1": {
+                "chassis_id": "chass1",
+                "chassis_type": "RackMount",
+                "manufacturer": "",
+                "model": "Chassis Model chass1",
+                "health": "OK",
+                "state": "Enabled",
+            },
+            "chass2": {
+                "chassis_id": "chass2",
+                "chassis_type": "RackMount",
+                "manufacturer": "",
+                "model": "Chassis Model chass2",
+                "health": "OK",
+                "state": "Enabled",
+            },
+        }
         """
         chassis_data: Dict[str, Dict] = {}
         chassis_root_uri_pattern = "/redfish/v1/Chassis/{}"
+        logger.info("Getting chassis data...")
+
         try:
             chassis_ids: List[str] = redfish_utilities.inventory.get_chassis_ids(self.redfish_obj)
         except redfish_utilities.inventory.RedfishChassisNotFoundError:
-            logger.info("No chassis instances found.")
+            logger.debug("No chassis instances found.")
             return chassis_data
 
         for chassis_id in chassis_ids:
@@ -263,7 +336,7 @@ class RedfishHelper:
                 "state": curr_chassis["Status"]["State"],
             }
 
-        logger.info("Chassis data: %s", chassis_data)
+        logger.debug("Chassis data: %s", chassis_data)
         return chassis_data
 
     def get_storage_drive_data(self) -> Tuple[Dict[str, int], Dict[str, List]]:
@@ -274,16 +347,39 @@ class RedfishHelper:
             of storage drives on that system.
             storage_drive_data: Dict of system ids mapped to list of storage
             drives on that system.
+
+        Example of storage_drive_count: {"sys1": 1, "sys2": 1}
+
+        Example of storage_drive_data:
+        {
+            "sys1": [
+                {
+                    "storage_id": "STOR1",
+                    "drive_id": "d11",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+            ],
+            "sys2": [
+                {
+                    "storage_id": "STOR2",
+                    "drive_id": "d21",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+            ],
+        },
         """
         storage_drive_data: Dict[str, List] = {}
         # storage drives on each system
         storage_drive_count: Dict[str, int] = {}
         storage_root_uri_pattern = "/redfish/v1/Systems/{}/Storage"
+        logger.info("Getting storage drive data...")
 
         try:
             system_ids: List[str] = redfish_utilities.systems.get_system_ids(self.redfish_obj)
         except redfish_utilities.systems.RedfishSystemNotFoundError:
-            logger.info("No system instances found.")
+            logger.debug("No system instances found.")
             return storage_drive_count, storage_drive_data
 
         for system_id in system_ids:
@@ -295,9 +391,7 @@ class RedfishHelper:
             storage_drive_data_in_curr_system: List[Dict] = []
             for storage_id in storage_ids:
                 # /redfish/v1/Systems/1/Storage/XYZ123/
-                curr_storage_uri = (
-                    storage_root_uri_pattern.format(system_id) + "/" + storage_id
-                )
+                curr_storage_uri = storage_root_uri_pattern.format(system_id) + "/" + storage_id
                 # list of storage drives for that storage id
                 storage_drives_list: List[Dict] = self.redfish_obj.get(curr_storage_uri).dict[
                     "Drives"
@@ -309,7 +403,7 @@ class RedfishHelper:
                 ]
 
                 for uri in storage_drive_uris:
-                    data = redfish_obj.get(uri).dict
+                    data = self.redfish_obj.get(uri).dict
                     storage_drive_data_in_curr_system.append(
                         {
                             "storage_id": storage_id,
@@ -321,8 +415,8 @@ class RedfishHelper:
 
             storage_drive_data[system_id] = storage_drive_data_in_curr_system
 
-        logger.info("storage drive count: %s", storage_drive_count)
-        logger.info("storage drive data: %s", storage_drive_data)
+        logger.debug("storage drive count: %s", storage_drive_count)
+        logger.debug("storage drive data: %s", storage_drive_data)
         return storage_drive_count, storage_drive_data
 
     def get_memory_dimm_data(self) -> Tuple[Dict[str, int], Dict[str, List]]:
@@ -333,20 +427,41 @@ class RedfishHelper:
             of memory dimms on that system.
             memory_dimm_data: Dict of system ids mapped to list of memory dimms
             on that system.
+
+        Example of memory_dimm_count: {"s1": 1, "s2": 1}
+
+        Example of memory_dimm_data:
+        {
+            "s1": [
+                {
+                    "memory_id": "dimm1",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+            ],
+            "s2": [
+                {
+                    "memory_id": "dimm2",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+            ],
+        },
         """
         memory_dimm_data: Dict[str, List] = {}
         memory_dimm_count: Dict[str, int] = {}
-        memory_dimm_uris: List[str] = []
         memory_root_uri_pattern = "/redfish/v1/Systems/{}/Memory"
+        logger.info("Getting memory dimm data...")
 
         try:
             system_ids: List[str] = redfish_utilities.systems.get_system_ids(self.redfish_obj)
         except redfish_utilities.systems.RedfishSystemNotFoundError:
-            logger.info("No system instances found.")
+            logger.debug("No system instances found.")
             return memory_dimm_count, memory_dimm_data
 
         for system_id in system_ids:
             # /redfish/v1/Systems/1/Memory
+            memory_dimm_uris: List[str] = []
             memory_root_uri = memory_root_uri_pattern.format(system_id)
             curr_memory_data: Dict[str, Any] = self.redfish_obj.get(memory_root_uri).dict
             for member in curr_memory_data["Members"]:
@@ -365,8 +480,8 @@ class RedfishHelper:
                 )
             memory_dimm_data[system_id] = memory_dimm_data_in_curr_system
 
-        logger.info("memory dimm count: %s", memory_dimm_count)
-        logger.info("memory dimm data: %s", memory_dimm_data)
+        logger.debug("memory dimm count: %s", memory_dimm_count)
+        logger.debug("memory dimm data: %s", memory_dimm_data)
         return memory_dimm_count, memory_dimm_data
 
     def get_smart_storage_health_data(self) -> Dict[str, Any]:
@@ -375,14 +490,13 @@ class RedfishHelper:
         Returns a dict of chassis ids mapped to the smart storage health data on that chassis.
         """
         smart_storage_health_data: Dict[str, Any] = {}
-
         smart_storage_root_uri_pattern = "/redfish/v1/Chassis/{}/SmartStorage"
-
+        logger.info("Getting smart storage health data...")
 
         try:
             chassis_ids: List[str] = redfish_utilities.inventory.get_chassis_ids(self.redfish_obj)
         except redfish_utilities.inventory.RedfishChassisNotFoundError:
-            logger.info("No chassis instances found.")
+            logger.debug("No chassis instances found.")
             return smart_storage_health_data
 
         for chassis_id in chassis_ids:
@@ -391,15 +505,13 @@ class RedfishHelper:
                 self.redfish_obj, smart_storage_uri
             )
             if not smart_storage_data:
-                logger.info(
-                    "Smart Storage URI endpoint not found for chassis ID: %s", chassis_id
-                )
+                logger.debug("Smart Storage URI endpoint not found for chassis ID: %s", chassis_id)
                 break
             smart_storage_health_data[chassis_id] = {
                 "health": smart_storage_data["Status"]["Health"] or "NA",
             }
 
-        logger.info("smart storage health data: %s", smart_storage_health_data)
+        logger.debug("smart storage health data: %s", smart_storage_health_data)
         return smart_storage_health_data
 
     def get_discover(self, ttl: int) -> Callable:
@@ -416,7 +528,7 @@ class RedfishHelper:
             if len(services) == 0:
                 logger.info("No redfish services discovered")
                 return False
-            logger.info("Discovered redfish services: %s", services)
+            logger.debug("Discovered redfish services: %s", services)
             return True
 
         return _discover

@@ -961,37 +961,20 @@ class RedfishCollector(BlockingCollector):
                 str, Any
             ] = redfish_helper.get_smart_storage_health_data()
 
-        if not sensor_data:
-            logger.error("Failed to get sensor data via redfish.")
-            payloads.append(Payload(name="redfish_call_success", value=0.0))
-            return payloads
-        if not processor_data:
-            logger.error("Failed to get processor data via redfish.")
-            payloads.append(Payload(name="redfish_call_success", value=0.0))
-            return payloads
-        if not storage_controller_data:
-            logger.error("Failed to get storage controller data via redfish.")
-            payloads.append(Payload(name="redfish_call_success", value=0.0))
-            return payloads
-        if not network_adapter_count:
-            logger.error("Failed to get network adapter data via redfish.")
-            payloads.append(Payload(name="redfish_call_success", value=0.0))
-            return payloads
-        if not chassis_data:
-            logger.error("Failed to get chassis data via redfish.")
-            payloads.append(Payload(name="redfish_call_success", value=0.0))
-            return payloads
-        if not storage_drive_data:
-            logger.error("Failed to get storage drive data via redfish.")
-            payloads.append(Payload(name="redfish_call_success", value=0.0))
-            return payloads
-        if not memory_dimm_data:
-            logger.error("Failed to get memory DIMM data via redfish.")
-            payloads.append(Payload(name="redfish_call_success", value=0.0))
-            return payloads
+        metrics = {
+            "sensor": sensor_data,
+            "processor": processor_data,
+            "storage controller": storage_controller_data,
+            "network adapter": network_adapter_count,
+            "chassis": chassis_data,
+            "storage drive": storage_drive_data,
+            "memory dimm": memory_dimm_data,
+            "smart storage health": smart_storage_health_data,
+        }
 
-        if not smart_storage_health_data:
-            logger.info("Failed to get smart storage health data via redfish.")
+        for metric_name, metric_data in metrics.items():
+            if not metric_data:
+                logger.error("Failed to get %s data via redfish", metric_name)
 
         payloads.append(Payload(name="redfish_call_success", value=1.0))
 
@@ -1111,15 +1094,14 @@ class RedfishCollector(BlockingCollector):
                 )
 
         # Appending smart storage health data to payload (if present)
-        if smart_storage_health_data:
-            for chassis_id, curr_smart_storage_health_data in smart_storage_health_data.items():
-                payloads.append(
-                    Payload(
-                        name="redfish_smart_storage_health",
-                        value=1.0 if curr_smart_storage_health_data["health"] == "OK" else 0.0,
-                        labels=[chassis_id],
-                    )
+        for chassis_id, curr_smart_storage_health_data in smart_storage_health_data.items():
+            payloads.append(
+                Payload(
+                    name="redfish_smart_storage_health",
+                    value=1.0 if curr_smart_storage_health_data["health"] == "OK" else 0.0,
+                    labels=[chassis_id],
                 )
+            )
         return payloads
 
     def process(self, payloads: List[Payload], datastore: Dict[str, Payload]) -> List[Payload]:
