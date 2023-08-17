@@ -177,7 +177,7 @@ class RedfishHelper:
                 processor_data_in_curr_system.append(
                     {
                         "processor_id": processor["Id"],
-                        "model": processor["Model"],
+                        "model": processor["Model"] or "NA",
                         "health": processor["Status"]["Health"] or "NA",
                         "state": processor["Status"]["State"],
                     }
@@ -303,7 +303,6 @@ class RedfishHelper:
         Example of chassis_data:
         {
             "chass1": {
-                "chassis_id": "chass1",
                 "chassis_type": "RackMount",
                 "manufacturer": "",
                 "model": "Chassis Model chass1",
@@ -311,7 +310,6 @@ class RedfishHelper:
                 "state": "Enabled",
             },
             "chass2": {
-                "chassis_id": "chass2",
                 "chassis_type": "RackMount",
                 "manufacturer": "",
                 "model": "Chassis Model chass2",
@@ -335,10 +333,9 @@ class RedfishHelper:
             chassis_uri = chassis_root_uri_pattern.format(chassis_id)
             curr_chassis: Dict[str, Any] = self.redfish_obj.get(chassis_uri).dict
             chassis_data[chassis_id] = {
-                "chassis_id": curr_chassis["Id"],
-                "chassis_type": curr_chassis["ChassisType"],
-                "manufacturer": curr_chassis["Manufacturer"],
-                "model": curr_chassis["Model"],
+                "chassis_type": curr_chassis["ChassisType"] or "NA",
+                "manufacturer": curr_chassis["Manufacturer"] or "NA",
+                "model": curr_chassis["Model"] or "NA",
                 "health": curr_chassis["Status"]["Health"] or "NA",
                 "state": curr_chassis["Status"]["State"],
             }
