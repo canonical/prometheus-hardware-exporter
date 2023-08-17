@@ -22,6 +22,26 @@ logger = getLogger(__name__)
 # pylint: disable=too-many-instance-attributes
 
 
+def get_cached_discover_function(ttl: int) -> Callable:
+    """Return the cached discover function.
+
+    Passes the ttl value to the cache decorator at runtime.
+    """
+
+    @ttl_cache(ttl=ttl)
+    def _discover() -> bool:
+        """Return true if redfish services have been discovered."""
+        logger.info("Discovering redfish services...")
+        services = redfish.discover_ssdp()
+        if len(services) == 0:
+            logger.info("No redfish services discovered")
+            return False
+        logger.debug("Discovered redfish services: %s", services)
+        return True
+
+    return _discover
+
+
 class RedfishHelper:
     """Helper function for redfish."""
 
@@ -516,27 +536,3 @@ class RedfishHelper:
 
         logger.debug("smart storage health data: %s", smart_storage_health_data)
         return smart_storage_health_data
-
-
-class RedfishDiscover:
-    def __init__(self, config: Config) -> None:
-        self.discover_redfish_services = self.get_discover(config.redfish_discover_cache_ttl)
-
-    def get_discover(self, ttl: int) -> Callable:
-        """Return the cached discover function.
-
-        Passes the ttl value to the cache decorator at runtime.
-        """
-
-        @ttl_cache(ttl=ttl)
-        def _discover() -> bool:
-            """Return true if redfish services have been discovered."""
-            logger.info("Discovering redfish services...")
-            services = redfish.discover_ssdp()
-            if len(services) == 0:
-                logger.info("No redfish services discovered")
-                return False
-            logger.debug("Discovered redfish services: %s", services)
-            return True
-
-        return _discover
