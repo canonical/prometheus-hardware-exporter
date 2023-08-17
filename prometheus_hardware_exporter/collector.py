@@ -9,7 +9,7 @@ from .collectors.ipmi_dcmi import IpmiDcmi
 from .collectors.ipmi_sel import IpmiSel
 from .collectors.ipmimonitoring import IpmiMonitoring
 from .collectors.perccli import PercCLI
-from .collectors.redfish import RedfishHelper
+from .collectors.redfish import RedfishHelper, RedfishDiscover
 from .collectors.sasircu import LSISASCollectorHelper, Sasircu
 from .collectors.ssacli import SsaCLI
 from .collectors.storcli import MegaRAIDCollectorHelper, StorCLI
@@ -854,6 +854,7 @@ class RedfishCollector(BlockingCollector):
         """Initialize RedfishHelper instance."""
         super().__init__(config)
         self.config = config
+        self.redfish_discover = RedfishDiscover(config)
 
     @property
     def specifications(self) -> List[Specification]:
@@ -935,7 +936,7 @@ class RedfishCollector(BlockingCollector):
         """Load redfish data."""
         payloads: List[Payload] = []
         with RedfishHelper(self.config) as redfish_helper:
-            service_status = redfish_helper.discover()
+            service_status = self.redfish_discover.discover_redfish_services()
             payloads.append(Payload(name="redfish_service_available", value=float(service_status)))
 
             processor_count: Dict[str, int]

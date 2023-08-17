@@ -32,7 +32,6 @@ class RedfishHelper:
         self.password = config.redfish_password
         self.timeout = config.redfish_client_timeout
         self.max_retry = config.redfish_client_max_retry
-        self.discover = self.get_discover(config.redfish_discover_cache_ttl)
         self.redfish_obj: HttpClient = self._get_redfish_obj()
 
     def __enter__(self) -> Self:
@@ -517,6 +516,11 @@ class RedfishHelper:
 
         logger.debug("smart storage health data: %s", smart_storage_health_data)
         return smart_storage_health_data
+
+
+class RedfishDiscover:
+    def __init__(self, config: Config) -> None:
+        self.discover_redfish_services = self.get_discover(config.redfish_discover_cache_ttl)
 
     def get_discover(self, ttl: int) -> Callable:
         """Return the cached discover function.
