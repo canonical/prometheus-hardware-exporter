@@ -1,5 +1,6 @@
 """Redfish collector."""
 from logging import getLogger
+from types import TracebackType
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import redfish
@@ -12,6 +13,7 @@ from redfish.rest.v1 import (
     RetriesExhaustedError,
     SessionCreationError,
 )
+from typing_extensions import Self
 
 from prometheus_hardware_exporter.config import Config
 
@@ -33,11 +35,16 @@ class RedfishHelper:
         self.discover = self.get_discover(config.redfish_discover_cache_ttl)
         self.redfish_obj: HttpClient = self._get_redfish_obj()
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         self.redfish_obj.login(auth="session")
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         self.redfish_obj.logout()
 
     def _get_redfish_obj(self) -> Optional[HttpClient]:
@@ -157,7 +164,7 @@ class RedfishHelper:
             processor_uris: List[str] = []
             # eg: /redfish/v1/Systems/1/Processors
             processors_root_uri = processors_root_uri_pattern.format(system_id)
-            processor_members: Dict[str, Any] = self.redfish_obj.get(processors_root_uri).dict[
+            processor_members: List[Dict] = self.redfish_obj.get(processors_root_uri).dict[
                 "Members"
             ]
             for member in processor_members:
@@ -234,22 +241,22 @@ class RedfishHelper:
                 # eg: /redfish/v1/Systems/1/Storage/XYZ123
                 curr_storage_uri = storage_root_uri_pattern.format(system_id) + "/" + storage_id
 
-            # list of storage controllers for that storage id
-            storage_controllers_list: List[Dict] = self.redfish_obj.get(curr_storage_uri).dict[
-                "StorageControllers"
-            ]
-            storage_controller_count[system_id] += len(storage_controllers_list)
+                # list of storage controllers for that storage id
+                storage_controllers_list: List[Dict] = self.redfish_obj.get(curr_storage_uri).dict[
+                    "StorageControllers"
+                ]
+                storage_controller_count[system_id] += len(storage_controllers_list)
 
-            # picking out the required data from each storage controller in the list
-            for data in storage_controllers_list:
-                storage_controller_data_in_curr_system.append(
-                    {
-                        "storage_id": storage_id,
-                        "controller_id": data["MemberId"],
-                        "state": data["Status"]["State"],
-                        "health": data["Status"]["Health"] or "NA",
-                    }
-                )
+                # picking out the required data from each storage controller in the list
+                for data in storage_controllers_list:
+                    storage_controller_data_in_curr_system.append(
+                        {
+                            "storage_id": storage_id,
+                            "controller_id": data["MemberId"],
+                            "state": data["Status"]["State"],
+                            "health": data["Status"]["Health"] or "NA",
+                        }
+                    )
 
             storage_controller_data[system_id] = storage_controller_data_in_curr_system
 
