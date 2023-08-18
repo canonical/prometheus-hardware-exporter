@@ -9,7 +9,7 @@ from .collectors.ipmi_dcmi import IpmiDcmi
 from .collectors.ipmi_sel import IpmiSel
 from .collectors.ipmimonitoring import IpmiMonitoring
 from .collectors.perccli import PercCLI
-from .collectors.redfish import get_cached_discover_function, RedfishHelper
+from .collectors.redfish import RedfishHelper, get_cached_discover_function
 from .collectors.sasircu import LSISASCollectorHelper, Sasircu
 from .collectors.ssacli import SsaCLI
 from .collectors.storcli import MegaRAIDCollectorHelper, StorCLI
@@ -854,7 +854,9 @@ class RedfishCollector(BlockingCollector):
         """Initialize RedfishHelper instance."""
         super().__init__(config)
         self.config = config
-        self.discover_redfish_services = get_cached_discover_function(config.redfish_discover_cache_ttl)
+        self.discover_redfish_services = get_cached_discover_function(
+            config.redfish_discover_cache_ttl
+        )
 
     @property
     def specifications(self) -> List[Specification]:
@@ -936,6 +938,10 @@ class RedfishCollector(BlockingCollector):
         """Load redfish data."""
         payloads: List[Payload] = []
         with RedfishHelper(self.config) as redfish_helper:
+            # redfish_obj returns None if login was not successful
+            if redfish_helper.redfish_obj is None:
+                payloads.append(Payload(name="redfish_call_success", value=0.0))
+                return payloads
             service_status = self.discover_redfish_services()
             payloads.append(Payload(name="redfish_service_available", value=float(service_status)))
 
@@ -983,33 +989,40 @@ class RedfishCollector(BlockingCollector):
 
         payloads.append(Payload(name="redfish_call_success", value=1.0))
 
-        payloads = self._create_sensor_metric_payload(metrics["sensor_data"], payloads)
-        payloads = self._create_processor_metric_payload(
-            metrics["processor_count"], metrics["processor_data"], payloads
+        payloads.extend(self._create_sensor_metric_payload(metrics["sensor_data"]))
+        payloads.extend(
+            self._create_processor_metric_payload(
+                metrics["processor_count"], metrics["processor_data"]
+            )
         )
-        payloads = self._create_storage_controller_metric_payload(
-            metrics["storage_controller_count"], metrics["storage_controller_data"], payloads
+        payloads.extend(
+            self._create_storage_controller_metric_payload(
+                metrics["storage_controller_count"], metrics["storage_controller_data"]
+            )
         )
-        payloads = self._create_network_adapter_metric_payload(
-            metrics["network_adapter_count"], payloads
+        payloads.extend(
+            self._create_network_adapter_metric_payload(metrics["network_adapter_count"])
         )
-        payloads = self._create_chassis_metric_payload(metrics["chassis_data"], payloads)
-        payloads = self._create_storage_drive_metric_payload(
-            metrics["storage_drive_count"], metrics["storage_drive_data"], payloads
+        payloads.extend(self._create_chassis_metric_payload(metrics["chassis_data"]))
+        payloads.extend(
+            self._create_storage_drive_metric_payload(
+                metrics["storage_drive_count"], metrics["storage_drive_data"]
+            )
         )
-        payloads = self._create_memory_dimm_metric_payload(
-            metrics["memory_dimm_count"], metrics["memory_dimm_data"], payloads
+        payloads.extend(
+            self._create_memory_dimm_metric_payload(
+                metrics["memory_dimm_count"], metrics["memory_dimm_data"]
+            )
         )
-        payloads = self._create_smart_storage_health_metric_payload(
-            metrics["smart_storage_health_data"], payloads
+        payloads.extend(
+            self._create_smart_storage_health_metric_payload(metrics["smart_storage_health_data"])
         )
 
         return payloads
 
-    def _create_sensor_metric_payload(
-        self, sensor_data: Dict[str, List], payloads: List[Payload]
-    ) -> List[Payload]:
+    def _create_sensor_metric_payload(self, sensor_data: Dict[str, List]) -> List[Payload]:
         """Append sensor metric data to the payload."""
+        payloads = []
         for chassis_name, curr_sensor_data in sensor_data.items():
             for sensor_data_item in curr_sensor_data:
                 payloads.append(
@@ -1029,9 +1042,9 @@ class RedfishCollector(BlockingCollector):
         self,
         processor_count: Dict[str, int],
         processor_data: Dict[str, List],
-        payloads: List[Payload],
     ) -> List[Payload]:
         """Append processor metric data to the payload."""
+        payloads = []
         for system_id, curr_processor_data in processor_data.items():
             payloads.append(
                 Payload(
@@ -1059,9 +1072,9 @@ class RedfishCollector(BlockingCollector):
         self,
         storage_controller_count: Dict[str, int],
         storage_controller_data: Dict[str, List],
-        payloads: List[Payload],
     ) -> List[Payload]:
         """Append storage controller metric data to the payload."""
+        payloads = []
         for system_id, curr_storage_controller_data in storage_controller_data.items():
             payloads.append(
                 Payload(
@@ -1086,9 +1099,10 @@ class RedfishCollector(BlockingCollector):
         return payloads
 
     def _create_network_adapter_metric_payload(
-        self, network_adapter_count: Dict[str, Any], payloads: List[Payload]
+        self, network_adapter_count: Dict[str, Any]
     ) -> List[Payload]:
         """Append network adapter metric data to the payload."""
+        payloads = []
         for chassis_id, count in network_adapter_count.items():
             payloads.append(
                 Payload(
@@ -1099,10 +1113,9 @@ class RedfishCollector(BlockingCollector):
             )
         return payloads
 
-    def _create_chassis_metric_payload(
-        self, chassis_data: Dict[str, Dict], payloads: List[Payload]
-    ) -> List[Payload]:
+    def _create_chassis_metric_payload(self, chassis_data: Dict[str, Dict]) -> List[Payload]:
         """Append chassis metric data to the payload."""
+        payloads = []
         for chassis_id, curr_chassis_data in chassis_data.items():
             payloads.append(
                 Payload(
@@ -1123,9 +1136,9 @@ class RedfishCollector(BlockingCollector):
         self,
         storage_drive_count: Dict[str, int],
         storage_drive_data: Dict[str, List],
-        payloads: List[Payload],
     ) -> List[Payload]:
         """Append storage drive metric data to the payload."""
+        payloads = []
         for system_id, curr_storage_drive_data in storage_drive_data.items():
             payloads.append(
                 Payload(
@@ -1153,9 +1166,9 @@ class RedfishCollector(BlockingCollector):
         self,
         memory_dimm_count: Dict[str, int],
         memory_dimm_data: Dict[str, List],
-        payloads: List[Payload],
     ) -> List[Payload]:
         """Append memory dimm metric data to the payload."""
+        payloads = []
         for system_id, curr_memory_dimm_data in memory_dimm_data.items():
             payloads.append(
                 Payload(
@@ -1179,9 +1192,10 @@ class RedfishCollector(BlockingCollector):
         return payloads
 
     def _create_smart_storage_health_metric_payload(
-        self, smart_storage_health_data: Dict[str, Any], payloads: List[Payload]
+        self, smart_storage_health_data: Dict[str, Any]
     ) -> List[Payload]:
         """Append smart storage health metric data to the payload."""
+        payloads = []
         for chassis_id, curr_smart_storage_health_data in smart_storage_health_data.items():
             payloads.append(
                 Payload(

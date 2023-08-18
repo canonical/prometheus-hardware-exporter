@@ -68,6 +68,7 @@ class RedfishHelper:
 
     def _get_redfish_obj(self) -> Optional[HttpClient]:
         """Return a new redfish object."""
+        self.redfish_obj = None
         try:
             self.redfish_obj = redfish.redfish_client(
                 base_url=self.host,
