@@ -573,7 +573,7 @@ class TestCustomCollector(unittest.TestCase):
 
     @patch("prometheus_hardware_exporter.collector.logger")
     @patch(
-        "prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_smart_storage_health_data"
+        "prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_smart_storage_health_data"  # noqa: E501
     )
     @patch("prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_memory_dimm_data")
     @patch("prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_storage_drive_data")

@@ -1,6 +1,5 @@
 """Redfish collector."""
 from logging import getLogger
-from types import TracebackType
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import redfish
@@ -46,7 +45,7 @@ class RedfishHelper:
     """Helper function for redfish."""
 
     def __init__(self, config: Config) -> None:
-        """Initialize values for class"""
+        """Initialize values for class."""
         self.host = config.redfish_host
         self.username = config.redfish_username
         self.password = config.redfish_password
@@ -55,16 +54,18 @@ class RedfishHelper:
         self.redfish_obj: HttpClient = self._get_redfish_obj()
 
     def __enter__(self) -> Self:
+        """Login to redfish while entering context manager."""
         if self.redfish_obj is not None:
             self.redfish_obj.login(auth="session")
         return self
 
     def __exit__(
         self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
+        exc_type: Any,
+        exc_val: Any,
+        exc_tb: Any,
     ) -> None:
+        """Logout from redfish while exiting context manager."""
         if self.redfish_obj is not None:
             self.redfish_obj.logout()
 

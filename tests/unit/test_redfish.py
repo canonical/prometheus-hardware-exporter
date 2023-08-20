@@ -3,11 +3,7 @@ from time import sleep
 from unittest.mock import Mock, patch
 
 import redfish_utilities
-from redfish.rest.v1 import (
-    InvalidCredentialsError,
-    RetriesExhaustedError,
-    SessionCreationError,
-)
+from redfish.rest.v1 import InvalidCredentialsError, SessionCreationError
 
 from prometheus_hardware_exporter.collectors.redfish import (
     RedfishHelper,
@@ -59,7 +55,7 @@ class TestRedfishMetrics(unittest.TestCase):
             redfish_client_max_retry=5,
             redfish_discover_cache_ttl=5,
         )
-        with RedfishHelper(mock_config) as mock_redfish_obj:
+        with RedfishHelper(mock_config):
             mock_redfish_login.assert_called_once()
         mock_redfish_logout()
 
@@ -398,7 +394,7 @@ class TestRedfishMetrics(unittest.TestCase):
             mock_redfish_client.side_effect = err
 
             helper = self.mock_helper()
-            data = helper._retrieve_redfish_sensor_data()
+            helper._retrieve_redfish_sensor_data()
             mock_logger.exception.assert_called_with(err)
 
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
@@ -490,7 +486,7 @@ class TestRedfishMetrics(unittest.TestCase):
 
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
     @patch(
-        "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.collections.get_collection_ids"
+        "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.collections.get_collection_ids"  # noqa: E501
     )
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.systems.get_system_ids"
@@ -561,7 +557,7 @@ class TestRedfishMetrics(unittest.TestCase):
 
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
     @patch(
-        "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.inventory.get_chassis_ids"
+        "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.inventory.get_chassis_ids"  # noqa: E501
     )
     def test_12_get_network_adapter_data_success(self, mock_get_chassis_ids, mock_redfish_client):
         mock_redfish_obj = Mock()
@@ -601,7 +597,7 @@ class TestRedfishMetrics(unittest.TestCase):
     @patch("prometheus_hardware_exporter.collectors.redfish.logger")
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
     @patch(
-        "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.inventory.get_chassis_ids"
+        "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.inventory.get_chassis_ids"  # noqa: E501
     )
     def test_13_get_network_adapter_data_fail(
         self, mock_get_chassis_ids, mock_redfish_client, mock_logger
@@ -626,7 +622,7 @@ class TestRedfishMetrics(unittest.TestCase):
 
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
     @patch(
-        "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.inventory.get_chassis_ids"
+        "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.inventory.get_chassis_ids"  # noqa: E501
     )
     def test_14_get_chassis_data_success(self, mock_get_chassis_ids, mock_redfish_client):
         mock_chassis_ids = ["c1", "c2"]
@@ -681,7 +677,7 @@ class TestRedfishMetrics(unittest.TestCase):
 
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
     @patch(
-        "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.collections.get_collection_ids"
+        "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.collections.get_collection_ids"  # noqa: E501
     )
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.systems.get_system_ids"
@@ -842,7 +838,7 @@ class TestRedfishMetrics(unittest.TestCase):
 
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
     @patch(
-        "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.inventory.get_chassis_ids"
+        "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.inventory.get_chassis_ids"  # noqa: E501
     )
     def test_17_smart_storage_health_data_success(self, mock_get_chassis_ids, mock_redfish_client):
         mock_chassis_ids = ["c1"]
@@ -877,7 +873,7 @@ class TestRedfishMetrics(unittest.TestCase):
     @patch("prometheus_hardware_exporter.collectors.redfish.logger")
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
     @patch(
-        "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.inventory.get_chassis_ids"
+        "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.inventory.get_chassis_ids"  # noqa: E501
     )
     def test_18_smart_storage_health_data_fail(
         self, mock_get_chassis_ids, mock_redfish_client, mock_logger
@@ -930,7 +926,7 @@ class TestRedfishMetrics(unittest.TestCase):
 
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
     @patch(
-        "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.inventory.get_chassis_ids"
+        "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.inventory.get_chassis_ids"  # noqa: E501
     )
     def test_20_get_chassis_id_fail(self, mock_get_chassis_ids, mock_redfish_client):
         mock_redfish_obj = Mock()
