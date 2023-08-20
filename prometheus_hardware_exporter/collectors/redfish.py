@@ -55,7 +55,8 @@ class RedfishHelper:
         self.redfish_obj: HttpClient = self._get_redfish_obj()
 
     def __enter__(self) -> Self:
-        self.redfish_obj.login(auth="session")
+        if self.redfish_obj is not None:
+            self.redfish_obj.login(auth="session")
         return self
 
     def __exit__(
@@ -64,7 +65,8 @@ class RedfishHelper:
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> None:
-        self.redfish_obj.logout()
+        if self.redfish_obj is not None:
+            self.redfish_obj.logout()
 
     def _get_redfish_obj(self) -> Optional[HttpClient]:
         """Return a new redfish object."""
@@ -305,8 +307,9 @@ class RedfishHelper:
             network_adapters: Optional[Dict[str, Any]] = self._verify_redfish_call(
                 self.redfish_obj, network_adapters_root_uri
             )
-            if not network_adapters:
+            if network_adapters is None:
                 logger.debug("No network adapters could be found on chassis id: %s", chassis_id)
+                print("here")
                 continue
             logger.debug("Network adapters: %s", network_adapters)
             network_adapter_count[chassis_id] = len(network_adapters["Members"])
@@ -528,9 +531,9 @@ class RedfishHelper:
             smart_storage_data: Optional[Dict[str, Any]] = self._verify_redfish_call(
                 self.redfish_obj, smart_storage_uri
             )
-            if not smart_storage_data:
+            if smart_storage_data is None:
                 logger.debug("Smart Storage URI endpoint not found for chassis ID: %s", chassis_id)
-                break
+                continue
             smart_storage_health_data[chassis_id] = {
                 "health": smart_storage_data["Status"]["Health"] or "NA",
             }

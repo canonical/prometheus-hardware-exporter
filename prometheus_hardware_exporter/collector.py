@@ -19,6 +19,9 @@ from .core import BlockingCollector, Payload, Specification
 logger = getLogger(__name__)
 
 
+# pylint: disable=too-many-lines, too-many-locals
+
+
 class PowerEdgeRAIDCollector(BlockingCollector):
     """Collector for PowerEdge RAID controller."""
 
@@ -938,12 +941,14 @@ class RedfishCollector(BlockingCollector):
         """Load redfish data."""
         payloads: List[Payload] = []
         with RedfishHelper(self.config) as redfish_helper:
+            service_status = self.discover_redfish_services()
+            payloads.append(Payload(name="redfish_service_available", value=float(service_status)))
             # redfish_obj returns None if login was not successful
             if redfish_helper.redfish_obj is None:
                 payloads.append(Payload(name="redfish_call_success", value=0.0))
                 return payloads
-            service_status = self.discover_redfish_services()
-            payloads.append(Payload(name="redfish_service_available", value=float(service_status)))
+
+            payloads.append(Payload(name="redfish_call_success", value=1.0))
 
             processor_count: Dict[str, int]
             processor_data: Dict[str, List]
@@ -968,7 +973,7 @@ class RedfishCollector(BlockingCollector):
                 str, Any
             ] = redfish_helper.get_smart_storage_health_data()
 
-        metrics = {
+        metrics: Dict[str, Any] = {
             "sensor_data": sensor_data,
             "processor_data": processor_data,
             "processor_count": processor_count,
@@ -982,12 +987,9 @@ class RedfishCollector(BlockingCollector):
             "memory_dimm_count": memory_dimm_count,
             "smart_storage_health_data": smart_storage_health_data,
         }
-
         for metric_name, metric_data in metrics.items():
             if not metric_data:
                 logger.error("Failed to get %s via redfish", metric_name)
-
-        payloads.append(Payload(name="redfish_call_success", value=1.0))
 
         payloads.extend(self._create_sensor_metric_payload(metrics["sensor_data"]))
         payloads.extend(
@@ -1017,7 +1019,6 @@ class RedfishCollector(BlockingCollector):
         payloads.extend(
             self._create_smart_storage_health_metric_payload(metrics["smart_storage_health_data"])
         )
-
         return payloads
 
     def _create_sensor_metric_payload(self, sensor_data: Dict[str, List]) -> List[Payload]:

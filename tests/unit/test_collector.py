@@ -16,6 +16,7 @@ from prometheus_hardware_exporter.collector import (
     RedfishCollector,
     SsaCLICollector,
 )
+from prometheus_hardware_exporter.core import Payload
 
 
 class TestCustomCollector(unittest.TestCase):
@@ -546,22 +547,74 @@ class TestCustomCollector(unittest.TestCase):
         ]:
             assert name in get_payloads
 
-    def test_200_redfish_not_installed(self):
-        """Test redfish collector when redfish-utilitites is not installed."""
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collector.get_cached_discover_function")
+    def test_200_redfish_no_login(self, mock_get_cached_discover_function, mock_redfish_client):
+        """Test redfish collector when redfish login doesn't work."""
+
+        def cached_discover(*args, **kwargs):
+            def _discover(*args, **kwargs):
+                return False
+
+            return _discover
+
+        mock_get_cached_discover_function.side_effect = cached_discover
         redfish_collector = RedfishCollector(Mock())
         redfish_collector.redfish_helper = Mock()
-        redfish_collector.redfish_helper.discover.return_value = False
-        redfish_collector.redfish_helper.get_sensor_data.return_value = []
+
+        mock_redfish_client.side_effect = ConnectionError
+        mock_redfish_client.return_value.login.return_value = Mock()
+        mock_redfish_client.return_value.logout.return_value = Mock()
+        redfish_collector.discover_redfish_services.return_value = False
+
         payloads = redfish_collector.collect()
 
         self.assertEqual(len(list(payloads)), 2)
 
-    def test_201_redfish_installed_and_okay(self):
-        """Test redfish collector when redfish-utilitites is installed."""
+    @patch("prometheus_hardware_exporter.collector.logger")
+    @patch(
+        "prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_smart_storage_health_data"
+    )
+    @patch("prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_memory_dimm_data")
+    @patch("prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_storage_drive_data")
+    @patch("prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_chassis_data")
+    @patch(
+        "prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_network_adapter_data"
+    )
+    @patch(
+        "prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_storage_controller_data"
+    )
+    @patch("prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_processor_data")
+    @patch("prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_sensor_data")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collector.get_cached_discover_function")
+    def test_201_redfish_installed_and_okay(
+        self,
+        mock_get_cached_discover_function,
+        mock_redfish_client,
+        mock_get_sensor_data,
+        mock_get_processor_data,
+        mock_get_storage_controller_data,
+        mock_get_network_adapter_data,
+        mock_get_chassis_data,
+        mock_get_storage_drive_data,
+        mock_get_memory_dimm_data,
+        mock_get_smart_storage_health_data,
+        mock_logger,
+    ):
+        """Test redfish collector and check if all metrics are present in payload."""
+        payloads = []
+
+        def cached_discover(*args, **kwargs):
+            def _discover(*args, **kwargs):
+                return True
+
+            return _discover
+
+        mock_get_cached_discover_function.side_effect = cached_discover
         redfish_collector = RedfishCollector(Mock())
-        redfish_collector.redfish_helper = Mock()
-        redfish_collector.redfish_helper.discover.return_value = False
-        redfish_collector.redfish_helper.get_sensor_data.return_value = {
+
+        mock_get_sensor_data.return_value = {
             "1": [
                 {"Sensor": "State", "Reading": "Enabled", "Health": "OK"},
                 {"Sensor": "HpeServerPowerSupply State", "Reading": "Enabled", "Health": "OK"},
@@ -573,9 +626,563 @@ class TestCustomCollector(unittest.TestCase):
             ]
         }
 
+        processor_count = {"s1": 2, "s2": 1}
+        processor_data = {
+            "s1": [
+                {
+                    "processor_id": "p11",
+                    "model": "Processor s1 Model 1",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+                {
+                    "processor_id": "p12",
+                    "model": "Processor s1 Model 2",
+                    "health": "NotOK",
+                    "state": "Disabled",
+                },
+            ],
+            "s2": [
+                {
+                    "processor_id": "p21",
+                    "model": "Processor s2 Model 1",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+            ],
+        }
+        mock_get_processor_data.return_value = (
+            processor_count,
+            processor_data,
+        )
+
+        storage_controller_count = {"s1": 2}
+        storage_controller_data = {
+            "s1": [
+                {
+                    "storage_id": "STOR1",
+                    "controller_id": "sc0",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+                {
+                    "storage_id": "STOR2",
+                    "controller_id": "sc1",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+            ],
+        }
+        mock_get_storage_controller_data.return_value = (
+            storage_controller_count,
+            storage_controller_data,
+        )
+
+        # testing for empty metric
+        mock_get_network_adapter_data.return_value = {}
+
+        mock_get_chassis_data.return_value = {
+            "c1": {
+                "chassis_type": "RackMount",
+                "manufacturer": "NA",
+                "model": "Chassis Model c1",
+                "health": "OK",
+                "state": "Enabled",
+            },
+            "c2": {
+                "chassis_type": "RackMount",
+                "manufacturer": "Dell",
+                "model": "Chassis Model c2",
+                "health": "OK",
+                "state": "Enabled",
+            },
+        }
+
+        storage_drive_count = {"s1": 2}
+        storage_drive_data = {
+            "s1": [
+                {
+                    "storage_id": "STOR1",
+                    "drive_id": "d11",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+                {
+                    "storage_id": "STOR1",
+                    "drive_id": "d12",
+                    "health": "OK",
+                    "state": "Disabled",
+                },
+                {
+                    "storage_id": "STOR2",
+                    "drive_id": "d21",
+                    "health": "NA",
+                    "state": "Enabled",
+                },
+            ],
+        }
+        mock_get_storage_drive_data.return_value = (storage_drive_count, storage_drive_data)
+
+        memory_dimm_count = {"s1": 1, "s2": 1}
+        memory_dimm_data = {
+            "s1": [
+                {
+                    "memory_id": "dimm1",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+            ],
+            "s2": [
+                {
+                    "memory_id": "dimm2",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+            ],
+        }
+        mock_get_memory_dimm_data.return_value = (memory_dimm_count, memory_dimm_data)
+
+        mock_get_smart_storage_health_data.return_value = {
+            "c1": {
+                "health": "OK",
+            }
+        }
+
         payloads = redfish_collector.collect()
 
         available_metrics = [spec.name for spec in redfish_collector.specifications]
-        self.assertEqual(len(list(payloads)), 5)
+        self.assertEqual(len(list(payloads)), 24)
         for payload in payloads:
             self.assertIn(payload.name, available_metrics)
+
+        mock_logger.error.assert_called_with(
+            "Failed to get %s via redfish", "network_adapter_count"
+        )
+
+    def test_202_redfish_create_sensor_metric_payload(self):
+        mock_sensor_data = {
+            "1": [
+                {"Sensor": "State", "Reading": "Enabled", "Health": "OK"},
+                {"Sensor": "HpeServerPowerSupply State", "Reading": "Enabled", "Health": "OK"},
+                {
+                    "Sensor": "HpeServerPowerSupply LineInputVoltage",
+                    "Reading": "208V",
+                    "Health": "N/A",
+                },
+            ]
+        }
+        redfish_collector = RedfishCollector(Mock())
+        sensor_payload = redfish_collector._create_sensor_metric_payload(mock_sensor_data)
+        self.assertEqual(
+            sensor_payload,
+            [
+                Payload(
+                    name="redfish_sensor",
+                    value={
+                        "chassis": "1",
+                        "sensor": "State",
+                        "reading": "Enabled",
+                        "health": "OK",
+                    },
+                    labels=[],
+                    uuid="redfish_sensor([])",
+                ),
+                Payload(
+                    name="redfish_sensor",
+                    value={
+                        "chassis": "1",
+                        "sensor": "HpeServerPowerSupply State",
+                        "reading": "Enabled",
+                        "health": "OK",
+                    },
+                    labels=[],
+                    uuid="redfish_sensor([])",
+                ),
+                Payload(
+                    name="redfish_sensor",
+                    value={
+                        "chassis": "1",
+                        "sensor": "HpeServerPowerSupply LineInputVoltage",
+                        "reading": "208V",
+                        "health": "N/A",
+                    },
+                    labels=[],
+                    uuid="redfish_sensor([])",
+                ),
+            ],
+        )
+
+    def test_203_redfish_create_processor_metric_payload(self):
+        mock_processor_count = {"s1": 2, "s2": 1}
+        mock_processor_data = {
+            "s1": [
+                {
+                    "processor_id": "p11",
+                    "model": "Processor s1 Model 1",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+                {
+                    "processor_id": "p12",
+                    "model": "Processor s1 Model 2",
+                    "health": "NotOK",
+                    "state": "Disabled",
+                },
+            ],
+            "s2": [
+                {
+                    "processor_id": "p21",
+                    "model": "Processor s2 Model 1",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+            ],
+        }
+        redfish_collector = RedfishCollector(Mock())
+        processor_payload = redfish_collector._create_processor_metric_payload(
+            mock_processor_count, mock_processor_data
+        )
+        self.assertEqual(
+            processor_payload,
+            [
+                Payload(
+                    name="redfish_processors",
+                    value=2,
+                    labels=["s1"],
+                    uuid="redfish_processors(['s1'])",
+                ),
+                Payload(
+                    name="redfish_processor",
+                    value={
+                        "system_id": "s1",
+                        "processor_id": "p11",
+                        "model": "Processor s1 Model 1",
+                        "health": "OK",
+                        "state": "Enabled",
+                    },
+                    labels=[],
+                    uuid="redfish_processor([])",
+                ),
+                Payload(
+                    name="redfish_processor",
+                    value={
+                        "system_id": "s1",
+                        "processor_id": "p12",
+                        "model": "Processor s1 Model 2",
+                        "health": "NotOK",
+                        "state": "Disabled",
+                    },
+                    labels=[],
+                    uuid="redfish_processor([])",
+                ),
+                Payload(
+                    name="redfish_processors",
+                    value=1,
+                    labels=["s2"],
+                    uuid="redfish_processors(['s2'])",
+                ),
+                Payload(
+                    name="redfish_processor",
+                    value={
+                        "system_id": "s2",
+                        "processor_id": "p21",
+                        "model": "Processor s2 Model 1",
+                        "health": "OK",
+                        "state": "Enabled",
+                    },
+                    labels=[],
+                    uuid="redfish_processor([])",
+                ),
+            ],
+        )
+
+    def test_204_redfish_create_storage_controller_metric_payload(self):
+        mock_storage_controller_count = {"s1": 2}
+        mock_storage_controller_data = {
+            "s1": [
+                {
+                    "storage_id": "STOR1",
+                    "controller_id": "sc0",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+                {
+                    "storage_id": "STOR2",
+                    "controller_id": "sc1",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+            ],
+        }
+        redfish_collector = RedfishCollector(Mock())
+        storage_controller_payload = redfish_collector._create_storage_controller_metric_payload(
+            mock_storage_controller_count, mock_storage_controller_data
+        )
+        self.assertEqual(
+            storage_controller_payload,
+            [
+                Payload(
+                    name="redfish_storage_controllers",
+                    value=2,
+                    labels=["s1"],
+                    uuid="redfish_storage_controllers(['s1'])",
+                ),
+                Payload(
+                    name="redfish_storage_controller",
+                    value={
+                        "system_id": "s1",
+                        "storage_id": "STOR1",
+                        "controller_id": "sc0",
+                        "health": "OK",
+                        "state": "Enabled",
+                    },
+                    labels=[],
+                    uuid="redfish_storage_controller([])",
+                ),
+                Payload(
+                    name="redfish_storage_controller",
+                    value={
+                        "system_id": "s1",
+                        "storage_id": "STOR2",
+                        "controller_id": "sc1",
+                        "health": "OK",
+                        "state": "Enabled",
+                    },
+                    labels=[],
+                    uuid="redfish_storage_controller([])",
+                ),
+            ],
+        )
+
+    def test_205_redfish_create_network_adapter_metric_payload(self):
+        mock_network_adapter_count = {"c1": 2, "c2": 1}
+        redfish_collector = RedfishCollector(Mock())
+        network_adapter_payload = redfish_collector._create_network_adapter_metric_payload(
+            mock_network_adapter_count
+        )
+        self.assertEqual(
+            network_adapter_payload,
+            [
+                Payload(
+                    name="redfish_network_adapters",
+                    value=2,
+                    labels=["c1"],
+                    uuid="redfish_network_adapters(['c1'])",
+                ),
+                Payload(
+                    name="redfish_network_adapters",
+                    value=1,
+                    labels=["c2"],
+                    uuid="redfish_network_adapters(['c2'])",
+                ),
+            ],
+        )
+
+    def test_206_redfish_create_chassis_metric_payload(self):
+        mock_chassis_data = {
+            "c1": {
+                "chassis_type": "RackMount",
+                "manufacturer": "NA",
+                "model": "Chassis Model c1",
+                "health": "OK",
+                "state": "Enabled",
+            },
+            "c2": {
+                "chassis_type": "RackMount",
+                "manufacturer": "Dell",
+                "model": "Chassis Model c2",
+                "health": "OK",
+                "state": "Enabled",
+            },
+        }
+        redfish_collector = RedfishCollector(Mock())
+        chassis_payload = redfish_collector._create_chassis_metric_payload(mock_chassis_data)
+        self.assertEqual(
+            chassis_payload,
+            [
+                Payload(
+                    name="redfish_chassis",
+                    value={
+                        "chassis_id": "c1",
+                        "chassis_type": "RackMount",
+                        "manufacturer": "NA",
+                        "model": "Chassis Model c1",
+                        "state": "Enabled",
+                        "health": "OK",
+                    },
+                    labels=[],
+                    uuid="redfish_chassis([])",
+                ),
+                Payload(
+                    name="redfish_chassis",
+                    value={
+                        "chassis_id": "c2",
+                        "chassis_type": "RackMount",
+                        "manufacturer": "Dell",
+                        "model": "Chassis Model c2",
+                        "state": "Enabled",
+                        "health": "OK",
+                    },
+                    labels=[],
+                    uuid="redfish_chassis([])",
+                ),
+            ],
+        )
+
+    def test_207_redfish_create_storage_drive_metric_payload(self):
+        mock_storage_drive_count = {"s1": 3}
+        mock_storage_drive_data = {
+            "s1": [
+                {
+                    "storage_id": "STOR1",
+                    "drive_id": "d11",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+                {
+                    "storage_id": "STOR1",
+                    "drive_id": "d12",
+                    "health": "OK",
+                    "state": "Disabled",
+                },
+                {
+                    "storage_id": "STOR2",
+                    "drive_id": "d21",
+                    "health": "NA",
+                    "state": "Enabled",
+                },
+            ],
+        }
+        redfish_collector = RedfishCollector(Mock())
+        storage_drive_payload = redfish_collector._create_storage_drive_metric_payload(
+            mock_storage_drive_count, mock_storage_drive_data
+        )
+        self.assertEqual(
+            storage_drive_payload,
+            [
+                Payload(
+                    name="redfish_storage_drives",
+                    value=3,
+                    labels=["s1"],
+                    uuid="redfish_storage_drives(['s1'])",
+                ),
+                Payload(
+                    name="redfish_storage_drive",
+                    value={
+                        "system_id": "s1",
+                        "storage_id": "STOR1",
+                        "drive_id": "d11",
+                        "health": "OK",
+                        "state": "Enabled",
+                    },
+                    labels=[],
+                    uuid="redfish_storage_drive([])",
+                ),
+                Payload(
+                    name="redfish_storage_drive",
+                    value={
+                        "system_id": "s1",
+                        "storage_id": "STOR1",
+                        "drive_id": "d12",
+                        "health": "OK",
+                        "state": "Disabled",
+                    },
+                    labels=[],
+                    uuid="redfish_storage_drive([])",
+                ),
+                Payload(
+                    name="redfish_storage_drive",
+                    value={
+                        "system_id": "s1",
+                        "storage_id": "STOR2",
+                        "drive_id": "d21",
+                        "health": "NA",
+                        "state": "Enabled",
+                    },
+                    labels=[],
+                    uuid="redfish_storage_drive([])",
+                ),
+            ],
+        )
+
+    def test_208_redfish_create_memory_dimm_metric_payload(self):
+        mock_memory_dimm_count = {"s1": 1, "s2": 1}
+        mock_memory_dimm_data = {
+            "s1": [
+                {
+                    "memory_id": "dimm1",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+            ],
+            "s2": [
+                {
+                    "memory_id": "dimm2",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+            ],
+        }
+        redfish_collector = RedfishCollector(Mock())
+        memory_dimm_payload = redfish_collector._create_memory_dimm_metric_payload(
+            mock_memory_dimm_count, mock_memory_dimm_data
+        )
+        self.assertEqual(
+            memory_dimm_payload,
+            [
+                Payload(
+                    name="redfish_memory_dimms",
+                    value=1,
+                    labels=["s1"],
+                    uuid="redfish_memory_dimms(['s1'])",
+                ),
+                Payload(
+                    name="redfish_memory_dimm",
+                    value={
+                        "system_id": "s1",
+                        "memory_id": "dimm1",
+                        "health": "OK",
+                        "state": "Enabled",
+                    },
+                    labels=[],
+                    uuid="redfish_memory_dimm([])",
+                ),
+                Payload(
+                    name="redfish_memory_dimms",
+                    value=1,
+                    labels=["s2"],
+                    uuid="redfish_memory_dimms(['s2'])",
+                ),
+                Payload(
+                    name="redfish_memory_dimm",
+                    value={
+                        "system_id": "s2",
+                        "memory_id": "dimm2",
+                        "health": "OK",
+                        "state": "Enabled",
+                    },
+                    labels=[],
+                    uuid="redfish_memory_dimm([])",
+                ),
+            ],
+        )
+
+    def test_209_redfish_create_smart_storage_health_metric_payload(self):
+        mock_smart_storage_health_data = {"c1": {"health": "OK"}}
+        redfish_collector = RedfishCollector(Mock())
+        smart_storage_health_payload = (
+            redfish_collector._create_smart_storage_health_metric_payload(
+                mock_smart_storage_health_data
+            )
+        )
+        self.assertEqual(
+            smart_storage_health_payload,
+            [
+                Payload(
+                    name="redfish_smart_storage_health",
+                    value=1.0,
+                    labels=["c1"],
+                    uuid="redfish_smart_storage_health(['c1'])",
+                )
+            ],
+        )
