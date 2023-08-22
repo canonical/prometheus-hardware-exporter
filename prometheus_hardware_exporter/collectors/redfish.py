@@ -7,10 +7,7 @@ import redfish_utilities
 from cachetools.func import ttl_cache
 from redfish.rest.v1 import (
     HttpClient,
-    InvalidCredentialsError,
     RestResponse,
-    RetriesExhaustedError,
-    SessionCreationError,
 )
 from typing_extensions import Self
 
@@ -21,28 +18,28 @@ logger = getLogger(__name__)
 # pylint: disable=too-many-instance-attributes
 
 
-def get_cached_discover_function(ttl: int) -> Callable:
-    """Return the cached discover function.
-
-    Passes the ttl value to the cache decorator at runtime.
-    """
-
-    @ttl_cache(ttl=ttl)
-    def _discover() -> bool:
-        """Return true if redfish services have been discovered."""
-        logger.info("Discovering redfish services...")
-        services = redfish.discover_ssdp()
-        if len(services) == 0:
-            logger.info("No redfish services discovered")
-            return False
-        logger.debug("Discovered redfish services: %s", services)
-        return True
-
-    return _discover
-
-
 class RedfishHelper:
     """Helper function for redfish."""
+
+    @staticmethod
+    def get_cached_discover_method(ttl: int) -> Callable:
+        """Return the cached discover method.
+
+        Passes the ttl value to the cache decorator at runtime.
+        """
+
+        @ttl_cache(ttl=ttl)
+        def _discover() -> bool:
+            """Return true if redfish services have been discovered."""
+            logger.info("Discovering redfish services...")
+            services = redfish.discover_ssdp()
+            if len(services) == 0:
+                logger.info("No redfish services discovered")
+                return False
+            logger.debug("Discovered redfish services: %s", services)
+            return True
+
+        return _discover
 
     def __init__(self, config: Config) -> None:
         """Initialize values for class."""
@@ -51,12 +48,18 @@ class RedfishHelper:
         self.password = config.redfish_password
         self.timeout = config.redfish_client_timeout
         self.max_retry = config.redfish_client_max_retry
-        self.redfish_obj: HttpClient = self._get_redfish_obj()
+        self.redfish_obj: HttpClient = None
 
     def __enter__(self) -> Self:
         """Login to redfish while entering context manager."""
-        if self.redfish_obj is not None:
-            self.redfish_obj.login(auth="session")
+        self.redfish_obj = redfish.redfish_client(
+            base_url=self.host,
+            username=self.username,
+            password=self.password,
+            timeout=self.timeout,
+            max_retry=self.max_retry,
+        )
+        self.redfish_obj.login(auth="session")
         return self
 
     def __exit__(
@@ -68,27 +71,6 @@ class RedfishHelper:
         """Logout from redfish while exiting context manager."""
         if self.redfish_obj is not None:
             self.redfish_obj.logout()
-
-    def _get_redfish_obj(self) -> Optional[HttpClient]:
-        """Return a new redfish object."""
-        self.redfish_obj = None
-        try:
-            self.redfish_obj = redfish.redfish_client(
-                base_url=self.host,
-                username=self.username,
-                password=self.password,
-                timeout=self.timeout,
-                max_retry=self.max_retry,
-            )
-        except (
-            InvalidCredentialsError,
-            SessionCreationError,
-            ConnectionError,
-            RetriesExhaustedError,
-        ) as err:
-            logger.exception(err)
-
-        return self.redfish_obj
 
     def get_sensor_data(self) -> Dict[str, List]:
         """Get sensor data.
@@ -308,7 +290,7 @@ class RedfishHelper:
             network_adapters: Optional[Dict[str, Any]] = self._verify_redfish_call(
                 self.redfish_obj, network_adapters_root_uri
             )
-            if network_adapters is None:
+            if not network_adapters:
                 logger.debug("No network adapters could be found on chassis id: %s", chassis_id)
                 print("here")
                 continue
@@ -532,7 +514,7 @@ class RedfishHelper:
             smart_storage_data: Optional[Dict[str, Any]] = self._verify_redfish_call(
                 self.redfish_obj, smart_storage_uri
             )
-            if smart_storage_data is None:
+            if not smart_storage_data:
                 logger.debug("Smart Storage URI endpoint not found for chassis ID: %s", chassis_id)
                 continue
             smart_storage_health_data[chassis_id] = {

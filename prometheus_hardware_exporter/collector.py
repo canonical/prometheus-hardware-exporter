@@ -4,12 +4,17 @@ from logging import getLogger
 from typing import Any, Dict, List
 
 from prometheus_client.metrics_core import GaugeMetricFamily, InfoMetricFamily
+from redfish.rest.v1 import (
+    InvalidCredentialsError,
+    RetriesExhaustedError,
+    SessionCreationError,
+)
 
 from .collectors.ipmi_dcmi import IpmiDcmi
 from .collectors.ipmi_sel import IpmiSel
 from .collectors.ipmimonitoring import IpmiMonitoring
 from .collectors.perccli import PercCLI
-from .collectors.redfish import RedfishHelper, get_cached_discover_function
+from .collectors.redfish import RedfishHelper
 from .collectors.sasircu import LSISASCollectorHelper, Sasircu
 from .collectors.ssacli import SsaCLI
 from .collectors.storcli import MegaRAIDCollectorHelper, StorCLI
@@ -857,8 +862,8 @@ class RedfishCollector(BlockingCollector):
         """Initialize RedfishHelper instance."""
         super().__init__(config)
         self.config = config
-        self.discover_redfish_services = get_cached_discover_function(
-            config.redfish_discover_cache_ttl
+        self.discover_redfish_services = RedfishHelper.get_cached_discover_method(
+            self.config.redfish_discover_cache_ttl
         )
 
     @property
@@ -940,38 +945,48 @@ class RedfishCollector(BlockingCollector):
     def fetch(self) -> List[Payload]:
         """Load redfish data."""
         payloads: List[Payload] = []
-        with RedfishHelper(self.config) as redfish_helper:
-            service_status = self.discover_redfish_services()
-            payloads.append(Payload(name="redfish_service_available", value=float(service_status)))
-            # redfish_obj returns None if login was not successful
-            if redfish_helper.redfish_obj is None:
-                payloads.append(Payload(name="redfish_call_success", value=0.0))
-                return payloads
 
-            payloads.append(Payload(name="redfish_call_success", value=1.0))
+        service_status = self.discover_redfish_services()
+        payloads.append(Payload(name="redfish_service_available", value=float(service_status)))
+        if not service_status:
+            return payloads
 
-            processor_count: Dict[str, int]
-            processor_data: Dict[str, List]
-            storage_controller_count: Dict[str, int]
-            storage_controller_data: Dict[str, List]
-            storage_drive_count: Dict[str, int]
-            storage_drive_data: Dict[str, List]
-            memory_dimm_count: Dict[str, int]
-            memory_dimm_data: Dict[str, List]
+        try:
+            with RedfishHelper(self.config) as redfish_helper:
+                payloads.append(Payload(name="redfish_call_success", value=1.0))
 
-            sensor_data: Dict[str, List] = redfish_helper.get_sensor_data()
-            processor_count, processor_data = redfish_helper.get_processor_data()
-            (
-                storage_controller_count,
-                storage_controller_data,
-            ) = redfish_helper.get_storage_controller_data()
-            network_adapter_count: Dict[str, Any] = redfish_helper.get_network_adapter_data()
-            chassis_data: Dict[str, Dict] = redfish_helper.get_chassis_data()
-            storage_drive_count, storage_drive_data = redfish_helper.get_storage_drive_data()
-            memory_dimm_count, memory_dimm_data = redfish_helper.get_memory_dimm_data()
-            smart_storage_health_data: Dict[
-                str, Any
-            ] = redfish_helper.get_smart_storage_health_data()
+                processor_count: Dict[str, int]
+                processor_data: Dict[str, List]
+                storage_controller_count: Dict[str, int]
+                storage_controller_data: Dict[str, List]
+                storage_drive_count: Dict[str, int]
+                storage_drive_data: Dict[str, List]
+                memory_dimm_count: Dict[str, int]
+                memory_dimm_data: Dict[str, List]
+
+                sensor_data: Dict[str, List] = redfish_helper.get_sensor_data()
+                processor_count, processor_data = redfish_helper.get_processor_data()
+                (
+                    storage_controller_count,
+                    storage_controller_data,
+                ) = redfish_helper.get_storage_controller_data()
+                network_adapter_count: Dict[str, Any] = redfish_helper.get_network_adapter_data()
+                chassis_data: Dict[str, Dict] = redfish_helper.get_chassis_data()
+                storage_drive_count, storage_drive_data = redfish_helper.get_storage_drive_data()
+                memory_dimm_count, memory_dimm_data = redfish_helper.get_memory_dimm_data()
+                smart_storage_health_data: Dict[
+                    str, Any
+                ] = redfish_helper.get_smart_storage_health_data()
+
+        except (
+            ConnectionError,
+            InvalidCredentialsError,
+            RetriesExhaustedError,
+            SessionCreationError,
+        ) as err:
+            logger.exception("Exception occurred while getting redfish object: %s", err)
+            payloads.append(Payload(name="redfish_call_success", value=0.0))
+            return payloads
 
         metrics: Dict[str, Any] = {
             "sensor_data": sensor_data,
