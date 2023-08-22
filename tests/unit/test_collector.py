@@ -548,9 +548,13 @@ class TestCustomCollector(unittest.TestCase):
             assert name in get_payloads
 
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
-    @patch("prometheus_hardware_exporter.collector.get_cached_discover_function")
-    def test_200_redfish_no_login(self, mock_get_cached_discover_function, mock_redfish_client):
-        """Test redfish collector when redfish login doesn't work."""
+    @patch(
+        "prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_cached_discover_method"
+    )
+    def test_200_redfish_no_discovered_services(
+        self, mock_get_cached_discover_method, mock_redfish_client
+    ):
+        """Test redfish collector no redfish services have been discovered."""
 
         def cached_discover(*args, **kwargs):
             def _discover(*args, **kwargs):
@@ -558,18 +562,38 @@ class TestCustomCollector(unittest.TestCase):
 
             return _discover
 
-        mock_get_cached_discover_function.side_effect = cached_discover
+        mock_get_cached_discover_method.side_effect = cached_discover
+        redfish_collector = RedfishCollector(Mock())
+        mock_redfish_client.side_effect = ConnectionError
+
+        payloads = redfish_collector.collect()
+
+        # only contains redfish_service_available metric
+        self.assertEqual(len(list(payloads)), 1)
+        mock_redfish_client.assert_not_called()
+
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch(
+        "prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_cached_discover_method"
+    )
+    def test_201_redfish_no_login(self, mock_get_cached_discover_method, mock_redfish_client):
+        """Test redfish collector when redfish login doesn't work."""
+
+        def cached_discover(*args, **kwargs):
+            def _discover(*args, **kwargs):
+                return True
+
+            return _discover
+
+        mock_get_cached_discover_method.side_effect = cached_discover
         redfish_collector = RedfishCollector(Mock())
         redfish_collector.redfish_helper = Mock()
 
         mock_redfish_client.side_effect = ConnectionError
-        mock_redfish_client.return_value.login.return_value = Mock()
-        mock_redfish_client.return_value.logout.return_value = Mock()
-        redfish_collector.discover_redfish_services.return_value = False
-
         payloads = redfish_collector.collect()
 
         self.assertEqual(len(list(payloads)), 2)
+        mock_redfish_client.assert_called_once()
 
     @patch("prometheus_hardware_exporter.collector.logger")
     @patch(
@@ -587,10 +611,12 @@ class TestCustomCollector(unittest.TestCase):
     @patch("prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_processor_data")
     @patch("prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_sensor_data")
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
-    @patch("prometheus_hardware_exporter.collector.get_cached_discover_function")
-    def test_201_redfish_installed_and_okay(
+    @patch(
+        "prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_cached_discover_method"
+    )
+    def test_202_redfish_installed_and_okay(
         self,
-        mock_get_cached_discover_function,
+        mock_get_cached_discover_method,
         mock_redfish_client,
         mock_get_sensor_data,
         mock_get_processor_data,
@@ -611,7 +637,7 @@ class TestCustomCollector(unittest.TestCase):
 
             return _discover
 
-        mock_get_cached_discover_function.side_effect = cached_discover
+        mock_get_cached_discover_method.side_effect = cached_discover
         redfish_collector = RedfishCollector(Mock())
 
         mock_get_sensor_data.return_value = {

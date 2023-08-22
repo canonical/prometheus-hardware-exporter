@@ -5,10 +5,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import redfish
 import redfish_utilities
 from cachetools.func import ttl_cache
-from redfish.rest.v1 import (
-    HttpClient,
-    RestResponse,
-)
+from redfish.rest.v1 import HttpClient, RestResponse
 from typing_extensions import Self
 
 from prometheus_hardware_exporter.config import Config
@@ -292,7 +289,6 @@ class RedfishHelper:
             )
             if not network_adapters:
                 logger.debug("No network adapters could be found on chassis id: %s", chassis_id)
-                print("here")
                 continue
             logger.debug("Network adapters: %s", network_adapters)
             network_adapter_count[chassis_id] = len(network_adapters["Members"])
