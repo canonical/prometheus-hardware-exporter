@@ -1,6 +1,11 @@
 import unittest
 from unittest.mock import Mock, patch
 
+from redfish.rest.v1 import (
+    InvalidCredentialsError,
+    RetriesExhaustedError,
+    SessionCreationError,
+)
 from test_resources.ipmi.ipmi_sample_data import (
     SAMPLE_IPMI_SEL_ENTRIES,
     SAMPLE_IPMI_SENSOR_ENTRIES,
@@ -572,11 +577,14 @@ class TestCustomCollector(unittest.TestCase):
         self.assertEqual(len(list(payloads)), 1)
         mock_redfish_client.assert_not_called()
 
+    @patch("prometheus_hardware_exporter.collector.logger")
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_cached_discover_method"
     )
-    def test_201_redfish_no_login(self, mock_get_cached_discover_method, mock_redfish_client):
+    def test_201_redfish_no_login(
+        self, mock_get_cached_discover_method, mock_redfish_client, mock_logger
+    ):
         """Test redfish collector when redfish login doesn't work."""
 
         def cached_discover(*args, **kwargs):
@@ -589,14 +597,23 @@ class TestCustomCollector(unittest.TestCase):
         redfish_collector = RedfishCollector(Mock())
         redfish_collector.redfish_helper = Mock()
 
-        mock_redfish_client.side_effect = ConnectionError
-        payloads = redfish_collector.collect()
+        for err in [
+            ConnectionError(),
+            InvalidCredentialsError(),
+            SessionCreationError(),
+            RetriesExhaustedError(),
+        ]:
+            mock_redfish_client.side_effect = err
+            payloads = redfish_collector.collect()
 
-        # Here we are checking whether these 2 payloads are present
-        # redfish_service_available which is set to value 1
-        # redfish_call_success which is set to value 0
-        self.assertEqual(len(list(payloads)), 2)
-        mock_redfish_client.assert_called_once()
+            # Check whether these 2 payloads are present
+            # redfish_service_available which is set to value 1
+            # redfish_call_success which is set to value 0
+            self.assertEqual(len(list(payloads)), 2)
+            mock_logger.exception.assert_called_with(
+                "Exception occurred while getting redfish object: %s", err
+            )
+        mock_redfish_client.assert_called()
 
     @patch("prometheus_hardware_exporter.collector.logger")
     @patch("prometheus_hardware_exporter.collectors.redfish.RedfishHelper.__exit__")
