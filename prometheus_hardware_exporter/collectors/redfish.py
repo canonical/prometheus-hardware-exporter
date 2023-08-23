@@ -45,7 +45,7 @@ class RedfishHelper:
         self.password = config.redfish_password
         self.timeout = config.redfish_client_timeout
         self.max_retry = config.redfish_client_max_retry
-        self.redfish_obj: HttpClient = None
+        self.redfish_obj: HttpClient
 
     def __enter__(self) -> Self:
         """Login to redfish while entering context manager."""

@@ -592,24 +592,15 @@ class TestCustomCollector(unittest.TestCase):
         mock_redfish_client.side_effect = ConnectionError
         payloads = redfish_collector.collect()
 
+        # Here we are checking whether these 2 payloads are present
+        # redfish_service_available which is set to value 1
+        # redfish_call_success which is set to value 0
         self.assertEqual(len(list(payloads)), 2)
         mock_redfish_client.assert_called_once()
 
     @patch("prometheus_hardware_exporter.collector.logger")
-    @patch(
-        "prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_smart_storage_health_data"  # noqa: E501
-    )
-    @patch("prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_memory_dimm_data")
-    @patch("prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_storage_drive_data")
-    @patch("prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_chassis_data")
-    @patch(
-        "prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_network_adapter_data"
-    )
-    @patch(
-        "prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_storage_controller_data"
-    )
-    @patch("prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_processor_data")
-    @patch("prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_sensor_data")
+    @patch("prometheus_hardware_exporter.collectors.redfish.RedfishHelper.__exit__")
+    @patch("prometheus_hardware_exporter.collectors.redfish.RedfishHelper.__enter__")
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_cached_discover_method"
@@ -618,14 +609,8 @@ class TestCustomCollector(unittest.TestCase):
         self,
         mock_get_cached_discover_method,
         mock_redfish_client,
-        mock_get_sensor_data,
-        mock_get_processor_data,
-        mock_get_storage_controller_data,
-        mock_get_network_adapter_data,
-        mock_get_chassis_data,
-        mock_get_storage_drive_data,
-        mock_get_memory_dimm_data,
-        mock_get_smart_storage_health_data,
+        mock_redfish_helper_enter,
+        mock_redfish_helper_exit,
         mock_logger,
     ):
         """Test redfish collector and check if all metrics are present in payload."""
@@ -639,6 +624,27 @@ class TestCustomCollector(unittest.TestCase):
 
         mock_get_cached_discover_method.side_effect = cached_discover
         redfish_collector = RedfishCollector(Mock())
+
+        mock_helper = Mock()
+        mock_redfish_helper_enter.return_value = mock_helper
+
+        mock_get_sensor_data = Mock()
+        mock_get_processor_data = Mock()
+        mock_get_storage_controller_data = Mock()
+        mock_get_network_adapter_data = Mock()
+        mock_get_chassis_data = Mock()
+        mock_get_storage_drive_data = Mock()
+        mock_get_memory_dimm_data = Mock()
+        mock_get_smart_storage_health_data = Mock()
+
+        mock_helper.get_sensor_data = mock_get_sensor_data
+        mock_helper.get_processor_data = mock_get_processor_data
+        mock_helper.get_storage_controller_data = mock_get_storage_controller_data
+        mock_helper.get_network_adapter_data = mock_get_network_adapter_data
+        mock_helper.get_chassis_data = mock_get_chassis_data
+        mock_helper.get_storage_drive_data = mock_get_storage_drive_data
+        mock_helper.get_memory_dimm_data = mock_get_memory_dimm_data
+        mock_helper.get_smart_storage_health_data = mock_get_smart_storage_health_data
 
         mock_get_sensor_data.return_value = {
             "1": [
@@ -781,11 +787,11 @@ class TestCustomCollector(unittest.TestCase):
         for payload in payloads:
             self.assertIn(payload.name, available_metrics)
 
-        mock_logger.error.assert_called_with(
+        mock_logger.warning.assert_called_with(
             "Failed to get %s via redfish", "network_adapter_count"
         )
 
-    def test_202_redfish_create_sensor_metric_payload(self):
+    def test_203_redfish_create_sensor_metric_payload(self):
         mock_sensor_data = {
             "1": [
                 {"Sensor": "State", "Reading": "Enabled", "Health": "OK"},
@@ -838,7 +844,7 @@ class TestCustomCollector(unittest.TestCase):
             ],
         )
 
-    def test_203_redfish_create_processor_metric_payload(self):
+    def test_204_redfish_create_processor_metric_payload(self):
         mock_processor_count = {"s1": 2, "s2": 1}
         mock_processor_data = {
             "s1": [
@@ -922,7 +928,7 @@ class TestCustomCollector(unittest.TestCase):
             ],
         )
 
-    def test_204_redfish_create_storage_controller_metric_payload(self):
+    def test_205_redfish_create_storage_controller_metric_payload(self):
         mock_storage_controller_count = {"s1": 2}
         mock_storage_controller_data = {
             "s1": [
@@ -980,7 +986,7 @@ class TestCustomCollector(unittest.TestCase):
             ],
         )
 
-    def test_205_redfish_create_network_adapter_metric_payload(self):
+    def test_207_redfish_create_network_adapter_metric_payload(self):
         mock_network_adapter_count = {"c1": 2, "c2": 1}
         redfish_collector = RedfishCollector(Mock())
         network_adapter_payload = redfish_collector._create_network_adapter_metric_payload(
@@ -1055,7 +1061,7 @@ class TestCustomCollector(unittest.TestCase):
             ],
         )
 
-    def test_207_redfish_create_storage_drive_metric_payload(self):
+    def test_208_redfish_create_storage_drive_metric_payload(self):
         mock_storage_drive_count = {"s1": 3}
         mock_storage_drive_data = {
             "s1": [
@@ -1131,7 +1137,7 @@ class TestCustomCollector(unittest.TestCase):
             ],
         )
 
-    def test_208_redfish_create_memory_dimm_metric_payload(self):
+    def test_209_redfish_create_memory_dimm_metric_payload(self):
         mock_memory_dimm_count = {"s1": 1, "s2": 1}
         mock_memory_dimm_data = {
             "s1": [
@@ -1193,7 +1199,7 @@ class TestCustomCollector(unittest.TestCase):
             ],
         )
 
-    def test_209_redfish_create_smart_storage_health_metric_payload(self):
+    def test_210_redfish_create_smart_storage_health_metric_payload(self):
         mock_smart_storage_health_data = {"c1": {"health": "OK"}}
         redfish_collector = RedfishCollector(Mock())
         smart_storage_health_payload = (
