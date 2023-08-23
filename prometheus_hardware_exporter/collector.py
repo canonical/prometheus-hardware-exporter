@@ -1,9 +1,14 @@
 """Module for a collection of hardware collecters."""
 
 from logging import getLogger
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from prometheus_client.metrics_core import GaugeMetricFamily, InfoMetricFamily
+from redfish.rest.v1 import (
+    InvalidCredentialsError,
+    RetriesExhaustedError,
+    SessionCreationError,
+)
 
 from .collectors.ipmi_dcmi import IpmiDcmi
 from .collectors.ipmi_sel import IpmiSel
@@ -17,6 +22,9 @@ from .config import Config
 from .core import BlockingCollector, Payload, Specification
 
 logger = getLogger(__name__)
+
+
+# pylint: disable=too-many-lines, too-many-locals
 
 
 class PowerEdgeRAIDCollector(BlockingCollector):
@@ -853,7 +861,10 @@ class RedfishCollector(BlockingCollector):
     def __init__(self, config: Config) -> None:
         """Initialize RedfishHelper instance."""
         super().__init__(config)
-        self.redfish_helper = RedfishHelper(config)
+        self.config = config
+        self.discover_redfish_services = RedfishHelper.get_cached_discover_method(
+            self.config.redfish_discover_cache_ttl
+        )
 
     @property
     def specifications(self) -> List[Specification]:
@@ -874,21 +885,205 @@ class RedfishCollector(BlockingCollector):
                 documentation="Sensor information obtained from redfish.",
                 metric_class=InfoMetricFamily,
             ),
+            Specification(
+                name="redfish_processors",
+                documentation="Total number of processors obtained from redfish.",
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="redfish_processor",
+                documentation="Processor information obtained from redfish.",
+                metric_class=InfoMetricFamily,
+            ),
+            Specification(
+                name="redfish_storage_controllers",
+                documentation="Total number of storage controllers obtained from redfish.",
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="redfish_storage_controller",
+                documentation="Storage Controller information obtained from redfish.",
+                metric_class=InfoMetricFamily,
+            ),
+            Specification(
+                name="redfish_network_adapters",
+                documentation="Total number of network adapters obtained from redfish.",
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="redfish_chassis",
+                documentation="Chassis information obtained from redfish.",
+                metric_class=InfoMetricFamily,
+            ),
+            Specification(
+                name="redfish_storage_drives",
+                documentation="Total number of storage drives obtained from redfish.",
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="redfish_storage_drive",
+                documentation="Storage information obtained from redfish.",
+                metric_class=InfoMetricFamily,
+            ),
+            Specification(
+                name="redfish_memory_dimms",
+                documentation="Total memory DIMMs obtained from redfish.",
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="redfish_memory_dimm",
+                documentation="Memory DIMM information obtained from redfish.",
+                metric_class=InfoMetricFamily,
+            ),
+            Specification(
+                name="redfish_smart_storage_health",
+                documentation="Indicates if Smart Storage (if present) is healthy.",
+                metric_class=GaugeMetricFamily,
+            ),
         ]
 
     def fetch(self) -> List[Payload]:
         """Load redfish data."""
-        payloads = []
-        service_status = self.redfish_helper.discover()
-        payloads.append(Payload(name="redfish_service_available", value=float(service_status)))
+        payloads: List[Payload] = []
 
-        sensor_data = self.redfish_helper.get_sensor_data()
-        if not sensor_data:
-            logger.error("Failed to get sensor data via redfish.")
+        service_status = self.discover_redfish_services()
+        payloads.append(Payload(name="redfish_service_available", value=float(service_status)))
+        if not service_status:
+            return payloads
+
+        try:
+            with RedfishHelper(self.config) as redfish_helper:
+                payloads.append(Payload(name="redfish_call_success", value=1.0))
+
+                processor_count: Dict[str, int]
+                processor_data: Dict[str, List]
+                storage_controller_count: Dict[str, int]
+                storage_controller_data: Dict[str, List]
+                storage_drive_count: Dict[str, int]
+                storage_drive_data: Dict[str, List]
+                memory_dimm_count: Dict[str, int]
+                memory_dimm_data: Dict[str, List]
+
+                sensor_data: Dict[str, List] = redfish_helper.get_sensor_data()
+                processor_count, processor_data = redfish_helper.get_processor_data()
+                (
+                    storage_controller_count,
+                    storage_controller_data,
+                ) = redfish_helper.get_storage_controller_data()
+                network_adapter_count: Dict[str, Any] = redfish_helper.get_network_adapter_data()
+                chassis_data: Dict[str, Dict] = redfish_helper.get_chassis_data()
+                storage_drive_count, storage_drive_data = redfish_helper.get_storage_drive_data()
+                memory_dimm_count, memory_dimm_data = redfish_helper.get_memory_dimm_data()
+                smart_storage_health_data: Dict[
+                    str, Any
+                ] = redfish_helper.get_smart_storage_health_data()
+
+        except (
+            ConnectionError,
+            InvalidCredentialsError,
+            RetriesExhaustedError,
+            SessionCreationError,
+        ) as err:
+            logger.exception("Exception occurred while getting redfish object: %s", err)
             payloads.append(Payload(name="redfish_call_success", value=0.0))
             return payloads
 
-        payloads.append(Payload(name="redfish_call_success", value=1.0))
+        metrics: Dict[str, Any] = {
+            "sensor_data": sensor_data,
+            "processor_data": processor_data,
+            "processor_count": processor_count,
+            "storage_controller_data": storage_controller_data,
+            "storage_controller_count": storage_controller_count,
+            "network_adapter_count": network_adapter_count,
+            "chassis_data": chassis_data,
+            "storage_drive_data": storage_drive_data,
+            "storage_drive_count": storage_drive_count,
+            "memory_dimm_data": memory_dimm_data,
+            "memory_dimm_count": memory_dimm_count,
+            "smart_storage_health_data": smart_storage_health_data,
+        }
+        for metric_name, metric_data in metrics.items():
+            if not metric_data:
+                logger.warning("Failed to get %s via redfish", metric_name)
+
+        payloads.extend(self._create_sensor_metric_payload(metrics["sensor_data"]))
+        payloads.extend(
+            self._create_processor_metric_payload(
+                metrics["processor_count"], metrics["processor_data"]
+            )
+        )
+        payloads.extend(
+            self._create_storage_controller_metric_payload(
+                metrics["storage_controller_count"], metrics["storage_controller_data"]
+            )
+        )
+        payloads.extend(
+            self._create_network_adapter_metric_payload(metrics["network_adapter_count"])
+        )
+        payloads.extend(self._create_chassis_metric_payload(metrics["chassis_data"]))
+        payloads.extend(
+            self._create_storage_drive_metric_payload(
+                metrics["storage_drive_count"], metrics["storage_drive_data"]
+            )
+        )
+        payloads.extend(
+            self._create_memory_dimm_metric_payload(
+                metrics["memory_dimm_count"], metrics["memory_dimm_data"]
+            )
+        )
+        payloads.extend(
+            self._create_smart_storage_health_metric_payload(metrics["smart_storage_health_data"])
+        )
+        return payloads
+
+    def _create_sensor_metric_payload(self, sensor_data: Dict[str, List]) -> List[Payload]:
+        """Return list of payload objects with sensor metric data.
+
+        sensor_data: mapping of chassis ids with their corresponding sensor values.
+
+        Input param example:
+        sensor_data: {
+            "1": [
+                {
+                    "Sensor": "Sensor1",
+                    "Reading": "Enabled",
+                    "Health": "OK"
+                },
+                {
+                    "Sensor": "Sensor2",
+                    "Reading": "100V",
+                    "Health": "N/A",
+                },
+            ]
+        }
+
+        Return val example:
+        [
+            Payload(
+                name="redfish_sensor",
+                value={
+                    "chassis": "1",
+                    "sensor": "Sensor1",
+                    "reading": "Enabled",
+                    "health": "OK",
+                },
+                labels=[],
+                uuid="redfish_sensor([])",
+            ),
+            Payload(
+                name="redfish_sensor",
+                value={
+                    "chassis": "1",
+                    "sensor": "Sensor2",
+                    "reading": "100V",
+                    "health": "N/A",
+                },
+                labels=[],
+                uuid="redfish_sensor([])",
+            ),
+        ]
+        """
+        payloads = []
         for chassis_name, curr_sensor_data in sensor_data.items():
             for sensor_data_item in curr_sensor_data:
                 payloads.append(
@@ -902,7 +1097,386 @@ class RedfishCollector(BlockingCollector):
                         },
                     )
                 )
+        return payloads
 
+    def _create_processor_metric_payload(
+        self,
+        processor_count: Dict[str, int],
+        processor_data: Dict[str, List],
+    ) -> List[Payload]:
+        """Return list of payload objects with processor metric data.
+
+        processor_count: mapping of system ids with the the total number of processors.
+        processor_data: mapping of system ids with the processor data.
+
+        Input params example:
+        processor_count: {"s1": 1, "s2": 1}
+        processor_data: {
+            "s1": [
+                {
+                    "processor_id": "p11",
+                    "model": "Processor s1 Model 1",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+            ],
+            "s2": [
+                {
+                    "processor_id": "p21",
+                    "model": "Processor s2 Model 1",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+            ],
+        }
+
+        Return val:
+        [
+                Payload(
+                    name="redfish_processors",
+                    value=1,
+                    labels=["s1"],
+                    uuid="redfish_processors(['s1'])",
+                ),
+                Payload(
+                    name="redfish_processor",
+                    value={
+                        "system_id": "s1",
+                        "processor_id": "p11",
+                        "model": "Processor s1 Model 1",
+                        "health": "OK",
+                        "state": "Enabled",
+                    },
+                    labels=[],
+                    uuid="redfish_processor([])",
+                ),
+                Payload(
+                    name="redfish_processors",
+                    value=1,
+                    labels=["s2"],
+                    uuid="redfish_processors(['s2'])",
+                ),
+                Payload(
+                    name="redfish_processor",
+                    value={
+                        "system_id": "s2",
+                        "processor_id": "p21",
+                        "model": "Processor s2 Model 1",
+                        "health": "OK",
+                        "state": "Enabled",
+                    },
+                    labels=[],
+                    uuid="redfish_processor([])",
+                ),
+        ]
+        """
+        payloads = []
+        for system_id, curr_processor_data in processor_data.items():
+            payloads.append(
+                Payload(
+                    name="redfish_processors",
+                    value=processor_count[system_id],
+                    labels=[system_id],
+                )
+            )
+            for processor in curr_processor_data:
+                payloads.append(
+                    Payload(
+                        name="redfish_processor",
+                        value={
+                            "system_id": system_id,
+                            "processor_id": processor["processor_id"],
+                            "model": processor["model"],
+                            "health": processor["health"],
+                            "state": processor["state"],
+                        },
+                    )
+                )
+        return payloads
+
+    def _create_storage_controller_metric_payload(
+        self,
+        storage_controller_count: Dict[str, int],
+        storage_controller_data: Dict[str, List],
+    ) -> List[Payload]:
+        """Return list of payload objects with storage controller metric data.
+
+        storage_controller_count: mapping of system ids with the total number
+        of storage controllers.
+        storage_controller_data: mapping of system ids with the storage
+        controller data.
+
+        Input params example:
+        storage_controller_count: {"s1": 2}
+        storage_controller_data: {
+            "s1": [
+                {
+                    "storage_id": "STOR1",
+                    "controller_id": "sc0",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+                {
+                    "storage_id": "STOR2",
+                    "controller_id": "sc1",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+            ],
+        }
+
+        Return val example:
+        [
+            Payload(
+                name="redfish_storage_controllers",
+                value=2,
+                labels=["s1"],
+                uuid="redfish_storage_controllers(['s1'])",
+            ),
+            Payload(
+                name="redfish_storage_controller",
+                value={
+                    "system_id": "s1",
+                    "storage_id": "STOR1",
+                    "controller_id": "sc0",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+                labels=[],
+                uuid="redfish_storage_controller([])",
+            ),
+            Payload(
+                name="redfish_storage_controller",
+                value={
+                    "system_id": "s1",
+                    "storage_id": "STOR2",
+                    "controller_id": "sc1",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+                labels=[],
+                uuid="redfish_storage_controller([])",
+            ),
+        ]
+        """
+        payloads = []
+        for system_id, curr_storage_controller_data in storage_controller_data.items():
+            payloads.append(
+                Payload(
+                    name="redfish_storage_controllers",
+                    value=int(storage_controller_count[system_id]),
+                    labels=[system_id],
+                )
+            )
+            for controller in curr_storage_controller_data:
+                payloads.append(
+                    Payload(
+                        name="redfish_storage_controller",
+                        value={
+                            "system_id": system_id,
+                            "storage_id": controller["storage_id"],
+                            "controller_id": controller["controller_id"],
+                            "health": controller["health"],
+                            "state": controller["state"],
+                        },
+                    )
+                )
+        return payloads
+
+    def _create_network_adapter_metric_payload(
+        self, network_adapter_count: Dict[str, Any]
+    ) -> List[Payload]:
+        """Return list of payload objects with network adapter metric data.
+
+        network_adapter_count: mapping of chassis ids with the total number
+        of network adapters.
+        """
+        payloads = []
+        for chassis_id, count in network_adapter_count.items():
+            payloads.append(
+                Payload(
+                    name="redfish_network_adapters",
+                    value=int(count),
+                    labels=[chassis_id],
+                )
+            )
+        return payloads
+
+    def _create_chassis_metric_payload(self, chassis_data: Dict[str, Dict]) -> List[Payload]:
+        """Return list of payload objects with chassis metric data.
+
+        chassis_data: mapping of chassis ids with the chassis data.
+        """
+        payloads = []
+        for chassis_id, curr_chassis_data in chassis_data.items():
+            payloads.append(
+                Payload(
+                    name="redfish_chassis",
+                    value={
+                        "chassis_id": chassis_id,
+                        "chassis_type": curr_chassis_data["chassis_type"],
+                        "manufacturer": curr_chassis_data["manufacturer"],
+                        "model": curr_chassis_data["model"],
+                        "state": curr_chassis_data["state"],
+                        "health": curr_chassis_data["health"],
+                    },
+                )
+            )
+        return payloads
+
+    def _create_storage_drive_metric_payload(
+        self,
+        storage_drive_count: Dict[str, int],
+        storage_drive_data: Dict[str, List],
+    ) -> List[Payload]:
+        """Return list of payload objects with storage drive metric data.
+
+        storage_drive_count: mapping of system ids with the the total number of storage drives.
+        storage_drive_data: mapping of system ids with the storage drive data.
+
+
+        Input params example:
+        storage_drive_count: {"s1": 1}
+        storage_drive_data: {
+            "s1": [
+                {
+                    "storage_id": "STOR1",
+                    "drive_id": "d1",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+            ],
+        }
+
+        Return val example:
+        [
+            Payload(
+                name="redfish_storage_drives",
+                value=1,
+                labels=["s1"],
+                uuid="redfish_storage_drives(['s1'])",
+            ),
+            Payload(
+                name="redfish_storage_drive",
+                value={
+                    "system_id": "s1",
+                    "storage_id": "STOR1",
+                    "drive_id": "d1",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+                labels=[],
+                uuid="redfish_storage_drive([])",
+            ),
+        ]
+        """
+        payloads = []
+        for system_id, curr_storage_drive_data in storage_drive_data.items():
+            payloads.append(
+                Payload(
+                    name="redfish_storage_drives",
+                    value=int(storage_drive_count[system_id]),
+                    labels=[system_id],
+                )
+            )
+            for drive in curr_storage_drive_data:
+                payloads.append(
+                    Payload(
+                        name="redfish_storage_drive",
+                        value={
+                            "system_id": system_id,
+                            "storage_id": drive["storage_id"],
+                            "drive_id": drive["drive_id"],
+                            "health": drive["health"],
+                            "state": drive["state"],
+                        },
+                    )
+                )
+        return payloads
+
+    def _create_memory_dimm_metric_payload(
+        self,
+        memory_dimm_count: Dict[str, int],
+        memory_dimm_data: Dict[str, List],
+    ) -> List[Payload]:
+        """Return list of payload objects with memory dimm metric data.
+
+        memory_dimm_count: mapping of system ids with the the total number of
+        memory dimms.
+        memory_dimm_data: mapping of system ids with the memory dimm data.
+
+        Input params example:
+        memory_dimm_count: {"s1": 1}
+        memory_dimm_data: {
+            "s1": [
+                {
+                    "memory_id": "dimm1",
+                    "health": "OK",
+                    "state": "Enabled",
+                },
+            ],
+        }
+
+        Return val example:
+        [
+                Payload(
+                    name="redfish_memory_dimms",
+                    value=1,
+                    labels=["s1"],
+                    uuid="redfish_memory_dimms(['s1'])",
+                ),
+                Payload(
+                    name="redfish_memory_dimm",
+                    value={
+                        "system_id": "s1",
+                        "memory_id": "dimm1",
+                        "health": "OK",
+                        "state": "Enabled",
+                    },
+                    labels=[],
+                    uuid="redfish_memory_dimm([])",
+                ),
+        ]
+        """
+        payloads = []
+        for system_id, curr_memory_dimm_data in memory_dimm_data.items():
+            payloads.append(
+                Payload(
+                    name="redfish_memory_dimms",
+                    value=int(memory_dimm_count[system_id]),
+                    labels=[system_id],
+                )
+            )
+            for memory_dimm in curr_memory_dimm_data:
+                payloads.append(
+                    Payload(
+                        name="redfish_memory_dimm",
+                        value={
+                            "system_id": system_id,
+                            "memory_id": memory_dimm["memory_id"],
+                            "health": memory_dimm["health"],
+                            "state": memory_dimm["state"],
+                        },
+                    )
+                )
+        return payloads
+
+    def _create_smart_storage_health_metric_payload(
+        self, smart_storage_health_data: Dict[str, Any]
+    ) -> List[Payload]:
+        """Return list of payload objects with smart storage health metric data.
+
+        smart_storage_health_data: mapping of chassis ids with the smart storage health data.
+        """
+        payloads = []
+        for chassis_id, curr_smart_storage_health_data in smart_storage_health_data.items():
+            payloads.append(
+                Payload(
+                    name="redfish_smart_storage_health",
+                    value=1.0 if curr_smart_storage_health_data["health"] == "OK" else 0.0,
+                    labels=[chassis_id],
+                )
+            )
         return payloads
 
     def process(self, payloads: List[Payload], datastore: Dict[str, Payload]) -> List[Payload]:
