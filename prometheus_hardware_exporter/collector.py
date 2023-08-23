@@ -1041,10 +1041,8 @@ class RedfishCollector(BlockingCollector):
 
         sensor_data: mapping of chassis ids with their corresponding sensor values.
 
-        Example:
-
-        Input param:
-        {
+        Input param example:
+        sensor_data: {
             "1": [
                 {
                     "Sensor": "Sensor1",
@@ -1059,7 +1057,7 @@ class RedfishCollector(BlockingCollector):
             ]
         }
 
-        Return val:
+        Return val example:
         [
             Payload(
                 name="redfish_sensor",
@@ -1106,14 +1104,12 @@ class RedfishCollector(BlockingCollector):
         processor_count: Dict[str, int],
         processor_data: Dict[str, List],
     ) -> List[Payload]:
-        """Return list of payload objects with processor metric data
+        """Return list of payload objects with processor metric data.
 
         processor_count: mapping of system ids with the the total number of processors.
         processor_data: mapping of system ids with the processor data.
 
-        Example:
-
-        Input param:
+        Input params example:
         processor_count: {"s1": 1, "s2": 1}
         processor_data: {
             "s1": [
@@ -1172,8 +1168,7 @@ class RedfishCollector(BlockingCollector):
                     labels=[],
                     uuid="redfish_processor([])",
                 ),
-        ],
-
+        ]
         """
         payloads = []
         for system_id, curr_processor_data in processor_data.items():
@@ -1211,9 +1206,7 @@ class RedfishCollector(BlockingCollector):
         storage_controller_data: mapping of system ids with the storage
         controller data.
 
-        Example:
-
-        Input param:
+        Input params example:
         storage_controller_count: {"s1": 2}
         storage_controller_data: {
             "s1": [
@@ -1232,7 +1225,7 @@ class RedfishCollector(BlockingCollector):
             ],
         }
 
-        Return val:
+        Return val example:
         [
             Payload(
                 name="redfish_storage_controllers",
@@ -1264,8 +1257,7 @@ class RedfishCollector(BlockingCollector):
                 labels=[],
                 uuid="redfish_storage_controller([])",
             ),
-        ],
-
+        ]
         """
         payloads = []
         for system_id, curr_storage_controller_data in storage_controller_data.items():
@@ -1343,7 +1335,7 @@ class RedfishCollector(BlockingCollector):
         storage_drive_data: mapping of system ids with the storage drive data.
 
 
-        Input params:
+        Input params example:
         storage_drive_count: {"s1": 1}
         storage_drive_data: {
             "s1": [
@@ -1356,7 +1348,7 @@ class RedfishCollector(BlockingCollector):
             ],
         }
 
-        Return val:
+        Return val example:
         [
             Payload(
                 name="redfish_storage_drives",
@@ -1413,7 +1405,7 @@ class RedfishCollector(BlockingCollector):
         memory dimms.
         memory_dimm_data: mapping of system ids with the memory dimm data.
 
-        Input params:
+        Input params example:
         memory_dimm_count: {"s1": 1}
         memory_dimm_data: {
             "s1": [
@@ -1425,7 +1417,7 @@ class RedfishCollector(BlockingCollector):
             ],
         }
 
-        Return val:
+        Return val example:
         [
                 Payload(
                     name="redfish_memory_dimms",
