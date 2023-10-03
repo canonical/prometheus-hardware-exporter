@@ -863,7 +863,7 @@ class RedfishCollector(BlockingCollector):
         super().__init__(config)
         self.config = config
         self.discover_redfish_services = RedfishHelper.get_cached_discover_method(
-            self.config.redfish_discover_cache_ttl
+            self.config.redfish_discover_cache_ttl,
         )
 
     @property
@@ -946,7 +946,11 @@ class RedfishCollector(BlockingCollector):
         """Load redfish data."""
         payloads: List[Payload] = []
 
-        service_status = self.discover_redfish_services()
+        service_status = self.discover_redfish_services(
+            self.config.redfish_host,
+            self.config.redfish_username,
+            self.config.redfish_password,
+        )
         payloads.append(Payload(name="redfish_service_available", value=float(service_status)))
         if not service_status:
             return payloads
