@@ -32,10 +32,10 @@ class RedfishHelper:
         """
 
         @ttl_cache(ttl=ttl)
-        def _discover(host: str, username: str, password: str) -> bool:
+        def _discover(host: str) -> bool:
             """Return True if redfish service has been discovered."""
             try:
-                redfish_obj = redfish_client(base_url=host, username=username, password=password)
+                redfish_obj = redfish_client(base_url=host, username="", password="")
                 redfish_obj.login(auth="session")
             except RetriesExhaustedError:
                 # redfish not available

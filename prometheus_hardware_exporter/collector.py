@@ -946,11 +946,7 @@ class RedfishCollector(BlockingCollector):
         """Load redfish data."""
         payloads: List[Payload] = []
 
-        service_status = self.discover_redfish_services(
-            self.config.redfish_host,
-            self.config.redfish_username,
-            self.config.redfish_password,
-        )
+        service_status = self.discover_redfish_services(self.config.redfish_host)
         payloads.append(Payload(name="redfish_service_available", value=float(service_status)))
         if not service_status:
             return payloads

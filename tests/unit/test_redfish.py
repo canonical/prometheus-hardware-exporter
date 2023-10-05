@@ -956,8 +956,8 @@ class TestRedfishServiceDiscovery(unittest.TestCase):
         for exc in [SessionCreationError, InvalidCredentialsError]:
             mock_redfish_obj.login.side_effect = exc
             discover = RedfishHelper.get_cached_discover_method(ttl=test_ttl)
-            host, username, password = "", "", ""
-            available = discover(host, username, password)
+            host = ""
+            available = discover(host)
             self.assertEqual(available, True)
 
         mock_redfish_client.assert_called()
@@ -969,14 +969,14 @@ class TestRedfishServiceDiscovery(unittest.TestCase):
         mock_redfish_obj = Mock()
         mock_redfish_client.return_value = mock_redfish_obj
         discover = RedfishHelper.get_cached_discover_method(ttl=test_ttl)
-        host, username, password = "mock_host", "mock_user", "mock_pwd"
-        available = discover(host, username, password)
+        host = "mock_host"
+        available = discover(host)
 
         self.assertEqual(available, True)
         mock_redfish_client.assert_called_once_with(
             base_url="mock_host",
-            username="mock_user",
-            password="mock_pwd",
+            username="",
+            password="",
         )
         mock_redfish_obj.login.assert_called_once()
         mock_redfish_obj.logout.assert_called()
@@ -988,14 +988,14 @@ class TestRedfishServiceDiscovery(unittest.TestCase):
         mock_redfish_client.return_value = mock_redfish_obj
         mock_redfish_obj.login.side_effect = RetriesExhaustedError()
         discover = RedfishHelper.get_cached_discover_method(ttl=test_ttl)
-        host, username, password = "mock_host", "mock_user", "mock_pwd"
-        available = discover(host, username, password)
+        host = "mock_host"
+        available = discover(host)
 
         self.assertEqual(available, False)
         mock_redfish_client.assert_called_once_with(
             base_url="mock_host",
-            username="mock_user",
-            password="mock_pwd",
+            username="",
+            password="",
         )
         mock_redfish_obj.login.assert_called_once()
 
@@ -1005,27 +1005,27 @@ class TestRedfishServiceDiscovery(unittest.TestCase):
         mock_redfish_obj = Mock()
         mock_redfish_client.return_value = mock_redfish_obj
         discover = RedfishHelper.get_cached_discover_method(ttl=test_ttl)
-        host, username, password = "mock_host", "mock_user", "mock_pwd"
-        output = discover(host, username, password)
+        host = "mock_host"
+        output = discover(host)
         self.assertEqual(output, True)
         mock_redfish_client.assert_called_once_with(
             base_url="mock_host",
-            username="mock_user",
-            password="mock_pwd",
+            username="",
+            password="",
         )
         mock_redfish_client.reset_mock()
 
         # output from cache
-        output = discover(host, username, password)
+        output = discover(host)
         self.assertEqual(output, True)
         mock_redfish_client.assert_not_called()
 
         # wait till cache expires
         sleep(test_ttl + 1)
-        output = discover(host, username, password)
+        output = discover(host)
         self.assertEqual(output, True)
         mock_redfish_client.assert_called_with(
             base_url="mock_host",
-            username="mock_user",
-            password="mock_pwd",
+            username="",
+            password="",
         )
