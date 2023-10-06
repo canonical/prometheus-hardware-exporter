@@ -16,7 +16,7 @@ from prometheus_hardware_exporter.config import Config
 class TestRedfishMetrics(unittest.TestCase):
     """Test metrics methods in RedfishHelper."""
 
-    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     def test_00_redfish_helper_context_manager_success(self, mock_redfish_client):
         mock_redfish_login = Mock()
         mock_redfish_logout = Mock()
@@ -41,7 +41,7 @@ class TestRedfishMetrics(unittest.TestCase):
             mock_redfish_login.assert_called_once_with(auth="session")
         mock_redfish_logout.assert_called_once()
 
-    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     def test_01_redfish_helper_context_manager_fail(self, mock_redfish_client):
         mock_config = Config(
             redfish_host="",
@@ -58,7 +58,6 @@ class TestRedfishMetrics(unittest.TestCase):
             RetriesExhaustedError(),
         ]:
             mock_redfish_client.side_effect = err
-            print(type(err))
             with self.assertRaises(
                 (
                     InvalidCredentialsError,
@@ -70,7 +69,7 @@ class TestRedfishMetrics(unittest.TestCase):
                 with RedfishHelper(mock_config):
                     pass
 
-    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     def test_02_verify_redfish_call_success(self, mock_redfish_client):
         uri = "/some/test/uri"
         mock_redfish_obj = Mock()
@@ -87,7 +86,7 @@ class TestRedfishMetrics(unittest.TestCase):
         mock_redfish_obj.get.assert_called_with(uri)
 
     @patch("prometheus_hardware_exporter.collectors.redfish.logger")
-    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     def test_03_verify_redfish_call_fail(self, mock_redfish_client, mock_logger):
         uri = "/some/test/uri"
         mock_redfish_obj = Mock()
@@ -103,7 +102,7 @@ class TestRedfishMetrics(unittest.TestCase):
         mock_logger.debug.assert_called_with("Not able to query from URI: %s.", "/some/test/uri")
         self.assertIsNone(resp_dict)
 
-    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch.object(
         RedfishHelper,
         "_retrieve_redfish_sensor_data",
@@ -190,7 +189,7 @@ class TestRedfishMetrics(unittest.TestCase):
             },
         )
 
-    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch.object(
         RedfishHelper,
         "_retrieve_redfish_sensor_data",
@@ -286,14 +285,14 @@ class TestRedfishMetrics(unittest.TestCase):
             },
         )
 
-    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch.object(RedfishHelper, "_retrieve_redfish_sensor_data", return_value=[])
     def test_06_get_sensor_data_fail(self, mock_sensor_data, mock_redfish_client):
         with RedfishHelper(Mock()) as helper:
             data = helper.get_sensor_data()
         self.assertEqual(data, {})
 
-    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     def test_07_map_sensor_data_to_chassis(self, mock_redfish_client):
         mock_data = [
             {
@@ -385,7 +384,7 @@ class TestRedfishMetrics(unittest.TestCase):
         )
 
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_utilities.get_sensors")
-    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     def test_08_retrieve_redfish_sensor_data_success(self, mock_redfish_client, mock_get_sensors):
         mock_get_sensors.return_value = ["return_data"]
 
@@ -395,7 +394,7 @@ class TestRedfishMetrics(unittest.TestCase):
             data = helper._retrieve_redfish_sensor_data()
         self.assertEqual(data, ["return_data"])
 
-    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.systems.get_system_ids"
     )
@@ -482,7 +481,7 @@ class TestRedfishMetrics(unittest.TestCase):
         mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s2/Processors")
         mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s2/Processors/p21")
 
-    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.collections.get_collection_ids"  # noqa: E501
     )
@@ -556,7 +555,7 @@ class TestRedfishMetrics(unittest.TestCase):
         mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s1/Storage/STOR1")
         mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s1/Storage/STOR2")
 
-    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.inventory.get_chassis_ids"  # noqa: E501
     )
@@ -596,7 +595,7 @@ class TestRedfishMetrics(unittest.TestCase):
         mock_redfish_obj.get.assert_any_call("/redfish/v1/Chassis/c2/NetworkAdapters")
 
     @patch("prometheus_hardware_exporter.collectors.redfish.logger")
-    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.inventory.get_chassis_ids"  # noqa: E501
     )
@@ -621,7 +620,7 @@ class TestRedfishMetrics(unittest.TestCase):
             "No network adapters could be found on chassis id: %s", "c1"
         )
 
-    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.inventory.get_chassis_ids"  # noqa: E501
     )
@@ -676,7 +675,7 @@ class TestRedfishMetrics(unittest.TestCase):
         mock_redfish_obj.get.assert_any_call("/redfish/v1/Chassis/c1")
         mock_redfish_obj.get.assert_any_call("/redfish/v1/Chassis/c2")
 
-    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.collections.get_collection_ids"  # noqa: E501
     )
@@ -768,7 +767,7 @@ class TestRedfishMetrics(unittest.TestCase):
         mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s1/Storage/STOR2")
         mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s1/Storage/STOR2/Drives/d21")
 
-    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.systems.get_system_ids"
     )
@@ -837,7 +836,7 @@ class TestRedfishMetrics(unittest.TestCase):
         mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s2/Memory")
         mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s2/Memory/dimm2/")
 
-    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.inventory.get_chassis_ids"  # noqa: E501
     )
@@ -872,7 +871,7 @@ class TestRedfishMetrics(unittest.TestCase):
         mock_redfish_obj.get.assert_any_call("/redfish/v1/Chassis/c1/SmartStorage")
 
     @patch("prometheus_hardware_exporter.collectors.redfish.logger")
-    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.inventory.get_chassis_ids"  # noqa: E501
     )
@@ -900,7 +899,7 @@ class TestRedfishMetrics(unittest.TestCase):
             "Smart Storage URI endpoint not found for chassis ID: %s", "c1"
         )
 
-    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.systems.get_system_ids"
     )
@@ -927,7 +926,7 @@ class TestRedfishMetrics(unittest.TestCase):
         self.assertEqual(storage_drive_count, {})
         self.assertEqual(storage_drive_data, {})
 
-    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.inventory.get_chassis_ids"  # noqa: E501
     )
@@ -949,47 +948,84 @@ class TestRedfishMetrics(unittest.TestCase):
 class TestRedfishServiceDiscovery(unittest.TestCase):
     """Test redfish service discovery."""
 
-    @patch(
-        "prometheus_hardware_exporter.collectors.redfish.redfish.discover_ssdp",
-        return_value=[1, 2, 3],
-    )
-    def test_00_get_service_status_good(self, mock_discover_ssdp):
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
+    def test_01_redfish_available_login_fail(self, mock_redfish_client):
         test_ttl = 10
-        discover = RedfishHelper.get_cached_discover_method(ttl=test_ttl)
-        ok = discover()
-        self.assertEqual(ok, True)
-        mock_discover_ssdp.assert_called_once()
+        mock_redfish_obj = Mock()
+        mock_redfish_client.return_value = mock_redfish_obj
+        for exc in [SessionCreationError, InvalidCredentialsError]:
+            mock_redfish_obj.login.side_effect = exc
+            discover = RedfishHelper.get_cached_discover_method(ttl=test_ttl)
+            host = ""
+            available = discover(host)
+            self.assertEqual(available, True)
 
-    @patch(
-        "prometheus_hardware_exporter.collectors.redfish.redfish.discover_ssdp", return_value=[]
-    )
-    def test_01_get_service_status_bad(self, mock_discover_ssdp):
+        mock_redfish_client.assert_called()
+        mock_redfish_obj.login.assert_called()
+
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
+    def test_00_redfish_available_login_success(self, mock_redfish_client):
         test_ttl = 10
+        mock_redfish_obj = Mock()
+        mock_redfish_client.return_value = mock_redfish_obj
         discover = RedfishHelper.get_cached_discover_method(ttl=test_ttl)
-        ok = discover()
-        self.assertEqual(ok, False)
-        mock_discover_ssdp.assert_called_once()
+        host = "mock_host"
+        available = discover(host)
 
-    @patch(
-        "prometheus_hardware_exporter.collectors.redfish.redfish.discover_ssdp",
-        return_value=[1, 2, 3],
-    )
-    def test_02_discover_cache(self, mock_discover_ssdp):
+        self.assertEqual(available, True)
+        mock_redfish_client.assert_called_once_with(
+            base_url="mock_host",
+            username="",
+            password="",
+        )
+        mock_redfish_obj.login.assert_called_once()
+        mock_redfish_obj.logout.assert_called()
+
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
+    def test_02_redfish_not_available(self, mock_redfish_client):
+        test_ttl = 10
+        mock_redfish_obj = Mock()
+        mock_redfish_client.return_value = mock_redfish_obj
+        mock_redfish_obj.login.side_effect = RetriesExhaustedError()
+        discover = RedfishHelper.get_cached_discover_method(ttl=test_ttl)
+        host = "mock_host"
+        available = discover(host)
+
+        self.assertEqual(available, False)
+        mock_redfish_client.assert_called_once_with(
+            base_url="mock_host",
+            username="",
+            password="",
+        )
+        mock_redfish_obj.login.assert_called_once()
+
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
+    def test_03_discover_cache(self, mock_redfish_client):
         test_ttl = 1
-
+        mock_redfish_obj = Mock()
+        mock_redfish_client.return_value = mock_redfish_obj
         discover = RedfishHelper.get_cached_discover_method(ttl=test_ttl)
-        output = discover()
+        host = "mock_host"
+        output = discover(host)
         self.assertEqual(output, True)
-        mock_discover_ssdp.assert_called()
-        mock_discover_ssdp.reset_mock()
+        mock_redfish_client.assert_called_once_with(
+            base_url="mock_host",
+            username="",
+            password="",
+        )
+        mock_redfish_client.reset_mock()
 
         # output from cache
-        output = discover()
+        output = discover(host)
         self.assertEqual(output, True)
-        mock_discover_ssdp.assert_not_called()
+        mock_redfish_client.assert_not_called()
 
         # wait till cache expires
         sleep(test_ttl + 1)
-        output = discover()
+        output = discover(host)
         self.assertEqual(output, True)
-        mock_discover_ssdp.assert_called()
+        mock_redfish_client.assert_called_with(
+            base_url="mock_host",
+            username="",
+            password="",
+        )

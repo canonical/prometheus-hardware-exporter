@@ -552,7 +552,7 @@ class TestCustomCollector(unittest.TestCase):
         ]:
             assert name in get_payloads
 
-    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_cached_discover_method"
     )
@@ -578,7 +578,7 @@ class TestCustomCollector(unittest.TestCase):
         mock_redfish_client.assert_not_called()
 
     @patch("prometheus_hardware_exporter.collector.logger")
-    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_cached_discover_method"
     )
@@ -618,7 +618,7 @@ class TestCustomCollector(unittest.TestCase):
     @patch("prometheus_hardware_exporter.collector.logger")
     @patch("prometheus_hardware_exporter.collectors.redfish.RedfishHelper.__exit__")
     @patch("prometheus_hardware_exporter.collectors.redfish.RedfishHelper.__enter__")
-    @patch("prometheus_hardware_exporter.collectors.redfish.redfish.redfish_client")
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_cached_discover_method"
     )

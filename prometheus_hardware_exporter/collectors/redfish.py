@@ -2,10 +2,16 @@
 from logging import getLogger
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-import redfish
 import redfish_utilities
 from cachetools.func import ttl_cache
-from redfish.rest.v1 import HttpClient, RestResponse
+from redfish import redfish_client
+from redfish.rest.v1 import (
+    HttpClient,
+    InvalidCredentialsError,
+    RestResponse,
+    RetriesExhaustedError,
+    SessionCreationError,
+)
 from typing_extensions import Self
 
 from prometheus_hardware_exporter.config import Config
@@ -26,15 +32,27 @@ class RedfishHelper:
         """
 
         @ttl_cache(ttl=ttl)
-        def _discover() -> bool:
-            """Return true if redfish services have been discovered."""
-            logger.info("Discovering redfish services...")
-            services = redfish.discover_ssdp()
-            if len(services) == 0:
-                logger.info("No redfish services discovered")
-                return False
-            logger.debug("Discovered redfish services: %s", services)
-            return True
+        def _discover(host: str) -> bool:
+            """Return True if redfish service has been discovered."""
+            try:
+                redfish_obj = redfish_client(base_url=host, username="", password="")
+                redfish_obj.login(auth="session")
+            except RetriesExhaustedError:
+                # redfish not available
+                result = False
+            except (SessionCreationError, InvalidCredentialsError):
+                # redfish available, wrong credentials or unable to create a session
+                result = True
+            else:
+                # redfish available, login succeeded
+                result = True
+                redfish_obj.logout()
+
+            if result:
+                logger.debug("Redfish service available.")
+            else:
+                logger.debug("Redfish service not available.")
+            return result
 
         return _discover
 
@@ -49,7 +67,7 @@ class RedfishHelper:
 
     def __enter__(self) -> Self:
         """Login to redfish while entering context manager."""
-        self.redfish_obj = redfish.redfish_client(
+        self.redfish_obj = redfish_client(
             base_url=self.host,
             username=self.username,
             password=self.password,
