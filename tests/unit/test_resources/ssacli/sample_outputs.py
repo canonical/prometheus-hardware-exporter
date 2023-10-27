@@ -2,6 +2,7 @@ CTRL_ALL_SHOW = """
 
 Smart Array P222 in Slot 2                (sn: PDSXH0BRH6G0QU)
 Smart HBA P222 in Slot 3                (sn: PDSXH0BRH6G0QU)
+HPE Smart Array E208i-a SR Gen10 in Slot 12  (sn: XXXYYYZZZ)
 
 """
 CTRL_SHOW_STATUS = """
