@@ -54,9 +54,12 @@ class SsaCLI(Command):
 
         controllers_raw = result.data.strip().split("\n")
         slots = []
+        slot_pattern = r"in Slot (\d+)"
         for controller in controllers_raw:
-            if "in Slot" in controller:
-                slots.append(controller.split()[5])
+            match = re.search(slot_pattern, controller)
+            if match:
+                slots.append(match.group(1))
+
         return slots
 
     def _get_controller_status(self, slot: str) -> Dict[str, str]:

@@ -23,7 +23,7 @@ class TestSsaCLI(unittest.TestCase):
         mock_call.return_value = Result(CTRL_ALL_SHOW, None)
         ssacli = SsaCLI()
         slots = ssacli._get_controller_slots()
-        self.assertEqual(slots, ["2", "3"])
+        self.assertEqual(slots, ["2", "3", "12"])
 
     @patch.object(Command, "__call__")
     def test_01__get_controller_slots_error(self, mock_call):
