@@ -2,13 +2,39 @@
 
 import re
 from logging import getLogger
-from typing import Dict
+from typing import Dict, Tuple
 
 from ..utils import Command
 
 logger = getLogger(__name__)
 
 CURRENT_POWER_REGEX = re.compile(r"^Current Power\s*:\s*(?P<value>[0-9.]*)\s*Watts.*")
+
+
+class IpmiTool(Command):
+    """Command line tool for ipmitool."""
+
+    prefix = ""
+    command = "ipmitool"
+
+    def get_ps_redundancy(self) -> Tuple[bool, bool]:
+        """Get power supply redundancy.
+
+        returns:
+            - ok - Get redundancy success?
+            - redundancy - enable redundancy?
+        """
+        result = self("""sdr type "Power Supply" -c""")
+        if result.error:
+            logger.error(result.error)
+            return False, False
+        output = []
+        for line in result.data.splitlines():
+            data = line.split(",")
+            if "Redundancy" in data[0]:
+                # column 4 is redundancy status
+                output.append(data[4])
+        return True, all(status == "Fully Redundant" for status in output) | False
 
 
 class IpmiDcmi(Command):

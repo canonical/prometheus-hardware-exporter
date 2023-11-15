@@ -10,9 +10,10 @@ from redfish.rest.v1 import (
     SessionCreationError,
 )
 
-from .collectors.ipmi_dcmi import IpmiDcmi
+from .collectors.ipmi_dcmi import IpmiDcmi, IpmiTool
 from .collectors.ipmi_sel import IpmiSel
 from .collectors.ipmimonitoring import IpmiMonitoring
+from .collectors.lshw import LSHW
 from .collectors.perccli import PercCLI
 from .collectors.redfish import RedfishHelper
 from .collectors.sasircu import LSISASCollectorHelper, Sasircu
@@ -324,19 +325,27 @@ class IpmiDcmiCollector(BlockingCollector):
     """Collector for ipmi dcmi metrics."""
 
     ipmi_dcmi = IpmiDcmi()
+    ipmi_tool = IpmiTool()
+    lshw = LSHW()
 
     @property
     def specifications(self) -> List[Specification]:
         """Define dcmi metric specs."""
         return [
             Specification(
-                name="ipmi_dcmi_power_cosumption_watts",
+                name="ipmi_dcmi_power_consumption_watts",
                 documentation="Current power consumption in watts",
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
                 name="ipmi_dcmi_command_success",
                 documentation="Indicates if the ipmi dcmi command is successful or not",
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="ipmi_dcmi_power_consumption_rate",
+                documentation="Current power capacity rate",
+                labels=["ps_redundancy", "get_ps_redundancy_ok", "maximum_power_capacity"],
                 metric_class=GaugeMetricFamily,
             ),
         ]
@@ -349,10 +358,38 @@ class IpmiDcmiCollector(BlockingCollector):
             logger.error("Failed to fetch current power from ipmi dcmi")
             return [Payload(name="ipmi_dcmi_command_success", value=0.0)]
 
+        get_ps_redundancy_ok, ps_redundancy = self.ipmi_tool.get_ps_redundancy()
+        # Because we fail to get the redundancy config from the server,
+        # Suppose redundancy enable make denominator smaller
+        # and alert is more easy to fire.
+        if not get_ps_redundancy_ok:
+            ps_redundancy = True
+
+        power_capacities = self.lshw.get_power_capacities()
+        maximum_power_capacity = (
+            sum(power_capacities) / len(power_capacities)
+            if ps_redundancy
+            else sum(power_capacities)
+        )
+
+        power_capacity_rate = (
+            maximum_power_capacity
+            and current_power_payload["current_power"] / maximum_power_capacity
+            or 0
+        )
+
+        ps_redundancy_str = "1" if ps_redundancy else "0"
+        get_ps_redundancy_ok_str = "1" if get_ps_redundancy_ok else "0"
+
         payloads = [
             Payload(
-                name="ipmi_dcmi_power_cosumption_watts",
+                name="ipmi_dcmi_power_consumption_watts",
                 value=current_power_payload["current_power"],
+            ),
+            Payload(
+                name="ipmi_dcmi_power_consumption_rate",
+                value=power_capacity_rate,
+                labels=[ps_redundancy_str, get_ps_redundancy_ok_str, str(maximum_power_capacity)],
             ),
             Payload(name="ipmi_dcmi_command_success", value=1.0),
         ]
