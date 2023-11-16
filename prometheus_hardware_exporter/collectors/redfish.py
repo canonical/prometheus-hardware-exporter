@@ -19,6 +19,7 @@ from prometheus_hardware_exporter.config import Config
 logger = getLogger(__name__)
 
 # pylint: disable=too-many-instance-attributes
+# pylint: disable=too-many-locals
 
 
 class RedfishHelper:
@@ -240,7 +241,11 @@ class RedfishHelper:
         storage_controller_data: Dict[str, List] = {}
         # storage controllers on each system
         storage_controller_count: Dict[str, int] = {}
-        storage_root_uri_pattern = "/redfish/v1/Systems/{}/Storage"
+        systems_root_uri = "/redfish/v1/Systems/"
+
+        # storage_root_uri becomes systems_root_uri/system_id/storage_name
+        # eg: "/redfish/v1/Systems/S1/Storage"
+        storage_root_uri_pattern = systems_root_uri + "{}/{}"
         logger.info("Getting storage controller data...")
 
         try:
@@ -252,14 +257,24 @@ class RedfishHelper:
         for system_id in system_ids:
             storage_controller_count[system_id] = 0
 
+            # finding storage name used in URI
+            # eg: if storage_root_uri is /redfish/v1/Systems/S1/Storages
+            # then storage_name becomes "Storages"
+            system_dict = self.redfish_obj.get(systems_root_uri + "/" + system_id).dict
+            storage_root_uri = system_dict["Storage"]["@odata.id"]
+            storage_name = storage_root_uri.split("/")[-1]
+
             # List of storage ids
             storage_ids: List[str] = redfish_utilities.collections.get_collection_ids(
-                self.redfish_obj, storage_root_uri_pattern.format(system_id)
+                self.redfish_obj, storage_root_uri_pattern.format(system_id, storage_name)
             )
+
             storage_controller_data_in_curr_system = []
             for storage_id in storage_ids:
                 # eg: /redfish/v1/Systems/1/Storage/XYZ123
-                curr_storage_uri = storage_root_uri_pattern.format(system_id) + "/" + storage_id
+                curr_storage_uri = (
+                    storage_root_uri_pattern.format(system_id, storage_name) + "/" + storage_id
+                )
 
                 # list of storage controllers for that storage id
                 storage_controllers_list: List[Dict] = self.redfish_obj.get(curr_storage_uri).dict[
@@ -397,7 +412,11 @@ class RedfishHelper:
         storage_drive_data: Dict[str, List] = {}
         # storage drives on each system
         storage_drive_count: Dict[str, int] = {}
-        storage_root_uri_pattern = "/redfish/v1/Systems/{}/Storage"
+        systems_root_uri = "/redfish/v1/Systems/"
+
+        # storage_root_uri becomes systems_root_uri/system_id/storage_name
+        # eg: "/redfish/v1/Systems/S1/Storage"
+        storage_root_uri_pattern = systems_root_uri + "{}/{}"
         logger.info("Getting storage drive data...")
 
         try:
@@ -409,13 +428,24 @@ class RedfishHelper:
         for system_id in system_ids:
             storage_drive_count[system_id] = 0
 
+            # finding storage name used in URI
+            # eg: if storage_root_uri is /redfish/v1/Systems/S1/Storages
+            # then storage_name becomes "Storages"
+            system_dict = self.redfish_obj.get(systems_root_uri + "/" + system_id).dict
+            storage_root_uri = system_dict["Storage"]["@odata.id"]
+            storage_name = storage_root_uri.split("/")[-1]
+
             storage_ids: List[str] = redfish_utilities.collections.get_collection_ids(
-                self.redfish_obj, storage_root_uri_pattern.format(system_id)
+                self.redfish_obj, storage_root_uri_pattern.format(system_id, storage_name)
             )
+
             storage_drive_data_in_curr_system: List[Dict] = []
             for storage_id in storage_ids:
-                # /redfish/v1/Systems/1/Storage/XYZ123/
-                curr_storage_uri = storage_root_uri_pattern.format(system_id) + "/" + storage_id
+                # eg: /redfish/v1/Systems/1/Storage/XYZ123/
+                curr_storage_uri = (
+                    storage_root_uri_pattern.format(system_id, storage_name) + "/" + storage_id
+                )
+
                 # list of storage drives for that storage id
                 storage_drives_list: List[Dict] = self.redfish_obj.get(curr_storage_uri).dict[
                     "Drives"
