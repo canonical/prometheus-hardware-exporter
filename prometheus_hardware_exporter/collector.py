@@ -509,7 +509,7 @@ class IpmiSensorsCollector(BlockingCollector):
         try:
             return float(reading)
         except ValueError:
-            logger.info("Changing sensor data value %s to 0.0", reading)
+            logger.debug("Changing sensor data value %s to 0.0", reading)
             return 0.0
 
 
