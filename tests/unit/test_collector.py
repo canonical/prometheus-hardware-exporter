@@ -295,6 +295,9 @@ class TestCustomCollector(unittest.TestCase):
         ipmi_dcmi_collector.ipmi_dcmi = Mock()
         ipmi_dcmi_collector.ipmi_dcmi.installed = False
         ipmi_dcmi_collector.ipmi_dcmi.get_current_power.return_value = {}
+
+        ipmi_dcmi_collector.ipmi_tool = Mock()
+        ipmi_dcmi_collector.dmidecode = Mock()
         payloads = ipmi_dcmi_collector.collect()
 
         self.assertEqual(len(list(payloads)), 1)
@@ -303,10 +306,34 @@ class TestCustomCollector(unittest.TestCase):
         """Test ipmi dcmi collector can fetch correct number of metrics."""
         ipmi_dcmi_collector = IpmiDcmiCollector(Mock())
         ipmi_dcmi_collector.ipmi_dcmi = Mock()
+        ipmi_dcmi_collector.ipmi_tool = Mock()
+        ipmi_dcmi_collector.dmidecode = Mock()
 
         mock_dcmi_payload = {"current_power": 105}
 
         ipmi_dcmi_collector.ipmi_dcmi.get_current_power.return_value = mock_dcmi_payload
+        ipmi_dcmi_collector.ipmi_tool.get_ps_redundancy.return_value = (True, True)
+        ipmi_dcmi_collector.dmidecode.get_power_capacities.return_value = [1000, 1000]
+
+        payloads = ipmi_dcmi_collector.collect()
+
+        available_metrics = [spec.name for spec in ipmi_dcmi_collector.specifications]
+        self.assertEqual(len(list(payloads)), len(available_metrics))
+        for payload in payloads:
+            self.assertIn(payload.name, available_metrics)
+
+    def test_32_ipmi_dcmi_collector_get_ps_redundancy_not_ok(self):
+        """Test ipmi dcmi collector can fetch correct number of metrics."""
+        ipmi_dcmi_collector = IpmiDcmiCollector(Mock())
+        ipmi_dcmi_collector.ipmi_dcmi = Mock()
+        ipmi_dcmi_collector.ipmi_tool = Mock()
+        ipmi_dcmi_collector.dmidecode = Mock()
+
+        mock_dcmi_payload = {"current_power": 105}
+
+        ipmi_dcmi_collector.ipmi_dcmi.get_current_power.return_value = mock_dcmi_payload
+        ipmi_dcmi_collector.ipmi_tool.get_ps_redundancy.return_value = (False, True)
+        ipmi_dcmi_collector.dmidecode.get_power_capacities.return_value = [1000, 1000]
 
         payloads = ipmi_dcmi_collector.collect()
 
