@@ -343,8 +343,10 @@ class IpmiDcmiCollector(BlockingCollector):
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
-                name="ipmi_dcmi_power_consumption_rate",
-                documentation="Current power capacity rate",
+                name="ipmi_dcmi_power_consumption_percentage",
+                documentation=(
+                    "Current power capacity usage as a percentage of the overall PSU budget"
+                ),
                 labels=["ps_redundancy", "get_ps_redundancy_ok", "maximum_power_capacity"],
                 metric_class=GaugeMetricFamily,
             ),
@@ -372,7 +374,7 @@ class IpmiDcmiCollector(BlockingCollector):
             or sum(power_capacities)
         )
 
-        power_capacity_rate = (
+        power_capacity_percentage = (
             maximum_power_capacity
             and current_power_payload["current_power"] / maximum_power_capacity
             or 0
@@ -387,8 +389,8 @@ class IpmiDcmiCollector(BlockingCollector):
                 value=current_power_payload["current_power"],
             ),
             Payload(
-                name="ipmi_dcmi_power_consumption_rate",
-                value=power_capacity_rate,
+                name="ipmi_dcmi_power_consumption_percentage",
+                value=power_capacity_percentage,
                 labels=[ps_redundancy_str, get_ps_redundancy_ok_str, str(maximum_power_capacity)],
             ),
             Payload(name="ipmi_dcmi_command_success", value=1.0),

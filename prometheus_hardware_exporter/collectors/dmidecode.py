@@ -1,5 +1,6 @@
 """Dmidecode metrics collector."""
 import re
+from functools import lru_cache
 from logging import getLogger
 from typing import List
 
@@ -17,6 +18,7 @@ class Dmidecode(Command):
     prefix = ""
     command = "dmidecode"
 
+    @lru_cache  # PSU ratings won't change over the lifetime of a server
     def get_power_capacities(self) -> List[int]:
         """Get list of power capacities."""
         result = self("-t 39")
