@@ -10,10 +10,10 @@ from redfish.rest.v1 import (
     SessionCreationError,
 )
 
+from .collectors.dmidecode import Dmidecode
 from .collectors.ipmi_dcmi import IpmiDcmi, IpmiTool
 from .collectors.ipmi_sel import IpmiSel
 from .collectors.ipmimonitoring import IpmiMonitoring
-from .collectors.lshw import LSHW
 from .collectors.perccli import PercCLI
 from .collectors.redfish import RedfishHelper
 from .collectors.sasircu import LSISASCollectorHelper, Sasircu
@@ -326,7 +326,7 @@ class IpmiDcmiCollector(BlockingCollector):
 
     ipmi_dcmi = IpmiDcmi()
     ipmi_tool = IpmiTool()
-    lshw = LSHW()
+    dmidecode = Dmidecode()
 
     @property
     def specifications(self) -> List[Specification]:
@@ -365,11 +365,11 @@ class IpmiDcmiCollector(BlockingCollector):
         if not get_ps_redundancy_ok:
             ps_redundancy = True
 
-        power_capacities = self.lshw.get_power_capacities()
+        power_capacities = self.dmidecode.get_power_capacities()
         maximum_power_capacity = (
-            sum(power_capacities) / len(power_capacities)
-            if ps_redundancy
-            else sum(power_capacities)
+            (ps_redundancy and len(power_capacities) > 0)
+            and sum(power_capacities) / len(power_capacities)
+            or sum(power_capacities)
         )
 
         power_capacity_rate = (
