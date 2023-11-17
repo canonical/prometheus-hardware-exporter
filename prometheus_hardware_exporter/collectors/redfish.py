@@ -258,11 +258,10 @@ class RedfishHelper:
             storage_controller_count[system_id] = 0
 
             # finding storage name used in URI
-            # eg: if storage_root_uri is /redfish/v1/Systems/S1/Storages
+            # eg: if storage root URI is /redfish/v1/Systems/S1/Storages
             # then storage_name becomes "Storages"
             system_dict = self.redfish_obj.get(systems_root_uri + "/" + system_id).dict
-            storage_root_uri = system_dict["Storage"]["@odata.id"]
-            storage_name = storage_root_uri.split("/")[-1]
+            storage_name = system_dict["Storage"]["@odata.id"].split("/")[-1]
 
             # List of storage ids
             storage_ids: List[str] = redfish_utilities.collections.get_collection_ids(
@@ -429,11 +428,10 @@ class RedfishHelper:
             storage_drive_count[system_id] = 0
 
             # finding storage name used in URI
-            # eg: if storage_root_uri is /redfish/v1/Systems/S1/Storages
+            # eg: if storage root URI is /redfish/v1/Systems/S1/Storages
             # then storage_name becomes "Storages"
             system_dict = self.redfish_obj.get(systems_root_uri + "/" + system_id).dict
-            storage_root_uri = system_dict["Storage"]["@odata.id"]
-            storage_name = storage_root_uri.split("/")[-1]
+            storage_name = system_dict["Storage"]["@odata.id"].split("/")[-1]
 
             storage_ids: List[str] = redfish_utilities.collections.get_collection_ids(
                 self.redfish_obj, storage_root_uri_pattern.format(system_id, storage_name)

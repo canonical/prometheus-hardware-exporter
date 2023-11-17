@@ -568,37 +568,33 @@ class TestRedfishMetrics(unittest.TestCase):
     def test_12_non_standard_storage_uri_name(
         self, mock_get_system_ids, mock_get_collection_ids, mock_redfish_client
     ):
-        """Test non-standard name for "Storage" in URI.
+        """Test non-standard name for "Storage" in URI for storage controller and drives.
 
         Eg: /redfish/v1/Systems/S1/Storages
         """
         mock_redfish_obj = Mock()
-        mock_system_ids = ["s1"]
-        mock_storage_ids = ["STOR1", "STOR2"]
-
-        mock_get_system_ids.return_value = mock_system_ids
+        mock_get_system_ids.return_value = ["s1"]
+        mock_get_collection_ids.return_value = ["STOR1"]
         mock_redfish_client.return_value = mock_redfish_obj
-        mock_get_collection_ids.return_value = mock_storage_ids
 
         def mock_get_response(uri):
             response = Mock()
-            if "Systems/s1/Storages/STOR1" in uri:
+            if "Systems/s1/Storages/STOR1/Drives/d11" in uri:
+                response.dict = {
+                    "Id": "d11",
+                    "Status": {"Health": "OK", "State": "Enabled"},
+                }
+            elif "Systems/s1/Storages/STOR1" in uri:
                 response.dict = {
                     "StorageControllers": [
                         {
                             "MemberId": "sc0",
                             "Status": {"Health": "OK", "State": "Enabled"},
                         }
-                    ]
-                }
-            elif "Systems/s1/Storages/STOR2" in uri:
-                response.dict = {
-                    "StorageControllers": [
-                        {
-                            "MemberId": "sc1",
-                            "Status": {"Health": "OK", "State": "Enabled"},
-                        }
-                    ]
+                    ],
+                    "Drives": [
+                        {"@odata.id": "/redfish/v1/Systems/s1/Storages/STOR1/Drives/d11"},
+                    ],
                 }
             # response for GET request to /redfish/v1/Systems/<sys_id>/
             elif "Systems" in uri:
@@ -607,37 +603,18 @@ class TestRedfishMetrics(unittest.TestCase):
 
         mock_redfish_obj.get.side_effect = mock_get_response
 
+        # storage controller
         with RedfishHelper(Mock()) as helper:
-            (
-                storage_controller_count,
-                storage_controller_data,
-            ) = helper.get_storage_controller_data()
-
-        self.assertEqual(storage_controller_count, {"s1": 2})
-        self.assertEqual(
-            storage_controller_data,
-            {
-                "s1": [
-                    {
-                        "storage_id": "STOR1",
-                        "controller_id": "sc0",
-                        "health": "OK",
-                        "state": "Enabled",
-                    },
-                    {
-                        "storage_id": "STOR2",
-                        "controller_id": "sc1",
-                        "health": "OK",
-                        "state": "Enabled",
-                    },
-                ],
-            },
-        )
-
+            _sc_count, _sc_data = helper.get_storage_controller_data()
         mock_get_system_ids.assert_called_once_with(mock_redfish_obj)
-
+        # test if "Storages" is present in redfish GET request URI
         mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s1/Storages/STOR1")
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s1/Storages/STOR2")
+
+        # storage drives
+        with RedfishHelper(Mock()) as helper:
+            _drive_count, _drive_data = helper.get_storage_drive_data()
+        # test if "Storages" is present in redfish GET request URI
+        mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s1/Storages/STOR1/Drives/d11")
 
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
