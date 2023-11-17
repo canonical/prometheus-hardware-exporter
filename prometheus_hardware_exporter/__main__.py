@@ -18,6 +18,7 @@ from .collector import (
 )
 from .config import (
     DEFAULT_CONFIG,
+    DEFAULT_IPMI_SEL_INTERVAL,
     DEFAULT_REDFISH_CLIENT_MAX_RETRY,
     DEFAULT_REDFISH_CLIENT_TIMEOUT,
     DEFAULT_REDFISH_DISCOVER_CACHE_TTL,
@@ -70,7 +71,7 @@ def parse_command_line() -> argparse.Namespace:
     parser.add_argument(
         "--ipmi-sel-interval",
         help="The duration for how many seconds to collect SEL records",
-        default=300,
+        default=DEFAULT_IPMI_SEL_INTERVAL,
         type=int,
     )
     parser.add_argument(
