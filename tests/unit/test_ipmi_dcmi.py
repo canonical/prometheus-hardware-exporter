@@ -51,3 +51,12 @@ class TestIpmiTool(unittest.TestCase):
         ipmitool = IpmiTool()
         ps_redundancy = ipmitool.get_ps_redundancy()
         self.assertEqual(ps_redundancy, (False, False))
+
+    @patch.object(Command, "__call__")
+    def test_02_get_ps_redundancy_success_redundancy_disable(self, mock_call):
+        with open(IPMITOOL_SDR_PS_SAMPLE_OUTPUT, "r") as content:
+            data = content.read().replace("Fully Redundant", "Not Fully Redundant")
+            mock_call.return_value = Result(data, None)
+        ipmitool = IpmiTool()
+        ps_redundancy = ipmitool.get_ps_redundancy()
+        self.assertEqual(ps_redundancy, (True, False))

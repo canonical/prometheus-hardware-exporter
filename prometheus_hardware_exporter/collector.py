@@ -368,6 +368,8 @@ class IpmiDcmiCollector(BlockingCollector):
             ps_redundancy = True
 
         power_capacities = self.dmidecode.get_power_capacities()
+        # If power supply is redundancy is enabled,
+        # maximum_power_capacity = average power_capacities, else sum.
         maximum_power_capacity = (
             (ps_redundancy and len(power_capacities) > 0)
             and sum(power_capacities) / len(power_capacities)

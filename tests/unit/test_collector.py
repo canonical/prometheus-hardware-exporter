@@ -315,15 +315,15 @@ class TestCustomCollector(unittest.TestCase):
         ipmi_dcmi_collector.ipmi_tool.get_ps_redundancy.return_value = (True, True)
         ipmi_dcmi_collector.dmidecode.get_power_capacities.return_value = [1000, 1000]
 
-        payloads = ipmi_dcmi_collector.collect()
+        payloads = list(ipmi_dcmi_collector.collect())
 
         available_metrics = [spec.name for spec in ipmi_dcmi_collector.specifications]
-        self.assertEqual(len(list(payloads)), len(available_metrics))
+        self.assertEqual(len(payloads), len(available_metrics))
         for payload in payloads:
             self.assertIn(payload.name, available_metrics)
 
     def test_32_ipmi_dcmi_collector_get_ps_redundancy_not_ok(self):
-        """Test ipmi dcmi collector can fetch correct number of metrics."""
+        """Test ipmi dcmi collector with ps_redundancy return is not ok."""
         ipmi_dcmi_collector = IpmiDcmiCollector(Mock())
         ipmi_dcmi_collector.ipmi_dcmi = Mock()
         ipmi_dcmi_collector.ipmi_tool = Mock()
@@ -332,15 +332,45 @@ class TestCustomCollector(unittest.TestCase):
         mock_dcmi_payload = {"current_power": 105}
 
         ipmi_dcmi_collector.ipmi_dcmi.get_current_power.return_value = mock_dcmi_payload
-        ipmi_dcmi_collector.ipmi_tool.get_ps_redundancy.return_value = (False, True)
+        ipmi_dcmi_collector.ipmi_tool.get_ps_redundancy.return_value = (False, False)
         ipmi_dcmi_collector.dmidecode.get_power_capacities.return_value = [1000, 1000]
 
-        payloads = ipmi_dcmi_collector.collect()
+        payloads = list(ipmi_dcmi_collector.collect())
 
         available_metrics = [spec.name for spec in ipmi_dcmi_collector.specifications]
-        self.assertEqual(len(list(payloads)), len(available_metrics))
+        self.assertEqual(len(payloads), len(available_metrics))
         for payload in payloads:
             self.assertIn(payload.name, available_metrics)
+
+    def test_33_ipmi_dcmi_collector_power_consumption_percentage_valid(self):
+        """Test ipmi dcmi collector can fetch correct number of metrics."""
+        ipmi_dcmi_collector = IpmiDcmiCollector(Mock())
+        ipmi_dcmi_collector.ipmi_dcmi = Mock()
+        ipmi_dcmi_collector.ipmi_tool = Mock()
+        ipmi_dcmi_collector.dmidecode = Mock()
+
+        mock_dcmi_payload = {"current_power": 105}
+
+        for ps_redundancy, power_capacities, expect in [
+            # Expect value should be current_power / average power_capacities
+            ((True, True), [1000, 1000], 105 / 1000),
+            ((False, True), [1000, 1000], 105 / 1000),
+            ((False, False), [1000, 2000], 105 / ((1000 + 2000) / 2)),
+            # Expect value should be current_power / sum power_capacities
+            ((True, False), [1000, 1000], 105 / 2000),
+        ]:
+            ipmi_dcmi_collector.ipmi_dcmi.get_current_power.return_value = mock_dcmi_payload
+            ipmi_dcmi_collector.ipmi_tool.get_ps_redundancy.return_value = ps_redundancy
+            ipmi_dcmi_collector.dmidecode.get_power_capacities.return_value = power_capacities
+
+            payloads = ipmi_dcmi_collector.collect()
+
+            payload_exists = False
+            for payload in payloads:
+                if payload.name == "ipmi_dcmi_power_consumption_percentage":
+                    payload_exists = True
+                    self.assertEqual(payload.samples[0].value, expect)
+            self.assertTrue(payload_exists)
 
     def test_40_ipmi_sel_not_installed(self):
         """Test ipmi sel collector when ipmi sel is not installed."""
