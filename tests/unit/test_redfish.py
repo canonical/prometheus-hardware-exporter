@@ -480,6 +480,15 @@ class TestRedfishMetrics(unittest.TestCase):
         mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s2/Processors/p21")
 
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
+    def test__storage_root_uri(self, mock_redfish_client):
+        """Test RedfishHelper._storage_root_uri method."""
+        mock_redfish_client.return_value = Mock()
+        expected_uri = "/redfish/v1/Systems/S1/TestStorage/"
+        with RedfishHelper(Mock()) as helper:
+            uri = helper._storage_root_uri("S1", "TestStorage")
+        assert uri == expected_uri
+
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.collections.get_collection_ids"  # noqa: E501
     )
