@@ -21,8 +21,8 @@ class IpmiTool(Command):
         """Get power supply redundancy.
 
         returns:
-            - ok - Get redundancy success?
-            - redundancy - enable redundancy?
+            - ok - True if fetching redundancy info is successful
+            - redundancy - True if redundancy is enabled
         """
         result = self("""sdr type "Power Supply" -c""")
         if result.error:
