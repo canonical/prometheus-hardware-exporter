@@ -475,10 +475,12 @@ class TestRedfishMetrics(unittest.TestCase):
     def test__storage_root_uri(self, mock_redfish_client):
         """Test RedfishHelper._storage_root_uri method."""
         mock_redfish_client.return_value = Mock()
-        expected_uri = "/redfish/v1/Systems/S1/TestStorage/"
-        with RedfishHelper(Mock()) as helper:
-            uri = helper._storage_root_uri("S1", "TestStorage")
-        assert uri == expected_uri
+
+        for storage_name in ["Storage", "Storages", "TestStorage"]:
+            expected_uri = f"/redfish/v1/Systems/S1/{storage_name}/"
+            with RedfishHelper(Mock()) as helper:
+                uri = helper._storage_root_uri("S1", storage_name)
+            assert uri == expected_uri
 
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
@@ -597,18 +599,41 @@ class TestRedfishMetrics(unittest.TestCase):
 
         mock_redfish_obj.get.side_effect = mock_get_response
 
-        # storage controller
         with RedfishHelper(Mock()) as helper:
-            _sc_count, _sc_data = helper.get_storage_controller_data()
-        mock_get_system_ids.assert_called_once_with(mock_redfish_obj)
-        # test if "Storages" is present in redfish GET request URI
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s1/Storages/STOR1")
+            sc_count, sc_data = helper.get_storage_controller_data()
+            drive_count, drive_data = helper.get_storage_drive_data()
+
+        # storage controller
+        self.assertEqual(sc_count, {"s1": 1})
+        self.assertEqual(
+            sc_data,
+            {
+                "s1": [
+                    {
+                        "storage_id": "STOR1",
+                        "controller_id": "sc0",
+                        "health": "OK",
+                        "state": "Enabled",
+                    },
+                ],
+            },
+        )
 
         # storage drives
-        with RedfishHelper(Mock()) as helper:
-            _drive_count, _drive_data = helper.get_storage_drive_data()
-        # test if "Storages" is present in redfish GET request URI
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s1/Storages/STOR1/Drives/d11")
+        self.assertEqual(drive_count, {"s1": 1})
+        self.assertEqual(
+            drive_data,
+            {
+                "s1": [
+                    {
+                        "storage_id": "STOR1",
+                        "drive_id": "d11",
+                        "health": "OK",
+                        "state": "Enabled",
+                    },
+                ],
+            },
+        )
 
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
