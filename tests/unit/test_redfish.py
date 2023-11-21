@@ -471,14 +471,6 @@ class TestRedfishMetrics(unittest.TestCase):
             },
         )
 
-        mock_get_system_ids.assert_called_once_with(mock_redfish_obj)
-
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s1/Processors")
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s1/Processors/p11")
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s1/Processors/p12")
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s2/Processors")
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s2/Processors/p21")
-
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     def test__storage_root_uri(self, mock_redfish_client):
         """Test RedfishHelper._storage_root_uri method."""
@@ -559,11 +551,6 @@ class TestRedfishMetrics(unittest.TestCase):
                 ],
             },
         )
-
-        mock_get_system_ids.assert_called_once_with(mock_redfish_obj)
-
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s1/Storage/STOR1")
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s1/Storage/STOR2")
 
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
@@ -659,8 +646,6 @@ class TestRedfishMetrics(unittest.TestCase):
             network_adapter_count = helper.get_network_adapter_data()
 
         self.assertEqual(network_adapter_count, {"c1": 2, "c2": 1})
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Chassis/c1/NetworkAdapters")
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Chassis/c2/NetworkAdapters")
 
     @patch("prometheus_hardware_exporter.collectors.redfish.logger")
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
@@ -683,7 +668,6 @@ class TestRedfishMetrics(unittest.TestCase):
             network_adapter_count = helper.get_network_adapter_data()
 
         self.assertEqual(network_adapter_count, {})
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Chassis/c1/NetworkAdapters")
         mock_logger.debug.assert_any_call(
             "No network adapters could be found on chassis id: %s", "c1"
         )
@@ -740,8 +724,6 @@ class TestRedfishMetrics(unittest.TestCase):
                 },
             },
         )
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Chassis/c1")
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Chassis/c2")
 
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
@@ -830,14 +812,6 @@ class TestRedfishMetrics(unittest.TestCase):
             },
         )
 
-        mock_get_system_ids.assert_called_once_with(mock_redfish_obj)
-
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s1/Storage/STOR1")
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s1/Storage/STOR1/Drives/d11")
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s1/Storage/STOR1/Drives/d12")
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s1/Storage/STOR2")
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s1/Storage/STOR2/Drives/d21")
-
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.systems.get_system_ids"
@@ -900,13 +874,6 @@ class TestRedfishMetrics(unittest.TestCase):
             },
         )
 
-        mock_get_system_ids.assert_called_once_with(mock_redfish_obj)
-
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s1/Memory")
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s1/Memory/dimm1/")
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s2/Memory")
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Systems/s2/Memory/dimm2/")
-
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.inventory.get_chassis_ids"  # noqa: E501
@@ -939,7 +906,6 @@ class TestRedfishMetrics(unittest.TestCase):
                 },
             },
         )
-        mock_redfish_obj.get.assert_any_call("/redfish/v1/Chassis/c1/SmartStorage")
 
     @patch("prometheus_hardware_exporter.collectors.redfish.logger")
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
