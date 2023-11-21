@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from logging import getLogger
 from typing import Any, Dict, Iterable, List, Type
 
-from prometheus_client.metrics_core import Metric
+from prometheus_client.metrics_core import GaugeMetricFamily, Metric
 from prometheus_client.registry import Collector
 
 from .config import Config
@@ -89,6 +89,22 @@ class BlockingCollector(Collector):
             A list of specification.
         """
 
+    @property
+    def failed_metrics(self) -> Iterable[Metric]:
+        """Defines the metrics return when collect func fail.
+
+        Yields:
+            metrics: the internal metrics
+        """
+        name = self.__class__.__name__
+        metric = GaugeMetricFamily(
+            name=f"{name.lower()}_collector_failed",
+            labels=[],
+            documentation=f"{name} Collector fail to fetch metrics",
+        )
+        metric.add_metric(labels=[], value=1)
+        yield metric
+
     def init_default_datastore(self, payloads: List[Payload]) -> None:
         """Initialize or fill data the store with default values.
 
@@ -101,7 +117,7 @@ class BlockingCollector(Collector):
                     name=payload.name, labels=payload.labels, value=0.0
                 )
 
-    def collect(self) -> Iterable[Metric]:
+    def collect(self) -> Iterable[Metric]:  # pylint: disable=R1710
         """Fetch data and update the internal metrics.
 
         This is a callback method that is used internally within
@@ -111,21 +127,28 @@ class BlockingCollector(Collector):
         Yields:
             metrics: the internal metrics
         """
-        payloads = self.fetch()
-        self.init_default_datastore(payloads)
-        processed_payloads = self.process(payloads, self._datastore)
+        # The general exception hanlder will try to make sure the single
+        # collector's bug will only change the metrics output to failed_metrics
+        # and also make sure other collectors are still working.
+        try:
+            payloads = self.fetch()
+            self.init_default_datastore(payloads)
+            processed_payloads = self.process(payloads, self._datastore)
 
-        # unpacked and create metrics
-        for payload in processed_payloads:
-            spec = self._specs[payload.name]
-            # We have to ignore the type checking here, since the subclass of
-            # any metric family from prometheus client adds new attributes and
-            # methods.
-            metric = spec.metric_class(  # type: ignore[call-arg]
-                name=spec.name, labels=spec.labels, documentation=spec.documentation
-            )
-            metric.add_metric(  # type: ignore[attr-defined]
-                labels=payload.labels, value=payload.value
-            )
-            yield metric
-            self._datastore[payload.uuid] = payload
+            # unpacked and create metrics
+            for payload in processed_payloads:
+                spec = self._specs[payload.name]
+                # We have to ignore the type checking here, since the subclass of
+                # any metric family from prometheus client adds new attributes and
+                # methods.
+                metric = spec.metric_class(  # type: ignore[call-arg]
+                    name=spec.name, labels=spec.labels, documentation=spec.documentation
+                )
+                metric.add_metric(  # type: ignore[attr-defined]
+                    labels=payload.labels, value=payload.value
+                )
+                yield metric
+                self._datastore[payload.uuid] = payload
+        except Exception as e:  # pylint: disable=W0718
+            logger.error(e)
+            yield from self.failed_metrics
