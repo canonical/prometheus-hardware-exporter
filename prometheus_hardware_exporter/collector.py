@@ -368,8 +368,11 @@ class IpmiDcmiCollector(BlockingCollector):
             ps_redundancy = True
 
         power_capacities = self.dmidecode.get_power_capacities()
-        # If power supply is redundancy is enabled,
-        # maximum_power_capacity = average power_capacities, else sum.
+        # If power supply redundancy is enabled,
+        # it means server only use one power in the same time and another is for backup
+        # Ｗe calculate the average capacities as the value of maximum_power_capacity
+        # Note: We don't consider the situation that two powers' capacities are
+        # different on a single server.
         maximum_power_capacity = (
             (ps_redundancy and len(power_capacities) > 0)
             and sum(power_capacities) / len(power_capacities)
