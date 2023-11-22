@@ -273,10 +273,10 @@ class RedfishHelper:
             # then storage_name is "Storages"
             # storage name in URI can sometimes differ from the standard "Storage"
             # so we need to query it dynamically to not break the API calls.
-            system_resources_dict = self.redfish_obj.get(
+            system_resources = self.redfish_obj.get(
                 RedfishHelper.systems_root_uri + system_id
             ).dict
-            storage_name = system_resources_dict["Storage"]["@odata.id"].split("/")[-1]
+            storage_name = system_resources["Storage"]["@odata.id"].split("/")[-1]
 
             # List of storage ids
             storage_ids: List[str] = redfish_utilities.collections.get_collection_ids(
@@ -442,10 +442,10 @@ class RedfishHelper:
             # then storage_name is "Storages"
             # storage name in URI can sometimes differ from the standard "Storage"
             # so we need to query it dynamically to not break the API calls.
-            system_resources_dict = self.redfish_obj.get(
+            system_resources = self.redfish_obj.get(
                 RedfishHelper.systems_root_uri + system_id
             ).dict
-            storage_name = system_resources_dict["Storage"]["@odata.id"].split("/")[-1]
+            storage_name = system_resources["Storage"]["@odata.id"].split("/")[-1]
 
             storage_ids: List[str] = redfish_utilities.collections.get_collection_ids(
                 self.redfish_obj, RedfishHelper._storage_root_uri(system_id, storage_name)
