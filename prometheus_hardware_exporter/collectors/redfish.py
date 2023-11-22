@@ -266,9 +266,11 @@ class RedfishHelper:
         for system_id in system_ids:
             storage_controller_count[system_id] = 0
 
-            # finding storage name used in URI by querying Systems dictionary
+            # finding storage name used in URI by querying resource dictionary of system
             # eg: if storage root URI is /redfish/v1/Systems/S1/Storages
             # then storage_name is "Storages"
+            # The storage name in URI can sometimes differ from the standard "Storage"
+            # so we need to query it dynamically to not break the API calls.
             system_dict = self.redfish_obj.get(self.systems_root_uri + system_id).dict
             storage_name = system_dict["Storage"]["@odata.id"].split("/")[-1]
 
@@ -429,9 +431,11 @@ class RedfishHelper:
         for system_id in system_ids:
             storage_drive_count[system_id] = 0
 
-            # finding storage name used in URI by querying Systems dictionary
+            # finding storage name used in URI by querying resource dictionary of system
             # eg: if storage root URI is /redfish/v1/Systems/S1/Storages
             # then storage_name is "Storages"
+            # The storage name in URI can sometimes differ from the standard "Storage"
+            # so we need to query it dynamically to not break the API calls.
             system_dict = self.redfish_obj.get(self.systems_root_uri + system_id).dict
             storage_name = system_dict["Storage"]["@odata.id"].split("/")[-1]
 
