@@ -99,10 +99,9 @@ class BlockingCollector(Collector):
         name = self.__class__.__name__
         metric = GaugeMetricFamily(
             name=f"{name.lower()}_collector_failed",
-            labels=[],
             documentation=f"{name} Collector fail to fetch metrics",
+            value=1,
         )
-        metric.add_metric(labels=[], value=1)
         yield metric
 
     def init_default_datastore(self, payloads: List[Payload]) -> None:
@@ -117,7 +116,7 @@ class BlockingCollector(Collector):
                     name=payload.name, labels=payload.labels, value=0.0
                 )
 
-    def collect(self) -> Iterable[Metric]:  # pylint: disable=R1710
+    def collect(self) -> Iterable[Metric]:
         """Fetch data and update the internal metrics.
 
         This is a callback method that is used internally within
@@ -149,6 +148,6 @@ class BlockingCollector(Collector):
                 )
                 yield metric
                 self._datastore[payload.uuid] = payload
-        except Exception as e:  # pylint: disable=W0718
-            logger.error(e)
+        except Exception as err:  # pylint: disable=W0718
+            logger.error(err)
             yield from self.failed_metrics
