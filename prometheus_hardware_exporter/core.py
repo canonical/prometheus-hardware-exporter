@@ -100,6 +100,10 @@ class BlockingCollector(Collector):
         metric = GaugeMetricFamily(
             name=f"{name.lower()}_collector_failed",
             documentation=f"{name} Collector fail to fetch metrics",
+            labels=["collector"],
+        )
+        metric.add_metric(
+            labels=[self.__class__.__name__],
             value=1,
         )
         yield metric
