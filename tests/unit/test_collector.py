@@ -1256,7 +1256,7 @@ class TestCustomCollector(unittest.TestCase):
         ]:
             collector = collector_cls(Mock())
             collector.fetch = Mock()
-            collector.fetch.side_effect = Exception("Unknow error")
+            collector.fetch.side_effect = Exception("Unknown error")
             payloads = collector.collect()
             payloads = list(payloads)
             self.assertEqual(len(payloads), 1)

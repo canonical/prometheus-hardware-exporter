@@ -91,7 +91,7 @@ class BlockingCollector(Collector):
 
     @property
     def failed_metrics(self) -> Iterable[Metric]:
-        """Defines the metrics return when collect func fail.
+        """Defines the metrics to be returned when collector fails.
 
         Yields:
             metrics: the internal metrics
@@ -99,7 +99,7 @@ class BlockingCollector(Collector):
         name = self.__class__.__name__
         metric = GaugeMetricFamily(
             name=f"{name.lower()}_collector_failed",
-            documentation=f"{name} Collector fail to fetch metrics",
+            documentation=f"{name} Collector failed to fetch metrics",
             labels=["collector"],
         )
         metric.add_metric(
