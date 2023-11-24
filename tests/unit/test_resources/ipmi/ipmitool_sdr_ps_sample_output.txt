@@ -1,0 +1,3 @@
+PS Redundancy,77h,ok,7.1,Fully Redundant
+Status,85h,ok,10.1,Presence detected
+Status,86h,ok,10.2,Presence detected

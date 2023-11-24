@@ -1,0 +1,35 @@
+# dmidecode 3.3
+Getting SMBIOS data from sysfs.
+SMBIOS 3.3.0 present.
+
+Handle 0x2700, DMI type 39, 22 bytes
+System Power Supply
+	Location: Not Specified
+	Name: PWR SPLY,1400W,RDNT,LTON
+	Manufacturer: DELL
+	Serial Number: CNLOD0019M3A6D
+	Asset Tag: Not Specified
+	Model Part Number: 01CW9GA04
+	Revision: Not Specified
+	Max Power Capacity: 1400 W
+	Status: Present, Unknown
+	Type: Unknown
+	Input Voltage Range Switching: Unknown
+	Plugged: Yes
+	Hot Replaceable: Yes
+
+Handle 0x2701, DMI type 39, 22 bytes
+System Power Supply
+	Location: Not Specified
+	Name: PWR SPLY,1400W,RDNT,LTON
+	Manufacturer: DELL
+	Serial Number: CNLOD0019M369D
+	Asset Tag: Not Specified
+	Model Part Number: 01CW9GA04
+	Revision: Not Specified
+	Max Power Capacity: 1400 W
+	Status: Present, Unknown
+	Type: Unknown
+	Input Voltage Range Switching: Unknown
+	Plugged: Yes
+	Hot Replaceable: Yes

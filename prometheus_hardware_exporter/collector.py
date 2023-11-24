@@ -10,7 +10,8 @@ from redfish.rest.v1 import (
     SessionCreationError,
 )
 
-from .collectors.ipmi_dcmi import IpmiDcmi
+from .collectors.dmidecode import Dmidecode
+from .collectors.ipmi_dcmi import IpmiDcmi, IpmiTool
 from .collectors.ipmi_sel import IpmiSel
 from .collectors.ipmimonitoring import IpmiMonitoring
 from .collectors.perccli import PercCLI
@@ -324,19 +325,29 @@ class IpmiDcmiCollector(BlockingCollector):
     """Collector for ipmi dcmi metrics."""
 
     ipmi_dcmi = IpmiDcmi()
+    ipmi_tool = IpmiTool()
+    dmidecode = Dmidecode()
 
     @property
     def specifications(self) -> List[Specification]:
         """Define dcmi metric specs."""
         return [
             Specification(
-                name="ipmi_dcmi_power_cosumption_watts",
+                name="ipmi_dcmi_power_consumption_watts",
                 documentation="Current power consumption in watts",
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
                 name="ipmi_dcmi_command_success",
                 documentation="Indicates if the ipmi dcmi command is successful or not",
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="ipmi_dcmi_power_consumption_percentage",
+                documentation=(
+                    "Current power capacity usage as a percentage of the overall PSU budget"
+                ),
+                labels=["ps_redundancy", "get_ps_redundancy_ok", "maximum_power_capacity"],
                 metric_class=GaugeMetricFamily,
             ),
         ]
@@ -349,10 +360,43 @@ class IpmiDcmiCollector(BlockingCollector):
             logger.error("Failed to fetch current power from ipmi dcmi")
             return [Payload(name="ipmi_dcmi_command_success", value=0.0)]
 
+        get_ps_redundancy_ok, ps_redundancy = self.ipmi_tool.get_ps_redundancy()
+        # Because we fail to get the redundancy config from the server,
+        # Suppose redundancy enable make denominator smaller
+        # and alert is more easy to fire.
+        if not get_ps_redundancy_ok:
+            ps_redundancy = True
+
+        power_capacities = self.dmidecode.get_power_capacities()
+        # If power supply redundancy is enabled,
+        # it means server only use one power in the same time and another is for backup
+        # Ｗe calculate the average capacities as the value of maximum_power_capacity
+        # Note: We don't consider the situation that two powers' capacities are
+        # different on a single server.
+        maximum_power_capacity = (
+            (ps_redundancy and len(power_capacities) > 0)
+            and sum(power_capacities) / len(power_capacities)
+            or sum(power_capacities)
+        )
+
+        power_capacity_percentage = (
+            maximum_power_capacity
+            and current_power_payload["current_power"] / maximum_power_capacity
+            or 0
+        )
+
+        ps_redundancy_str = "1" if ps_redundancy else "0"
+        get_ps_redundancy_ok_str = "1" if get_ps_redundancy_ok else "0"
+
         payloads = [
             Payload(
-                name="ipmi_dcmi_power_cosumption_watts",
+                name="ipmi_dcmi_power_consumption_watts",
                 value=current_power_payload["current_power"],
+            ),
+            Payload(
+                name="ipmi_dcmi_power_consumption_percentage",
+                value=power_capacity_percentage,
+                labels=[ps_redundancy_str, get_ps_redundancy_ok_str, str(maximum_power_capacity)],
             ),
             Payload(name="ipmi_dcmi_command_success", value=1.0),
         ]
