@@ -1292,3 +1292,31 @@ class TestCustomCollector(unittest.TestCase):
                 )
             ],
         )
+
+    def test_1000_collector_fetch_failed(self):
+        for collector_cls, expected_name, expected_labels in [
+            (
+                MegaRAIDCollector,
+                "megaraidcollector_collector_failed",
+                {"collector": "MegaRAIDCollector"},
+            ),
+            (
+                RedfishCollector,
+                "redfishcollector_collector_failed",
+                {"collector": "RedfishCollector"},
+            ),
+            (
+                IpmiSensorsCollector,
+                "ipmisensorscollector_collector_failed",
+                {"collector": "IpmiSensorsCollector"},
+            ),
+        ]:
+            collector = collector_cls(Mock())
+            collector.fetch = Mock()
+            collector.fetch.side_effect = Exception("Unknown error")
+            payloads = collector.collect()
+            payloads = list(payloads)
+            self.assertEqual(len(payloads), 1)
+            self.assertEqual(payloads[0].name, expected_name)
+            self.assertEqual(payloads[0].samples[0].value, 1.0)
+            self.assertEqual(payloads[0].samples[0].labels, expected_labels)
