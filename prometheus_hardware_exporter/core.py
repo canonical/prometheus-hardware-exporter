@@ -96,14 +96,18 @@ class BlockingCollector(Collector):
         Yields:
             metrics: the internal metrics
         """
-        name = self.__class__.__name__
+        # if `__class_.__name__` is "IpmiDcmiCollector"
+        # then `name` becomes "ipmidcmi"
+        suffix = "collector"
+        class_name = self.__class__.__name__.lower()
+        name = class_name[: -len(suffix)] if class_name.endswith(suffix) else class_name
         metric = GaugeMetricFamily(
-            name=f"{name.lower()}_collector_failed",
-            documentation=f"{name} Collector failed to fetch metrics",
+            name=f"{name}_collector_failed",
+            documentation=f"{name} collector failed to fetch metrics",
             labels=["collector"],
         )
         metric.add_metric(
-            labels=[self.__class__.__name__],
+            labels=[name],
             value=1,
         )
         yield metric

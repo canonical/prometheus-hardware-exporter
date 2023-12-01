@@ -1294,21 +1294,34 @@ class TestCustomCollector(unittest.TestCase):
         )
 
     def test_collector_fetch_failed(self):
+        class NoCollectorSuffix(MegaRAIDCollector):
+            """Dummy class whose name doesn't end with "Collector".
+
+            Inherits from an existing collector for required methods to test suffix removal.
+            """
+
+            pass
+
         for collector_cls, expected_name, expected_labels in [
             (
                 MegaRAIDCollector,
-                "megaraidcollector_collector_failed",
-                {"collector": "MegaRAIDCollector"},
+                "megaraid_collector_failed",
+                {"collector": "megaraid"},
             ),
             (
                 RedfishCollector,
-                "redfishcollector_collector_failed",
-                {"collector": "RedfishCollector"},
+                "redfish_collector_failed",
+                {"collector": "redfish"},
             ),
             (
                 IpmiSensorsCollector,
-                "ipmisensorscollector_collector_failed",
-                {"collector": "IpmiSensorsCollector"},
+                "ipmisensors_collector_failed",
+                {"collector": "ipmisensors"},
+            ),
+            (
+                NoCollectorSuffix,
+                "nocollectorsuffix_collector_failed",
+                {"collector": "nocollectorsuffix"},
             ),
         ]:
             collector = collector_cls(Mock())
