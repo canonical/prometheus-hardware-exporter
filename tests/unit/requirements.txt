@@ -1,3 +1,4 @@
 cachetools
+parameterized
 pytest
 freezegun
