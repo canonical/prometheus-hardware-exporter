@@ -42,8 +42,11 @@ class TestRedfishMetrics(unittest.TestCase):
             mock_redfish_login.assert_called_once_with(auth="session")
         mock_redfish_logout.assert_called_once()
 
+    @parameterized.expand(
+        [InvalidCredentialsError, ConnectionError, SessionCreationError, RetriesExhaustedError]
+    )
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
-    def test_redfish_helper_context_manager_fail(self, mock_redfish_client):
+    def test_redfish_helper_context_manager_fail(self, err, mock_redfish_client):
         mock_config = Config(
             redfish_host="",
             redfish_username="",
@@ -52,23 +55,10 @@ class TestRedfishMetrics(unittest.TestCase):
             redfish_client_max_retry=5,
             redfish_discover_cache_ttl=5,
         )
-        for err in [
-            InvalidCredentialsError(),
-            ConnectionError(),
-            SessionCreationError(),
-            RetriesExhaustedError(),
-        ]:
-            mock_redfish_client.side_effect = err
-            with self.assertRaises(
-                (
-                    InvalidCredentialsError,
-                    ConnectionError,
-                    SessionCreationError,
-                    RetriesExhaustedError,
-                )
-            ):
-                with RedfishHelper(mock_config):
-                    pass
+        mock_redfish_client.side_effect = err
+        with self.assertRaises(err):
+            with RedfishHelper(mock_config):
+                pass
 
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     def test_verify_redfish_call_success(self, mock_redfish_client):
@@ -934,17 +924,17 @@ class TestRedfishMetrics(unittest.TestCase):
 class TestRedfishServiceDiscovery(unittest.TestCase):
     """Test redfish service discovery."""
 
+    @parameterized.expand([SessionCreationError, InvalidCredentialsError])
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
-    def test_redfish_available_login_fail(self, mock_redfish_client):
+    def test_redfish_available_login_fail(self, exc, mock_redfish_client):
         test_ttl = 10
         mock_redfish_obj = Mock()
         mock_redfish_client.return_value = mock_redfish_obj
-        for exc in [SessionCreationError, InvalidCredentialsError]:
-            mock_redfish_obj.login.side_effect = exc
-            discover = RedfishHelper.get_cached_discover_method(ttl=test_ttl)
-            host = ""
-            available = discover(host)
-            self.assertEqual(available, True)
+        mock_redfish_obj.login.side_effect = exc
+        discover = RedfishHelper.get_cached_discover_method(ttl=test_ttl)
+        host = ""
+        available = discover(host)
+        self.assertEqual(available, True)
 
         mock_redfish_client.assert_called()
         mock_redfish_obj.login.assert_called()
