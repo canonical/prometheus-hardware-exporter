@@ -1294,7 +1294,7 @@ class TestCustomCollector(unittest.TestCase):
         )
 
     def test_collector_fetch_failed(self):
-        class NoCollectorSuffix(MegaRAIDCollector):
+        class NoSuffix(MegaRAIDCollector):
             """Dummy class whose name doesn't end with "Collector".
 
             Inherits from an existing collector for required methods to test suffix removal.
@@ -1319,9 +1319,9 @@ class TestCustomCollector(unittest.TestCase):
                 {"collector": "ipmisensors"},
             ),
             (
-                NoCollectorSuffix,
-                "nocollectorsuffix_collector_failed",
-                {"collector": "nocollectorsuffix"},
+                NoSuffix,
+                "nosuffix_collector_failed",
+                {"collector": "nosuffix"},
             ),
         ]:
             collector = collector_cls(Mock())
