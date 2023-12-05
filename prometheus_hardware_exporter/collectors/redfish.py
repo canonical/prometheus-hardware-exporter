@@ -226,7 +226,7 @@ class RedfishHelper:
           system_id: "S1"
           storage_name" "Storage"
         """
-        return cls.systems_root_uri + f"{system_id}/{storage_name}/"
+        return cls.systems_root_uri + f"{system_id}/{storage_name}"
 
     def get_storage_controller_data(self) -> Tuple[Dict[str, int], Dict[str, List]]:
         """Return storage controller data and count.
@@ -292,21 +292,28 @@ class RedfishHelper:
             for storage_id in storage_ids:
                 # eg: /redfish/v1/Systems/1/Storage/XYZ123
                 curr_storage_uri = (
-                    RedfishHelper._storage_root_uri(system_id, storage_name) + storage_id
+                    RedfishHelper._storage_root_uri(system_id, storage_name) + "/" + storage_id
                 )
 
                 # list of storage controllers for that storage id
-                storage_controllers_list: List[Dict] = self.redfish_obj.get(curr_storage_uri).dict[
-                    "StorageControllers"
-                ]
-                storage_controller_count[system_id] += len(storage_controllers_list)
+                storage_controllers = self.redfish_obj.get(curr_storage_uri).dict
+                if "StorageControllers" in storage_controllers:
+                    storage_controllers_list: List[Dict] = storage_controllers.get("StorageControllers")
+                if "Controllers" in storage_controllers:
+                    storage_controllers_list: List[Dict] = []
+                    controller_list = storage_controllers.get("Controllers")
+                    for controller in controller_list.values():
+                        all_controller_data = self.redfish_obj.get(controller).dict
+                        for controller in all_controller_data["Members"]:
+                            storage_controllers_list.append(self.redfish_obj.get(controller["@odata.id"]).dict)
+
 
                 # picking out the required data from each storage controller in the list
                 for data in storage_controllers_list:
                     storage_controller_data_in_curr_system.append(
                         {
                             "storage_id": storage_id,
-                            "controller_id": data["MemberId"],
+                            "controller_id": data["MemberId"] if data.get("MemberId", None) else data.get("Id"),
                             "state": data["Status"]["State"],
                             "health": data["Status"]["Health"] or "NA",
                         }
@@ -460,7 +467,7 @@ class RedfishHelper:
             for storage_id in storage_ids:
                 # eg: /redfish/v1/Systems/1/Storage/XYZ123/
                 curr_storage_uri = (
-                    RedfishHelper._storage_root_uri(system_id, storage_name) + storage_id
+                    RedfishHelper._storage_root_uri(system_id, storage_name) + "/" + storage_id
                 )
 
                 # list of storage drives for that storage id
