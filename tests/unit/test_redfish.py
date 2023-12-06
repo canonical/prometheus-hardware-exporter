@@ -3,6 +3,7 @@ from time import sleep
 from unittest.mock import Mock, patch
 
 import redfish_utilities
+from parameterized import parameterized
 from redfish.rest.v1 import (
     InvalidCredentialsError,
     RetriesExhaustedError,
@@ -41,8 +42,11 @@ class TestRedfishMetrics(unittest.TestCase):
             mock_redfish_login.assert_called_once_with(auth="session")
         mock_redfish_logout.assert_called_once()
 
+    @parameterized.expand(
+        [InvalidCredentialsError, ConnectionError, SessionCreationError, RetriesExhaustedError]
+    )
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
-    def test_redfish_helper_context_manager_fail(self, mock_redfish_client):
+    def test_redfish_helper_context_manager_fail(self, err, mock_redfish_client):
         mock_config = Config(
             redfish_host="",
             redfish_username="",
@@ -51,23 +55,10 @@ class TestRedfishMetrics(unittest.TestCase):
             redfish_client_max_retry=5,
             redfish_discover_cache_ttl=5,
         )
-        for err in [
-            InvalidCredentialsError(),
-            ConnectionError(),
-            SessionCreationError(),
-            RetriesExhaustedError(),
-        ]:
-            mock_redfish_client.side_effect = err
-            with self.assertRaises(
-                (
-                    InvalidCredentialsError,
-                    ConnectionError,
-                    SessionCreationError,
-                    RetriesExhaustedError,
-                )
-            ):
-                with RedfishHelper(mock_config):
-                    pass
+        mock_redfish_client.side_effect = err
+        with self.assertRaises(err):
+            with RedfishHelper(mock_config):
+                pass
 
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     def test_verify_redfish_call_success(self, mock_redfish_client):
@@ -478,6 +469,7 @@ class TestRedfishMetrics(unittest.TestCase):
             uri = RedfishHelper._storage_root_uri("S1", storage_name)
             assert uri == expected_uri
 
+    @parameterized.expand(["Storage", "Storages"])
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.collections.get_collection_ids"  # noqa: E501
@@ -486,7 +478,7 @@ class TestRedfishMetrics(unittest.TestCase):
         "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.systems.get_system_ids"
     )
     def test_get_storage_controller_data_success(
-        self, mock_get_system_ids, mock_get_collection_ids, mock_redfish_client
+        self, storage_name, mock_get_system_ids, mock_get_collection_ids, mock_redfish_client
     ):
         mock_redfish_obj = Mock()
         mock_system_ids = ["s1"]
@@ -498,7 +490,8 @@ class TestRedfishMetrics(unittest.TestCase):
 
         def mock_get_response(uri):
             response = Mock()
-            if "Systems/s1/Storage/STOR1" in uri:
+            storage_root = f"Systems/s1/{storage_name}"
+            if f"{storage_root}/STOR1" in uri:
                 response.dict = {
                     "StorageControllers": [
                         {
@@ -507,7 +500,7 @@ class TestRedfishMetrics(unittest.TestCase):
                         }
                     ]
                 }
-            elif "Systems/s1/Storage/STOR2" in uri:
+            elif f"{storage_root}/STOR2" in uri:
                 response.dict = {
                     "StorageControllers": [
                         {
@@ -518,7 +511,9 @@ class TestRedfishMetrics(unittest.TestCase):
                 }
             # response for GET request to /redfish/v1/Systems/<sys_id>/
             elif "Systems" in uri:
-                response.dict = {"Storage": {"@odata.id": "/redfish/v1/Systems/sX/Storage"}}
+                response.dict = {
+                    "Storage": {"@odata.id": f"/redfish/v1/Systems/sX/{storage_name}"}
+                }
             return response
 
         mock_redfish_obj.get.side_effect = mock_get_response
@@ -543,87 +538,6 @@ class TestRedfishMetrics(unittest.TestCase):
                     {
                         "storage_id": "STOR2",
                         "controller_id": "sc1",
-                        "health": "OK",
-                        "state": "Enabled",
-                    },
-                ],
-            },
-        )
-
-    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
-    @patch(
-        "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.collections.get_collection_ids"  # noqa: E501
-    )
-    @patch(
-        "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.systems.get_system_ids"
-    )
-    def test_non_standard_storage_uri_name(
-        self, mock_get_system_ids, mock_get_collection_ids, mock_redfish_client
-    ):
-        """Test non-standard name for "Storage" in URI for storage controller and drives.
-
-        Eg: /redfish/v1/Systems/S1/Storages
-        """
-        mock_redfish_obj = Mock()
-        mock_get_system_ids.return_value = ["s1"]
-        mock_get_collection_ids.return_value = ["STOR1"]
-        mock_redfish_client.return_value = mock_redfish_obj
-
-        def mock_get_response(uri):
-            response = Mock()
-            if "Systems/s1/Storages/STOR1/Drives/d11" in uri:
-                response.dict = {
-                    "Id": "d11",
-                    "Status": {"Health": "OK", "State": "Enabled"},
-                }
-            elif "Systems/s1/Storages/STOR1" in uri:
-                response.dict = {
-                    "StorageControllers": [
-                        {
-                            "MemberId": "sc0",
-                            "Status": {"Health": "OK", "State": "Enabled"},
-                        }
-                    ],
-                    "Drives": [
-                        {"@odata.id": "/redfish/v1/Systems/s1/Storages/STOR1/Drives/d11"},
-                    ],
-                }
-            # response for GET request to /redfish/v1/Systems/<sys_id>/
-            elif "Systems" in uri:
-                response.dict = {"Storage": {"@odata.id": "/redfish/v1/Systems/sX/Storages"}}
-            return response
-
-        mock_redfish_obj.get.side_effect = mock_get_response
-
-        with RedfishHelper(Mock()) as helper:
-            sc_count, sc_data = helper.get_storage_controller_data()
-            drive_count, drive_data = helper.get_storage_drive_data()
-
-        # storage controller
-        self.assertEqual(sc_count, {"s1": 1})
-        self.assertEqual(
-            sc_data,
-            {
-                "s1": [
-                    {
-                        "storage_id": "STOR1",
-                        "controller_id": "sc0",
-                        "health": "OK",
-                        "state": "Enabled",
-                    },
-                ],
-            },
-        )
-
-        # storage drives
-        self.assertEqual(drive_count, {"s1": 1})
-        self.assertEqual(
-            drive_data,
-            {
-                "s1": [
-                    {
-                        "storage_id": "STOR1",
-                        "drive_id": "d11",
                         "health": "OK",
                         "state": "Enabled",
                     },
@@ -746,6 +660,7 @@ class TestRedfishMetrics(unittest.TestCase):
             },
         )
 
+    @parameterized.expand(["Storage", "Storages"])
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.collections.get_collection_ids"  # noqa: E501
@@ -754,7 +669,7 @@ class TestRedfishMetrics(unittest.TestCase):
         "prometheus_hardware_exporter.collectors.redfish.redfish_utilities.systems.get_system_ids"
     )
     def test_get_storage_drive_data_success(
-        self, mock_get_system_ids, mock_get_collection_ids, mock_redfish_client
+        self, storage_name, mock_get_system_ids, mock_get_collection_ids, mock_redfish_client
     ):
         mock_redfish_obj = Mock()
         mock_system_ids = ["s1"]
@@ -766,39 +681,42 @@ class TestRedfishMetrics(unittest.TestCase):
 
         def mock_get_response(uri):
             response = Mock()
-            if "Systems/s1/Storage/STOR1/Drives/d11" in uri:
+            storage_root = f"Systems/s1/{storage_name}"
+            if f"{storage_root}/STOR1/Drives/d11" in uri:
                 response.dict = {
                     "Id": "d11",
                     "Status": {"Health": "OK", "State": "Enabled"},
                 }
 
-            elif "Systems/s1/Storage/STOR1/Drives/d12" in uri:
+            elif f"{storage_root}/STOR1/Drives/d12" in uri:
                 response.dict = {
                     "Id": "d12",
                     "Status": {"Health": "OK", "State": "Disabled"},
                 }
 
-            elif "Systems/s1/Storage/STOR2/Drives/d21" in uri:
+            elif f"{storage_root}/STOR2/Drives/d21" in uri:
                 response.dict = {
                     "Id": "d21",
                     "Status": {"Health": None, "State": "Enabled"},
                 }
-            elif "Systems/s1/Storage/STOR1" in uri:
+            elif f"{storage_root}/STOR1" in uri:
                 response.dict = {
                     "Drives": [
-                        {"@odata.id": "/redfish/v1/Systems/s1/Storage/STOR1/Drives/d11"},
-                        {"@odata.id": "/redfish/v1/Systems/s1/Storage/STOR1/Drives/d12"},
+                        {"@odata.id": f"/redfish/v1/Systems/s1/{storage_name}/STOR1/Drives/d11"},
+                        {"@odata.id": f"/redfish/v1/Systems/s1/{storage_name}/STOR1/Drives/d12"},
                     ]
                 }
-            elif "Systems/s1/Storage/STOR2" in uri:
+            elif f"{storage_root}/STOR2" in uri:
                 response.dict = {
                     "Drives": [
-                        {"@odata.id": "/redfish/v1/Systems/s1/Storage/STOR2/Drives/d21"},
+                        {"@odata.id": f"/redfish/v1/Systems/s1/{storage_name}/STOR2/Drives/d21"},
                     ]
                 }
             # response for GET request to /redfish/v1/Systems/<sys_id>/
             elif "Systems" in uri:
-                response.dict = {"Storage": {"@odata.id": "/redfish/v1/Systems/sX/Storage"}}
+                response.dict = {
+                    "Storage": {"@odata.id": f"/redfish/v1/Systems/sX/{storage_name}"}
+                }
             return response
 
         mock_redfish_obj.get.side_effect = mock_get_response
@@ -1006,17 +924,17 @@ class TestRedfishMetrics(unittest.TestCase):
 class TestRedfishServiceDiscovery(unittest.TestCase):
     """Test redfish service discovery."""
 
+    @parameterized.expand([SessionCreationError, InvalidCredentialsError])
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
-    def test_redfish_available_login_fail(self, mock_redfish_client):
+    def test_redfish_available_login_fail(self, exc, mock_redfish_client):
         test_ttl = 10
         mock_redfish_obj = Mock()
         mock_redfish_client.return_value = mock_redfish_obj
-        for exc in [SessionCreationError, InvalidCredentialsError]:
-            mock_redfish_obj.login.side_effect = exc
-            discover = RedfishHelper.get_cached_discover_method(ttl=test_ttl)
-            host = ""
-            available = discover(host)
-            self.assertEqual(available, True)
+        mock_redfish_obj.login.side_effect = exc
+        discover = RedfishHelper.get_cached_discover_method(ttl=test_ttl)
+        host = ""
+        available = discover(host)
+        self.assertEqual(available, True)
 
         mock_redfish_client.assert_called()
         mock_redfish_obj.login.assert_called()
