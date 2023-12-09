@@ -223,6 +223,28 @@ class RedfishHelper:
         """
         return cls.systems_root_uri + f"{system_id}/{storage_name}"
 
+    def _find_storage_controller_data(self, storage_controllers: Dict) -> List[Dict]:
+        """Return storage controller list.
+
+        Returns:
+            storage_controller_list: list of storage controllers for 
+            requested storage id.
+
+        """
+        if "StorageControllers" in storage_controllers:
+            storage_controllers_list: List[Dict] = storage_controllers.get("StorageControllers")
+        elif "Controllers" in storage_controllers:
+            storage_controllers_list: List[Dict] = []
+            controller_list = storage_controllers.get("Controllers")
+            for controller in controller_list.values():
+                all_controller_data = self.redfish_obj.get(controller).dict
+                for controller in all_controller_data["Members"]:
+                    storage_controllers_list.append(self.redfish_obj.get(controller["@odata.id"]).dict)
+        else:
+            raise KeyError("Couldn't fetch storage controller data")
+        
+        return storage_controllers_list
+
     def get_storage_controller_data(self) -> Tuple[Dict[str, int], Dict[str, List]]:
         """Return storage controller data and count.
 
@@ -291,20 +313,14 @@ class RedfishHelper:
                 )
 
                 # list of storage controllers for that storage id
-                storage_controllers = self.redfish_obj.get(curr_storage_uri).dict
-                if "StorageControllers" in storage_controllers:
-                    storage_controllers_list: List[Dict] = storage_controllers.get("StorageControllers")
-                if "Controllers" in storage_controllers:
-                    storage_controllers_list: List[Dict] = []
-                    controller_list = storage_controllers.get("Controllers")
-                    for controller in controller_list.values():
-                        all_controller_data = self.redfish_obj.get(controller).dict
-                        for controller in all_controller_data["Members"]:
-                            storage_controllers_list.append(self.redfish_obj.get(controller["@odata.id"]).dict)
-
+                storage_controllers_list: List[Dict] = self._find_storage_controller_data(
+                    self.redfish_obj.get(curr_storage_uri).dict
+                )
+                storage_controller_count[system_id] += len(storage_controllers_list)
 
                 # picking out the required data from each storage controller in the list
                 for data in storage_controllers_list:
+                    print(data)
                     storage_controller_data_in_curr_system.append(
                         {
                             "storage_id": storage_id,
