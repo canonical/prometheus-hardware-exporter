@@ -1,4 +1,4 @@
-# Prometheus Exporter Snap for charm-hardware
+# Prometheus Exporter Snap for Hardware Observer charm
 
 
 ## Getting Started
