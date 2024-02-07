@@ -1,6 +1,7 @@
-# Prometheus Exporter Snap for charm-hardware
+# Prometheus Exporter Snap for Hardware Observer charm
 
 
+You can learn more about Hardware Observer on [Charmhub](https://charmhub.io/hardware-observer).
 ## Getting Started
 
 Install the snap from snap store:
