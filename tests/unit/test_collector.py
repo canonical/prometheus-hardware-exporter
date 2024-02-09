@@ -396,9 +396,9 @@ class TestCustomCollector(unittest.TestCase):
         payloads_labels_value_map = {}
         for payload in payloads:
             if payload.name == "ipmi_sel_state":
-                payloads_labels_value_map[
-                    tuple(payload.samples[0].labels.values())
-                ] = payload.samples[0].value
+                payloads_labels_value_map[tuple(payload.samples[0].labels.values())] = (
+                    payload.samples[0].value
+                )
         expected_payloads_label_value_map = {
             ("System Board ACPI_Stat", "System ACPI Power State"): 1,
             ("System Chassis SysHealth_Stat", "Chassis"): 2,

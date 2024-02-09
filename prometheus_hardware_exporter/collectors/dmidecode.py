@@ -1,4 +1,5 @@
 """Dmidecode metrics collector."""
+
 import re
 from functools import lru_cache
 from logging import getLogger
