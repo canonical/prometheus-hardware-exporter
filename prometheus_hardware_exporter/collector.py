@@ -1018,9 +1018,9 @@ class RedfishCollector(BlockingCollector):
                 chassis_data: Dict[str, Dict] = redfish_helper.get_chassis_data()
                 storage_drive_count, storage_drive_data = redfish_helper.get_storage_drive_data()
                 memory_dimm_count, memory_dimm_data = redfish_helper.get_memory_dimm_data()
-                smart_storage_health_data: Dict[
-                    str, Any
-                ] = redfish_helper.get_smart_storage_health_data()
+                smart_storage_health_data: Dict[str, Any] = (
+                    redfish_helper.get_smart_storage_health_data()
+                )
 
         except (
             ConnectionError,

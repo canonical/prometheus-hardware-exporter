@@ -1,4 +1,5 @@
 """Redfish collector."""
+
 from logging import getLogger
 from typing import Any, Callable, Dict, List, Optional, Tuple
 

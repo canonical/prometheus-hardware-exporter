@@ -1,4 +1,5 @@
 """Collector for PowerEdgeRAID controller."""
+
 from logging import getLogger
 from typing import Any, Dict, List, Union
 
