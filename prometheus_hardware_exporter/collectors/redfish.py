@@ -38,7 +38,9 @@ class RedfishHelper:
         @ttl_cache(ttl=ttl)
         def _discover(host: str) -> bool:
             """Return True if redfish service has been discovered."""
+            redfish_obj = None
             try:
+                logger.debug("(discover) Trying to login to redfish service ...")
                 redfish_obj = redfish_client(base_url=host, username="", password="")
                 redfish_obj.login(auth="session")
             except RetriesExhaustedError:
@@ -47,10 +49,17 @@ class RedfishHelper:
             except (SessionCreationError, InvalidCredentialsError):
                 # redfish available, wrong credentials or unable to create a session
                 result = True
+            except Exception:  # pylint: disable=W0718
+                # mark redfish not available in any other generic exception
+                result = False
             else:
                 # redfish available, login succeeded
                 result = True
-                redfish_obj.logout()
+            finally:
+                # make sure we logout in the end
+                if redfish_obj:
+                    redfish_obj.logout()
+                    logger.debug("(discover) Logged out from redfish service ...")
 
             if result:
                 logger.debug("Redfish service available.")
@@ -71,6 +80,7 @@ class RedfishHelper:
 
     def __enter__(self) -> Self:
         """Login to redfish while entering context manager."""
+        logger.debug("(service) Trying to login to redfish service ...")
         self.redfish_obj = redfish_client(
             base_url=self.host,
             username=self.username,
@@ -81,15 +91,15 @@ class RedfishHelper:
         self.redfish_obj.login(auth="session")
         return self
 
-    def __exit__(
-        self,
-        exc_type: Any,
-        exc_val: Any,
-        exc_tb: Any,
-    ) -> None:
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Logout from redfish while exiting context manager."""
+        self.logout()
+
+    def logout(self) -> None:
+        """Logout from redfish."""
         if self.redfish_obj is not None:
             self.redfish_obj.logout()
+            logger.debug("(service) Logged out from redfish service ...")
 
     def get_sensor_data(self) -> Dict[str, List]:
         """Get sensor data.

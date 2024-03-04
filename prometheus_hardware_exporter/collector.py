@@ -1021,7 +1021,6 @@ class RedfishCollector(BlockingCollector):
                 smart_storage_health_data: Dict[str, Any] = (
                     redfish_helper.get_smart_storage_health_data()
                 )
-
         except (
             ConnectionError,
             InvalidCredentialsError,
