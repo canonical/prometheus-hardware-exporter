@@ -635,12 +635,17 @@ class TestCustomCollector(unittest.TestCase):
         mock_redfish_client.assert_not_called()
 
     @patch("prometheus_hardware_exporter.collector.logger")
+    @patch("prometheus_hardware_exporter.collector.RedfishHelper")
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_cached_discover_method"
     )
     def test_redfish_no_login(
-        self, mock_get_cached_discover_method, mock_redfish_client, mock_logger
+        self,
+        mock_get_cached_discover_method,
+        mock_redfish_client,
+        mock_redfish_helper,
+        mock_logger,
     ):
         """Test redfish collector when redfish login doesn't work."""
 
@@ -652,15 +657,18 @@ class TestCustomCollector(unittest.TestCase):
 
         mock_get_cached_discover_method.side_effect = cached_discover
         redfish_collector = RedfishCollector(Mock())
-        redfish_collector.redfish_helper = Mock()
+
+        mock_helper = Mock()
+        mock_redfish_helper.return_value = mock_helper
 
         for err in [
+            Exception(),
             ConnectionError(),
             InvalidCredentialsError(),
             SessionCreationError(),
             RetriesExhaustedError(),
         ]:
-            mock_redfish_client.side_effect = err
+            mock_helper.login.side_effect = err
             payloads = redfish_collector.collect()
 
             # Check whether these 2 payloads are present
@@ -668,13 +676,14 @@ class TestCustomCollector(unittest.TestCase):
             # redfish_call_success which is set to value 0
             self.assertEqual(len(list(payloads)), 2)
             mock_logger.exception.assert_called_with(
-                "Exception occurred while getting redfish object: %s", err
+                "Exception occurred while using redfish object: %s", err
             )
-        mock_redfish_client.assert_called()
+        mock_redfish_helper.assert_called()
+        mock_helper.login.assert_called()
+        mock_helper.logout.assert_called()
 
     @patch("prometheus_hardware_exporter.collector.logger")
-    @patch("prometheus_hardware_exporter.collectors.redfish.RedfishHelper.__exit__")
-    @patch("prometheus_hardware_exporter.collectors.redfish.RedfishHelper.__enter__")
+    @patch("prometheus_hardware_exporter.collector.RedfishHelper")
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
     @patch(
         "prometheus_hardware_exporter.collectors.redfish.RedfishHelper.get_cached_discover_method"
@@ -683,8 +692,7 @@ class TestCustomCollector(unittest.TestCase):
         self,
         mock_get_cached_discover_method,
         mock_redfish_client,
-        mock_redfish_helper_enter,
-        mock_redfish_helper_exit,
+        mock_redfish_helper,
         mock_logger,
     ):
         """Test redfish collector and check if all metrics are present in payload."""
@@ -700,7 +708,7 @@ class TestCustomCollector(unittest.TestCase):
         redfish_collector = RedfishCollector(Mock())
 
         mock_helper = Mock()
-        mock_redfish_helper_enter.return_value = mock_helper
+        mock_redfish_helper.return_value = mock_helper
 
         mock_get_sensor_data = Mock()
         mock_get_processor_data = Mock()
@@ -861,6 +869,8 @@ class TestCustomCollector(unittest.TestCase):
         for payload in payloads:
             self.assertIn(payload.name, available_metrics)
 
+        mock_helper.login.assert_called()
+        mock_helper.logout.assert_called()
         mock_logger.warning.assert_called_with(
             "Failed to get %s via redfish", "network_adapter_count"
         )

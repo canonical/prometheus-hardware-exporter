@@ -7,7 +7,6 @@ import redfish_utilities
 from cachetools.func import ttl_cache
 from redfish import redfish_client
 from redfish.rest.v1 import (
-    HttpClient,
     InvalidCredentialsError,
     RestResponse,
     RetriesExhaustedError,
@@ -76,11 +75,6 @@ class RedfishHelper:
         self.password = config.redfish_password
         self.timeout = config.redfish_client_timeout
         self.max_retry = config.redfish_client_max_retry
-        self.redfish_obj: HttpClient
-
-    def __enter__(self) -> Self:
-        """Login to redfish while entering context manager."""
-        logger.debug("(service) Trying to login to redfish service ...")
         self.redfish_obj = redfish_client(
             base_url=self.host,
             username=self.username,
@@ -88,18 +82,25 @@ class RedfishHelper:
             timeout=self.timeout,
             max_retry=self.max_retry,
         )
-        self.redfish_obj.login(auth="session")
+
+    def __enter__(self) -> Self:
+        """Login as a context manager."""
+        self.login()
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        """Logout from redfish while exiting context manager."""
+        """Logout as a context manager."""
         self.logout()
+
+    def login(self) -> None:
+        """Login to redfish."""
+        logger.debug("(service) Trying to login to redfish service ...")
+        self.redfish_obj.login(auth="session")
 
     def logout(self) -> None:
         """Logout from redfish."""
-        if self.redfish_obj is not None:
-            self.redfish_obj.logout()
-            logger.debug("(service) Logged out from redfish service ...")
+        self.redfish_obj.logout()
+        logger.debug("(service) Logged out from redfish service ...")
 
     def get_sensor_data(self) -> Dict[str, List]:
         """Get sensor data.
@@ -136,12 +137,12 @@ class RedfishHelper:
         sensors = redfish_utilities.get_sensors(self.redfish_obj)
         return sensors
 
-    def _verify_redfish_call(self, redfish_obj: HttpClient, uri: str) -> Optional[Dict[str, Any]]:
+    def _verify_redfish_call(self, uri: str) -> Optional[Dict[str, Any]]:
         """Return REST response for GET request API call on the URI.
 
         Returns None if URI isn't present.
         """
-        resp: RestResponse = redfish_obj.get(uri)
+        resp: RestResponse = self.redfish_obj.get(uri)
         if resp.status == 200:
             return resp.dict
         logger.debug("Not able to query from URI: %s.", uri)
@@ -343,7 +344,7 @@ class RedfishHelper:
             # eg: /redfish/v1/Chassis/1/NetworkAdapters
             network_adapters_root_uri = network_adapters_root_uri_pattern.format(chassis_id)
             network_adapters: Optional[Dict[str, Any]] = self._verify_redfish_call(
-                self.redfish_obj, network_adapters_root_uri
+                network_adapters_root_uri
             )
             if not network_adapters:
                 logger.debug("No network adapters could be found on chassis id: %s", chassis_id)
@@ -579,7 +580,7 @@ class RedfishHelper:
         for chassis_id in chassis_ids:
             smart_storage_uri = smart_storage_root_uri_pattern.format(chassis_id)
             smart_storage_data: Optional[Dict[str, Any]] = self._verify_redfish_call(
-                self.redfish_obj, smart_storage_uri
+                smart_storage_uri
             )
             if not smart_storage_data:
                 logger.debug("Smart Storage URI endpoint not found for chassis ID: %s", chassis_id)
