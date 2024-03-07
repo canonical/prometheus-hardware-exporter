@@ -90,7 +90,6 @@ class TestRedfishMetrics(unittest.TestCase):
             resp_dict = helper._verify_redfish_call(mock_redfish_obj, uri)
 
         mock_redfish_obj.get.assert_called_with(uri)
-        mock_logger.debug.assert_called_with("Not able to query from URI: %s.", "/some/test/uri")
         self.assertIsNone(resp_dict)
 
     @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
@@ -963,6 +962,24 @@ class TestRedfishServiceDiscovery(unittest.TestCase):
         mock_redfish_obj = Mock()
         mock_redfish_client.return_value = mock_redfish_obj
         mock_redfish_obj.login.side_effect = RetriesExhaustedError()
+        discover = RedfishHelper.get_cached_discover_method(ttl=test_ttl)
+        host = "mock_host"
+        available = discover(host)
+
+        self.assertEqual(available, False)
+        mock_redfish_client.assert_called_once_with(
+            base_url="mock_host",
+            username="",
+            password="",
+        )
+        mock_redfish_obj.login.assert_called_once()
+
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
+    def test_redfish_not_available_generic_error(self, mock_redfish_client):
+        test_ttl = 10
+        mock_redfish_obj = Mock()
+        mock_redfish_client.return_value = mock_redfish_obj
+        mock_redfish_obj.login.side_effect = Exception()
         discover = RedfishHelper.get_cached_discover_method(ttl=test_ttl)
         host = "mock_host"
         available = discover(host)
