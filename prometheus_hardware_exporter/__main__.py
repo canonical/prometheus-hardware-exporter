@@ -121,7 +121,7 @@ def parse_command_line() -> argparse.Namespace:
     )
     parser.add_argument(
         "--redfish-client-timeout",
-        help="Redfish client timeout in seconds for initial connection (default: 3) ",
+        help="Redfish client timeout in seconds for initial connection (default: 15) ",
         default=DEFAULT_REDFISH_CLIENT_TIMEOUT,
         type=int,
     )
