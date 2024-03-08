@@ -1023,16 +1023,13 @@ class RedfishCollector(BlockingCollector):
             smart_storage_health_data: Dict[str, Any] = (
                 redfish_helper.get_smart_storage_health_data()
             )
-        except (
+        except (  # pylint: disable=W0718
             ConnectionError,
             InvalidCredentialsError,
             RetriesExhaustedError,
             SessionCreationError,
+            Exception,
         ) as err:
-            logger.exception("Exception occurred while using redfish object: %s", err)
-            payloads.append(Payload(name="redfish_call_success", value=0.0))
-            return payloads
-        except Exception as err:  # pylint: disable=W0718
             logger.exception("Exception occurred while using redfish object: %s", err)
             payloads.append(Payload(name="redfish_call_success", value=0.0))
             return payloads
