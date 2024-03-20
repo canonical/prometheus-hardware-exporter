@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import patch
 
 from prometheus_hardware_exporter.collectors.ipmimonitoring import IpmiMonitoring
+from prometheus_hardware_exporter.config import Config
 from prometheus_hardware_exporter.utils import Command, Result
 
 IPMIMONITORING_SAMPLE_OUTPUT = "tests/unit/test_resources/ipmi/ipmimonitoring_sample_output.txt"
@@ -43,7 +44,8 @@ class TestIpmiMonitoring(unittest.TestCase):
     def test_00_get_sensor_data_success(self, mock_call):
         with open(IPMIMONITORING_SAMPLE_OUTPUT, "r") as content:
             mock_call.return_value = Result(content.read(), None)
-            ipmimonitoring = IpmiMonitoring()
+            config = Config()
+            ipmimonitoring = IpmiMonitoring(config)
             payloads = ipmimonitoring.get_sensor_data()
             expected_sensor_entries = SAMPLE_SENSOR_ENTRIES
             self.assertEqual(payloads, expected_sensor_entries)
@@ -51,6 +53,7 @@ class TestIpmiMonitoring(unittest.TestCase):
     @patch.object(Command, "__call__")
     def test_00_get_sensor_data_error(self, mock_call):
         mock_call.return_value = Result("", True)
-        ipmimonitoring = IpmiMonitoring()
+        config = Config()
+        ipmimonitoring = IpmiMonitoring(config)
         payloads = ipmimonitoring.get_sensor_data()
         self.assertEqual(payloads, [])

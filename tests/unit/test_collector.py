@@ -30,8 +30,18 @@ class TestCustomCollector(unittest.TestCase):
     def test_mega_raid_collector_not_installed(self):
         """Test mega raid collector when storcli is not installed."""
         mega_raid_collector = MegaRAIDCollector(Mock())
-        mega_raid_collector.sasircu = Mock()
-        mega_raid_collector.sasircu.installed = False
+        mega_raid_collector.storcli = Mock()
+        mega_raid_collector.storcli.installed = False
+        payloads = mega_raid_collector.collect()
+
+        self.assertEqual(len(list(payloads)), 1)
+
+    def test_mega_raid_collector_no_controller(self):
+        """Test mega raid collector when no controllers are present."""
+        mega_raid_collector = MegaRAIDCollector(Mock())
+        mega_raid_collector.storcli = Mock()
+        mega_raid_collector.storcli.installed = True
+        mega_raid_collector.storcli.get_all_information.return_value = {}
         payloads = mega_raid_collector.collect()
 
         self.assertEqual(len(list(payloads)), 1)
@@ -469,16 +479,17 @@ class TestCustomCollector(unittest.TestCase):
         for payload in payloads:
             self.assertIn(payload.name, available_metrics)
 
-    def test_perccli_collector_command_success(self):
-        with patch.object(PowerEdgeRAIDCollector, "perccli") as mock_cli:
-            # 1 success, 1 fail
-            mock_cli.ctrl_exists.return_value = True
-            mock_cli.ctrl_successes.return_value = {0: False, 1: True}
-            mock_cli.get_controllers.return_value = {"count": 1}
-            mock_cli.get_virtual_drives.return_value = {}
+    @patch("prometheus_hardware_exporter.collector.PercCLI")
+    def test_perccli_collector_command_success(self, mock_perccli):
+        perccli = mock_perccli()
+        perccli.ctrl_exists.return_value = True
+        perccli.ctrl_successes.return_value = {0: False, 1: True}
+        perccli.get_controllers.return_value = {"count": 1}
+        perccli.get_virtual_drives.return_value = {}
 
-            power_edge_collector = PowerEdgeRAIDCollector(Mock())
-            payloads = list(power_edge_collector.collect())
+        power_edge_collector = PowerEdgeRAIDCollector(Mock())
+        payloads = list(power_edge_collector.collect())
+
         assert len(payloads) >= 4
 
         assert payloads[0].samples[0].value == 1.0
@@ -491,17 +502,18 @@ class TestCustomCollector(unittest.TestCase):
         assert payloads[2].samples[0].labels["controller_id"] == "1"
         assert payloads[2].samples[0].name == "perccli_command_ctrl_success"
 
-    def test_perccli_virtual_device_command_success(self):
-        with patch.object(PowerEdgeRAIDCollector, "perccli") as mock_cli:
-            mock_cli.success.return_value = True
-            mock_cli.ctrl_successes.return_value = {0: False, 1: True}
-            mock_cli.get_controllers.return_value = {"count": 1}
-            mock_cli.get_virtual_drives.return_value = {
-                0: [{"DG": "0", "VD": "0", "cache": "NRWTD", "state": "Optl"}]
-            }
+    @patch("prometheus_hardware_exporter.collector.PercCLI")
+    def test_perccli_virtual_device_command_success(self, mock_perccli):
+        perccli = mock_perccli()
+        perccli.success.return_value = True
+        perccli.ctrl_successes.return_value = {0: False, 1: True}
+        perccli.get_controllers.return_value = {"count": 1}
+        perccli.get_virtual_drives.return_value = {
+            0: [{"DG": "0", "VD": "0", "cache": "NRWTD", "state": "Optl"}]
+        }
 
-            power_edge_collector = PowerEdgeRAIDCollector(Mock())
-            payloads = list(power_edge_collector.collect())
+        power_edge_collector = PowerEdgeRAIDCollector(Mock())
+        payloads = list(power_edge_collector.collect())
 
         get_payloads = []
 
@@ -526,51 +538,54 @@ class TestCustomCollector(unittest.TestCase):
         ]:
             assert name in get_payloads
 
-    def test_perccli_cmd_fail(self):
-        with patch.object(PowerEdgeRAIDCollector, "perccli") as mock_cli:
-            mock_cli.success.return_value = False
-            power_edge_collector = PowerEdgeRAIDCollector(Mock())
-            payloads = list(power_edge_collector.collect())
-            assert len(payloads) == 1
-            assert payloads[0].samples[0].value == 0.0
+    @patch("prometheus_hardware_exporter.collector.PercCLI")
+    def test_perccli_cmd_fail(self, mock_perccli):
+        perccli = mock_perccli()
+        perccli.success.return_value = False
+        power_edge_collector = PowerEdgeRAIDCollector(Mock())
+        payloads = list(power_edge_collector.collect())
+        assert len(payloads) == 1
+        assert payloads[0].samples[0].value == 0.0
 
-    def test_perccli_no_controller_exists(self):
-        with patch.object(PowerEdgeRAIDCollector, "perccli") as mock_cli:
-            mock_cli.success.return_value = True
-            mock_cli.ctrl_exists.return_value = False
-            power_edge_collector = PowerEdgeRAIDCollector(Mock())
-            payloads = list(power_edge_collector.collect())
-            assert len(payloads) == 2
-            assert payloads[1].samples[0].value == 0.0
+    @patch("prometheus_hardware_exporter.collector.PercCLI")
+    def test_perccli_no_controller_exists(self, mock_perccli):
+        perccli = mock_perccli()
+        perccli.success.return_value = True
+        perccli.ctrl_exists.return_value = False
+        power_edge_collector = PowerEdgeRAIDCollector(Mock())
+        payloads = list(power_edge_collector.collect())
+        assert len(payloads) == 2
+        assert payloads[1].samples[0].value == 0.0
 
-    def test_perccli_physical_device_command_success(self):
-        with patch.object(PowerEdgeRAIDCollector, "perccli") as mock_cli:
-            mock_cli.success.return_value = True
-            mock_cli.ctrl_successes.return_value = {0: False, 1: True}
-            mock_cli.get_controllers.return_value = {"count": 1}
-            mock_cli.get_physical_devices.return_value = {
-                0: [
-                    {
-                        "eid": "69",
-                        "slt": "0",
-                        "state": "Onln",
-                        "DG": 0,
-                        "size": "558.375 GB",
-                        "media_type": "HDD",
-                    },
-                    {
-                        "eid": "69",
-                        "slt": "1",
-                        "state": "Onln",
-                        "DG": 0,
-                        "size": "558.375 GB",
-                        "media_type": "HDD",
-                    },
-                ]
-            }
+    @patch("prometheus_hardware_exporter.collector.PercCLI")
+    def test_perccli_physical_device_command_success(self, mock_perccli):
+        perccli = mock_perccli()
+        perccli.success.return_value = True
+        perccli.ctrl_successes.return_value = {0: False, 1: True}
+        perccli.get_controllers.return_value = {"count": 1}
+        perccli.get_physical_devices.return_value = {
+            0: [
+                {
+                    "eid": "69",
+                    "slt": "0",
+                    "state": "Onln",
+                    "DG": 0,
+                    "size": "558.375 GB",
+                    "media_type": "HDD",
+                },
+                {
+                    "eid": "69",
+                    "slt": "1",
+                    "state": "Onln",
+                    "DG": 0,
+                    "size": "558.375 GB",
+                    "media_type": "HDD",
+                },
+            ]
+        }
 
-            power_edge_collector = PowerEdgeRAIDCollector(Mock())
-            payloads = list(power_edge_collector.collect())
+        power_edge_collector = PowerEdgeRAIDCollector(Mock())
+        payloads = list(power_edge_collector.collect())
 
         get_payloads = []
 

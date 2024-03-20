@@ -3,6 +3,7 @@ import unittest
 from unittest.mock import patch
 
 from prometheus_hardware_exporter.collectors.storcli import StorCLI
+from prometheus_hardware_exporter.config import Config
 from prometheus_hardware_exporter.utils import Command, Result
 
 CALL_SHOW_ALL = "tests/unit/test_resources/storcli/cALL_show_all.txt"
@@ -13,19 +14,22 @@ class TestStorCLI(unittest.TestCase):
 
     @patch.object(Command, "__call__")
     def test_00__extract_enclosures_fail(self, mock_call):
-        storcli = StorCLI()
+        config = Config()
+        storcli = StorCLI(config)
         payload = storcli._extract_enclosures({})
         self.assertEqual(payload, [])
 
     @patch.object(Command, "__call__")
     def test_01__extract_virtual_drives_fail(self, mock_call):
-        storcli = StorCLI()
+        config = Config()
+        storcli = StorCLI(config)
         payload = storcli._extract_virtual_drives({})
         self.assertEqual(payload, [])
 
     @patch.object(Command, "__call__")
     def test_03__extract_physical_drives_fail(self, mock_call):
-        storcli = StorCLI()
+        config = Config()
+        storcli = StorCLI(config)
         payload = storcli._extract_physical_drives({})
         self.assertEqual(payload, [])
 
@@ -33,7 +37,8 @@ class TestStorCLI(unittest.TestCase):
     def test_10_get_all_information_okay(self, mock_call):
         with open(CALL_SHOW_ALL, "r") as content:
             mock_call.return_value = Result(content.read(), None)
-            storcli = StorCLI()
+            config = Config()
+            storcli = StorCLI(config)
             payload = storcli.get_all_information()
             expected_payload = {
                 0: {
@@ -105,7 +110,17 @@ class TestStorCLI(unittest.TestCase):
     def test_11_get_all_information_fail(self, mock_call):
         mock_controllers = json.dumps({"Controllers": [{}]})
         mock_call.return_value = Result(mock_controllers, None)
-        storcli = StorCLI()
+        config = Config()
+        storcli = StorCLI(config)
+        payload = storcli.get_all_information()
+        expected_payload = {}
+        self.assertEqual(payload, expected_payload)
+
+    @patch.object(Command, "__call__")
+    def test_12_get_all_information_error(self, mock_call):
+        mock_call.return_value = Result(error="error")
+        config = Config()
+        storcli = StorCLI(config)
         payload = storcli.get_all_information()
         expected_payload = {}
         self.assertEqual(payload, expected_payload)

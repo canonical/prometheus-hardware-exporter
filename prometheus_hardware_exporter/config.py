@@ -11,6 +11,7 @@ logger = getLogger(__name__)
 
 DEFAULT_CONFIG = os.path.join(os.environ.get("SNAP_DATA", "./"), "config.yaml")
 
+DEFAULT_COMMAND_TIMEOUT = 30
 DEFAULT_IPMI_SEL_INTERVAL = 86400
 DEFAULT_REDFISH_CLIENT_TIMEOUT = 15
 DEFAULT_REDFISH_CLIENT_MAX_RETRY = 1
@@ -26,6 +27,7 @@ class Config(BaseModel):
     level: str = "DEBUG"
     enable_collectors: List[str] = []
 
+    command_timeout: int = DEFAULT_COMMAND_TIMEOUT
     ipmi_sel_interval: int = DEFAULT_IPMI_SEL_INTERVAL
 
     redfish_host: str = "127.0.0.1"
