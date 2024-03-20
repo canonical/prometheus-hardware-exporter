@@ -17,12 +17,12 @@ from .collector import (
     SsaCLICollector,
 )
 from .config import (
-    DEFAULT_SCRAPE_TIMEOUT,
     DEFAULT_CONFIG,
     DEFAULT_IPMI_SEL_INTERVAL,
     DEFAULT_REDFISH_CLIENT_MAX_RETRY,
     DEFAULT_REDFISH_CLIENT_TIMEOUT,
     DEFAULT_REDFISH_DISCOVER_CACHE_TTL,
+    DEFAULT_SCRAPE_TIMEOUT,
     Config,
 )
 from .exporter import Exporter
