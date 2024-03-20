@@ -17,12 +17,12 @@ from .collector import (
     SsaCLICollector,
 )
 from .config import (
+    DEFAULT_COLLECT_TIMEOUT,
     DEFAULT_CONFIG,
     DEFAULT_IPMI_SEL_INTERVAL,
     DEFAULT_REDFISH_CLIENT_MAX_RETRY,
     DEFAULT_REDFISH_CLIENT_TIMEOUT,
     DEFAULT_REDFISH_DISCOVER_CACHE_TTL,
-    DEFAULT_SCRAPE_TIMEOUT,
     Config,
 )
 from .exporter import Exporter
@@ -76,9 +76,9 @@ def parse_command_line() -> argparse.Namespace:
         type=int,
     )
     parser.add_argument(
-        "--scrape-timeout",
+        "--collect-timeout",
         help="The timeout duration when running the shell commands to get the hardware data",
-        default=DEFAULT_SCRAPE_TIMEOUT,
+        default=DEFAULT_COLLECT_TIMEOUT,
         type=int,
     )
     parser.add_argument(
@@ -204,7 +204,7 @@ def main() -> None:
             redfish_client_timeout=namespace.redfish_client_timeout,
             redfish_client_max_retry=namespace.redfish_client_max_retry,
             redfish_discover_cache_ttl=namespace.redfish_discover_cache_ttl,
-            scrape_timeout=namespace.scrape_timeout,
+            collect_timeout=namespace.collect_timeout,
         )
 
     # Start the exporter
