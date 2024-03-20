@@ -66,7 +66,7 @@ class Command:
             logger.debug("Running command: %s", full_command)
             result.data = (
                 subprocess.check_output(
-                    full_command, shell=True, timeout=self.config.command_timeout
+                    full_command, shell=True, timeout=self.config.scrape_timeout
                 )
                 .decode()
                 .strip()
