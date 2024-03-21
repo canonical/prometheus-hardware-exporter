@@ -5,6 +5,8 @@ from collections import defaultdict
 from logging import getLogger
 from typing import Any, Dict, List, Set, Tuple
 
+from prometheus_hardware_exporter.config import Config
+
 from ..utils import Command
 
 logger = getLogger(__name__)
@@ -53,11 +55,11 @@ class Sasircu(Command):
     prefix = ""
     command = ""
 
-    def __init__(self, version: int) -> None:
+    def __init__(self, config: Config, version: int) -> None:
         """Initialize the command line tool."""
         self.version = version
         self.command = f"sas{version}ircu"
-        super().__init__()
+        super().__init__(config)
 
     def _parse_key_value(self, text: str) -> Dict[str, Any]:
         """Return a dictionary from a text with the format of "key : value".

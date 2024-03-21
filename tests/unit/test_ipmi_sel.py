@@ -4,6 +4,7 @@ from unittest.mock import patch
 from freezegun import freeze_time
 
 from prometheus_hardware_exporter.collectors.ipmi_sel import IpmiSel
+from prometheus_hardware_exporter.config import Config
 from prometheus_hardware_exporter.utils import Command, Result
 
 SEL_SAMPLE_OUTPUT = "tests/unit/test_resources/ipmi/ipmi_sel_sample_output.txt"
@@ -46,22 +47,24 @@ class TestIpmiSel(unittest.TestCase):
     def test_00_get_sel_entries_success(self, mock_call):
         with open(SEL_SAMPLE_OUTPUT, "r") as content:
             mock_call.return_value = Result(content.read(), None)
-            ipmi_sel = IpmiSel()
+            config = Config()
+            ipmi_sel = IpmiSel(config)
             payloads = ipmi_sel.get_sel_entries(24 * 60 * 60)
             expected_sel_entries = SAMPLE_SEL_ENTRIES
-            print(payloads)
             self.assertEqual(payloads, expected_sel_entries)
 
     @patch.object(Command, "__call__")
     def test_01_get_sel_entries_zero_records(self, mock_call):
         mock_call.return_value = Result("", None)
-        ipmi_sel = IpmiSel()
+        config = Config()
+        ipmi_sel = IpmiSel(config)
         payloads = ipmi_sel.get_sel_entries(300)
         self.assertEqual(payloads, [])
 
     @patch.object(Command, "__call__")
     def test_02_get_sel_entries_error(self, mock_call):
         mock_call.return_value = Result("", Exception())
-        ipmi_sel = IpmiSel()
+        config = Config()
+        ipmi_sel = IpmiSel(config)
         payloads = ipmi_sel.get_sel_entries(300)
         self.assertEqual(payloads, None)

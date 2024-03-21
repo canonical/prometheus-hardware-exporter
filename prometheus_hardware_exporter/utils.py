@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from logging import getLogger
 from typing import Optional, Union
 
+from .config import Config
+
 logger = getLogger(__name__)
 
 
@@ -23,9 +25,10 @@ class Command:
     prefix = ""
     command = ""
 
-    def __init__(self) -> None:
+    def __init__(self, config: Config) -> None:
         """Initialize the Command class."""
         self.installed = False
+        self.config = config
 
     def __call__(self, args: Optional[str] = None) -> Result:
         """Run the command, and return the result and error.
@@ -62,7 +65,11 @@ class Command:
         try:
             logger.debug("Running command: %s", full_command)
             result.data = (
-                subprocess.check_output(full_command, shell=True, timeout=30).decode().strip()
+                subprocess.check_output(
+                    full_command, shell=True, timeout=self.config.collect_timeout
+                )
+                .decode()
+                .strip()
             )
         except subprocess.CalledProcessError as err:
             logger.error(err)

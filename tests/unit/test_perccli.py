@@ -4,6 +4,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from prometheus_hardware_exporter.collectors.perccli import PercCLI
+from prometheus_hardware_exporter.config import Config
 from prometheus_hardware_exporter.utils import Command, Result
 
 PERCCLI_NO_CONTROLLER = "tests/unit/test_resources/perccli/perccli_not_controller.json"
@@ -45,38 +46,45 @@ def mock_get_ctrl():
 class TestPercCLI:
     def test_00_no_controller(self, mock_get_ctrl_no_controller):
         """Command success but not controller exists."""
-        cli = PercCLI()
+        config = Config()
+        cli = PercCLI(config)
         assert cli.ctrl_successes() == {}
         assert cli.success() is True
         assert cli.ctrl_exists() is False
 
     def test_01_no_success(self, mock_get_ctrl_error):
         """Command success but not controller exists."""
-        cli = PercCLI()
+        config = Config()
+        cli = PercCLI(config)
         assert cli.success() is False
 
     def test_02_get_controllers(self, mock_get_ctrl):
-        cli = PercCLI()
+        config = Config()
+        cli = PercCLI(config)
         assert cli.get_controllers() == {"count": 1}
 
     def test_03_get_controllers_error(self, mock_get_ctrl_error):
-        cli = PercCLI()
+        config = Config()
+        cli = PercCLI(config)
         assert cli.ctrl_exists() is False
         assert cli.ctrl_successes() == {}
         assert cli.get_controllers() == {}
 
     def test_04_get_virtual_drives(self, mock_get_ctrl):
-        cli = PercCLI()
+        config = Config()
+        cli = PercCLI(config)
         assert cli.get_virtual_drives() == {
             0: [{"DG": "0", "VD": "0", "cache": "NRWTD", "state": "Optl"}]
         }
 
     def test_05_get_virtual_drives_error(self, mock_get_ctrl_error):
-        cli = PercCLI()
+        config = Config()
+        cli = PercCLI(config)
         assert cli.get_virtual_drives() == {}
 
     def test_06_cmd_status(self, mock_get_ctrl):
-        cli = PercCLI()
+        config = Config()
+        cli = PercCLI(config)
         result = cli._get_controllers()
 
         for controller in result["Controllers"]:
@@ -84,7 +92,8 @@ class TestPercCLI:
             assert cmd_status is True
 
     def test_07_cmd_status_fail(self, mock_get_ctrl_no_controller):
-        cli = PercCLI()
+        config = Config()
+        cli = PercCLI(config)
         result = cli._get_controllers()
 
         for controller in result["Controllers"]:
@@ -96,7 +105,8 @@ class TestPercCLI:
         with open(PERCCLI_OUTPUT, "r") as content:
             return_data = content.read()
         mock_call.return_value = Result(data=return_data)
-        cli = PercCLI()
+        config = Config()
+        cli = PercCLI(config)
         result = cli._get_controllers()
         assert not isinstance(result, Exception)
 
@@ -104,7 +114,8 @@ class TestPercCLI:
     def test_09__get_controllers_fail(self, mock_call):
         err_mock = Mock()
         mock_call.return_value = Result(data=None, error=err_mock)
-        cli = PercCLI()
+        config = Config()
+        cli = PercCLI(config)
         result = cli._get_controllers()
         assert result == err_mock
 
@@ -118,18 +129,21 @@ class TestPercCLI:
         mock_call.return_value = Result()
         err_mock = Mock()
         mock_get_json_output.return_value = Result(data=None, error=err_mock)
-        cli = PercCLI()
+        config = Config()
+        cli = PercCLI(config)
         result = cli._get_controllers()
         assert result.error == err_mock
 
     def test_11_ctrl_successes(self, mock_get_ctrl):
-        cli = PercCLI()
+        config = Config()
+        cli = PercCLI(config)
         assert cli.ctrl_successes() == {0: True}
         assert cli.ctrl_exists() is True
         assert cli.success() is True
 
     def test_12_get_physical_devices(self, mock_get_ctrl):
-        cli = PercCLI()
+        config = Config()
+        cli = PercCLI(config)
         assert cli.ctrl_successes() == {0: True}
         assert cli.ctrl_exists() is True
 
@@ -155,5 +169,6 @@ class TestPercCLI:
         }
 
     def test_13_get_physical_devices_error(self, mock_get_ctrl_error):
-        cli = PercCLI()
+        config = Config()
+        cli = PercCLI(config)
         assert cli.get_physical_devices() == {}

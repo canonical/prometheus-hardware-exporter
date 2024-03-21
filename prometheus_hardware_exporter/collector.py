@@ -31,7 +31,10 @@ logger = getLogger(__name__)
 class PowerEdgeRAIDCollector(BlockingCollector):
     """Collector for PowerEdge RAID controller."""
 
-    perccli = PercCLI()
+    def __init__(self, config: Config) -> None:
+        """Initialize the collector."""
+        self.perccli = PercCLI(config)
+        super().__init__(config)
 
     @property
     def specifications(self) -> List[Specification]:
@@ -177,8 +180,11 @@ class PowerEdgeRAIDCollector(BlockingCollector):
 class MegaRAIDCollector(BlockingCollector):
     """Collector for MegaRAID controller."""
 
-    storcli = StorCLI()
-    mega_raid_helper = MegaRAIDCollectorHelper()
+    def __init__(self, config: Config) -> None:
+        """Initialize the collector."""
+        self.storcli = StorCLI(config)
+        self.mega_raid_helper = MegaRAIDCollectorHelper()
+        super().__init__(config)
 
     @property
     def specifications(self) -> List[Specification]:
@@ -324,9 +330,12 @@ class MegaRAIDCollector(BlockingCollector):
 class IpmiDcmiCollector(BlockingCollector):
     """Collector for ipmi dcmi metrics."""
 
-    ipmi_dcmi = IpmiDcmi()
-    ipmi_tool = IpmiTool()
-    dmidecode = Dmidecode()
+    def __init__(self, config: Config) -> None:
+        """Initialze the collector."""
+        self.ipmi_dcmi = IpmiDcmi(config)
+        self.ipmi_tool = IpmiTool(config)
+        self.dmidecode = Dmidecode(config)
+        super().__init__(config)
 
     @property
     def specifications(self) -> List[Specification]:
@@ -410,7 +419,10 @@ class IpmiDcmiCollector(BlockingCollector):
 class IpmiSensorsCollector(BlockingCollector):
     """Collector for ipmi sensors data."""
 
-    ipmimonitoring = IpmiMonitoring()
+    def __init__(self, config: Config) -> None:
+        """Initialize the collector."""
+        self.ipmimonitoring = IpmiMonitoring(config)
+        super().__init__(config)
 
     @property
     def specifications(self) -> List[Specification]:
@@ -560,7 +572,10 @@ class IpmiSensorsCollector(BlockingCollector):
 class IpmiSelCollector(BlockingCollector):
     """Collector for IPMI SEL data."""
 
-    ipmi_sel = IpmiSel()
+    def __init__(self, config: Config) -> None:
+        """Initialize the collector."""
+        self.ipmi_sel = IpmiSel(config)
+        super().__init__(config)
 
     @property
     def specifications(self) -> List[Specification]:
@@ -626,7 +641,7 @@ class LSISASControllerCollector(BlockingCollector):
     def __init__(self, version: int, config: Config) -> None:
         """Initialize the collector."""
         self.version = version
-        self.sasircu = Sasircu(version)
+        self.sasircu = Sasircu(config, version)
         self.lsi_sas_helper = LSISASCollectorHelper()
         super().__init__(config)
 
@@ -804,7 +819,10 @@ class LSISASControllerCollector(BlockingCollector):
 class SsaCLICollector(BlockingCollector):
     """Collector for storage arrays that support ssacli."""
 
-    ssacli = SsaCLI()
+    def __init__(self, config: Config) -> None:
+        """Initialize the collector."""
+        super().__init__(config)
+        self.ssacli = SsaCLI(self.config)
 
     @property
     def specifications(self) -> List[Specification]:
