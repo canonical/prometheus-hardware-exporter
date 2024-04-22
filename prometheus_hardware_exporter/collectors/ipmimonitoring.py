@@ -20,7 +20,7 @@ class IpmiMonitoring(Command):
         Returns:
             sensor_data: a list of dictionaries containing sensor data, or []
         """
-        result = self()
+        result = self("--sdr-cache-recreate")
         if result.error:
             logger.error(result.error)
             return []

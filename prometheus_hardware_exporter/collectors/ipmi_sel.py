@@ -23,7 +23,9 @@ class IpmiSel(Command):
         Returns:
             sel_entries: a list of dictionaries containing sel_sentries, or []
         """
-        result = self("--output-event-state --interpret-oem-data --entity-sensor-names")
+        result = self(
+            "--sdr-cache-recreate --output-event-state --interpret-oem-data --entity-sensor-names"
+        )
         if result.error:
             logger.error(result.error)
             return None
