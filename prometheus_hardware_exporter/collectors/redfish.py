@@ -18,7 +18,6 @@ from prometheus_hardware_exporter.config import Config
 
 logger = getLogger(__name__)
 
-# pylint: disable=too-many-instance-attributes
 # pylint: disable=too-many-locals
 
 
@@ -70,17 +69,12 @@ class RedfishHelper:
 
     def __init__(self, config: Config) -> None:
         """Initialize values for class."""
-        self.host = config.redfish_host
-        self.username = config.redfish_username
-        self.password = config.redfish_password
-        self.timeout = config.redfish_client_timeout
-        self.max_retry = config.redfish_client_max_retry
         self.redfish_obj = redfish_client(
-            base_url=self.host,
-            username=self.username,
-            password=self.password,
-            timeout=self.timeout,
-            max_retry=self.max_retry,
+            base_url=config.redfish_host,
+            username=config.redfish_username,
+            password=config.redfish_password,
+            timeout=config.redfish_client_timeout,
+            max_retry=config.redfish_client_max_retry,
         )
 
     def __enter__(self) -> Self:
