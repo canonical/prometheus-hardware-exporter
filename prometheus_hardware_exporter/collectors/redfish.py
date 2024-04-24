@@ -239,7 +239,7 @@ class RedfishHelper:
         storage_controllers_list: List[Dict]
         if "StorageControllers" in storage_data:
             storage_controllers_list = storage_data["StorageControllers"]
-        # ILO version is 2.99 might have "Controllers" key instead of "StorageControllers"
+        # ILO version 2.99 might have "Controllers" key instead of "StorageControllers"
         elif "Controllers" in storage_data:
             storage_controllers_list = []
             for controller in storage_data["Controllers"].values():
