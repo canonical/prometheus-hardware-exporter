@@ -51,6 +51,9 @@ class TestIpmiSel(unittest.TestCase):
             ipmi_sel = IpmiSel(config)
             payloads = ipmi_sel.get_sel_entries(24 * 60 * 60)
             expected_sel_entries = SAMPLE_SEL_ENTRIES
+            mock_call.assert_called_with(
+                "--sdr-cache-recreate --output-event-state --interpret-oem-data --entity-sensor-names"  # noqa: E501
+            )
             self.assertEqual(payloads, expected_sel_entries)
 
     @patch.object(Command, "__call__")
@@ -59,6 +62,9 @@ class TestIpmiSel(unittest.TestCase):
         config = Config()
         ipmi_sel = IpmiSel(config)
         payloads = ipmi_sel.get_sel_entries(300)
+        mock_call.assert_called_with(
+            "--sdr-cache-recreate --output-event-state --interpret-oem-data --entity-sensor-names"
+        )
         self.assertEqual(payloads, [])
 
     @patch.object(Command, "__call__")
@@ -67,4 +73,7 @@ class TestIpmiSel(unittest.TestCase):
         config = Config()
         ipmi_sel = IpmiSel(config)
         payloads = ipmi_sel.get_sel_entries(300)
+        mock_call.assert_called_with(
+            "--sdr-cache-recreate --output-event-state --interpret-oem-data --entity-sensor-names"
+        )
         self.assertEqual(payloads, None)
