@@ -20,6 +20,9 @@ class IpmiMonitoring(Command):
         Returns:
             sensor_data: a list of dictionaries containing sensor data, or []
         """
+        # --sdr-cache-recreate is required to automatically recreate the SDR cache in case it is
+        # out of date or invalid. Without this, the service will stop getting sensor data if the
+        # cache is out of date.
         result = self("--sdr-cache-recreate")
         if result.error:
             logger.error(result.error)

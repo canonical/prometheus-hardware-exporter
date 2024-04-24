@@ -23,6 +23,9 @@ class IpmiSel(Command):
         Returns:
             sel_entries: a list of dictionaries containing sel_sentries, or []
         """
+        # --sdr-cache-recreate is required to automatically recreate the SDR cache in case it is
+        # out of date or invalid. Without this, the service will stop getting ipmi-sel data if the
+        # cache is out of date.
         result = self(
             "--sdr-cache-recreate --output-event-state --interpret-oem-data --entity-sensor-names"
         )
