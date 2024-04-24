@@ -8,7 +8,6 @@ from cachetools.func import ttl_cache
 from redfish import redfish_client
 from redfish.rest.v1 import (
     InvalidCredentialsError,
-    RestResponse,
     RetriesExhaustedError,
     SessionCreationError,
 )
@@ -136,11 +135,11 @@ class RedfishHelper:
 
         Returns None if URI isn't present.
         """
-        resp: RestResponse = self.redfish_obj.get(uri)
-        if resp.status == 200:
-            return resp.dict
-        logger.debug("Not able to query from URI: %s.", uri)
-        return None
+        resp = self.redfish_obj.get(uri)
+        if resp.status != 200:
+            logger.debug("Not able to query from URI: %s.", uri)
+            return None
+        return resp.dict
 
     def get_processor_data(self) -> Tuple[Dict[str, int], Dict[str, List]]:
         """Return processor data and count.
