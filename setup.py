@@ -7,7 +7,7 @@ configs = {
     "description": "exports hardware related metrics",
     "use_scm_version": True,
     "setup_requires": ["setuptools_scm", "pyyaml"],
-    "author": "Canonical BootStack DevOps Centres",
+    "author": "Canonical Solution Engineering",
     "packages": ["prometheus_hardware_exporter", "prometheus_hardware_exporter.collectors"],
     "url": "https://github.com/canonical/prometheus-hardware-exporter",
     "entry_points": {
