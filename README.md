@@ -60,4 +60,4 @@ documentation](https://charmhub.io/hardware-observer/docs/metrics-and-alerts-com
 
 This is still work in progress, and only support local testing. For more
 information on building and running the snap locally, please refer to
-[README-SNAP.md](https://github.com/canonical/prometheus-hardware-exporter/blob/main/README-SNAP.md)
+[README-SNAP.md](README-SNAP.md)
