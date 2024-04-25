@@ -48,6 +48,7 @@ class TestIpmiMonitoring(unittest.TestCase):
             ipmimonitoring = IpmiMonitoring(config)
             payloads = ipmimonitoring.get_sensor_data()
             expected_sensor_entries = SAMPLE_SENSOR_ENTRIES
+            mock_call.assert_called_with("--sdr-cache-recreate")
             self.assertEqual(payloads, expected_sensor_entries)
 
     @patch.object(Command, "__call__")
@@ -56,4 +57,5 @@ class TestIpmiMonitoring(unittest.TestCase):
         config = Config()
         ipmimonitoring = IpmiMonitoring(config)
         payloads = ipmimonitoring.get_sensor_data()
+        mock_call.assert_called_with("--sdr-cache-recreate")
         self.assertEqual(payloads, [])
