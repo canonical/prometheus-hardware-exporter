@@ -1,4 +1,4 @@
-"""Package entrypoint."""
+"""Collect and export metrics for various hardware component."""
 
 import argparse
 import logging
