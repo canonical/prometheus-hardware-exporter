@@ -511,7 +511,7 @@ class TestRedfishMetrics(unittest.TestCase):
     ):
         mock_redfish_obj = Mock()
         mock_system_ids = ["s1"]
-        mock_storage_ids = ["STOR1", "STOR2"]
+        mock_storage_ids = ["STOR1", "STOR2", "STOR3"]
 
         mock_get_system_ids.return_value = mock_system_ids
         mock_redfish_client.return_value = mock_redfish_obj
@@ -531,6 +531,9 @@ class TestRedfishMetrics(unittest.TestCase):
                         "@odata.id": "/redfish/v1/Systems/s1/Storage/STOR2/Controllers"
                     }
                 }
+            # response for non-standard api response
+            elif uri.endswith("Systems/s1/Storage/STOR3"):
+                response.dict = {"UnknownKey": {}}
             elif uri.endswith("Systems/s1/Storage/STOR1/Controllers"):
                 response.dict = {
                     "Members": [
@@ -540,7 +543,8 @@ class TestRedfishMetrics(unittest.TestCase):
             elif uri.endswith("Systems/s1/Storage/STOR2/Controllers"):
                 response.dict = {
                     "Members": [
-                        {"@odata.id": "/redfish/v1/Systems/s1/Storage/STOR2/Controllers/sc1"}
+                        {"@odata.id": "/redfish/v1/Systems/s1/Storage/STOR2/Controllers/sc1"},
+                        {"@odata.id": "/redfish/v1/Systems/s1/Storage/STOR2/Controllers/sc2"},
                     ]
                 }
             elif uri.endswith("Systems/s1/Storage/STOR1/Controllers/sc0"):
@@ -559,6 +563,9 @@ class TestRedfishMetrics(unittest.TestCase):
                     },
                     "Id": "sc1",
                 }
+            # response for non-valid response
+            elif uri.endswith("Systems/s1/Storage/STOR2/Controllers/sc2"):
+                response.dict = {}
             # response for GET request to /redfish/v1/Systems/<sys_id>/
             elif "Systems" in uri:
                 response.dict = {"Storage": {"@odata.id": "/redfish/v1/Systems/sX/Storage"}}

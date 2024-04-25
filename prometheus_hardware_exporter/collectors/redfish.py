@@ -240,18 +240,19 @@ class RedfishHelper:
             requested storage id.
 
         """
-        storage_controllers_list: List[Dict]
+        storage_controllers_list: List[Dict] = []
         if "StorageControllers" in storage_data:
             storage_controllers_list = storage_data["StorageControllers"]
         # There are cases we have "Controllers" key instead of "StorageControllers"
         elif "Controllers" in storage_data:
-            storage_controllers_list = []
             for controller in storage_data["Controllers"].values():
                 all_controller_data = self.redfish_obj.get(controller).dict
                 for controller in all_controller_data["Members"]:
                     storage_controllers_list.append(
                         self.redfish_obj.get(controller["@odata.id"]).dict
                     )
+        else:
+            logger.warning("No storage controller information is found: %s", storage_data)
 
         return storage_controllers_list
 
@@ -326,18 +327,24 @@ class RedfishHelper:
                 storage_controllers_list: List[Dict] = self._find_storage_controller_data(
                     self.redfish_obj.get(curr_storage_uri).dict
                 )
-                storage_controller_count[system_id] += len(storage_controllers_list)
-
                 # picking out the required data from each storage controller in the list
                 for data in storage_controllers_list:
                     # "Id" is what we expect if the key being used is Controllers
                     controller_id = data.get("MemberId", "") or data.get("Id", "")
+                    state = data.get("Status", {}).get("State", None)
+                    health = data.get("Status", {}).get("Health", "NA")
+                    if controller_id == "" or not state:  # health is not required
+                        logger.warning(
+                            "No relavent data found in storage controller data: %s", data
+                        )
+                        continue
+                    storage_controller_count[system_id] += 1
                     storage_controller_data_in_curr_system.append(
                         {
                             "storage_id": storage_id,
                             "controller_id": controller_id,
-                            "state": data["Status"]["State"],
-                            "health": data["Status"].get("Health", "NA"),
+                            "state": state,
+                            "health": health,
                         }
                     )
 
