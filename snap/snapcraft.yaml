@@ -6,7 +6,7 @@ description: |
   The prometheus-hardware-exporter is a snap for collecting hardware related
   information from the host machine, and export them as prometheus metrics.
 grade: devel
-confinement: classic
+confinement: strict
 
 apps:
   prometheus-hardware-exporter:
