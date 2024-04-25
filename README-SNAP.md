@@ -1,4 +1,4 @@
-## Prometheus Hardware Exporter Snap
+# Prometheus Hardware Exporter Snap
 
 **Work In Progress**: the snap is only ready for local testing.
 
