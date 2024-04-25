@@ -8,7 +8,6 @@ from cachetools.func import ttl_cache
 from redfish import redfish_client
 from redfish.rest.v1 import (
     InvalidCredentialsError,
-    RestResponse,
     RetriesExhaustedError,
     SessionCreationError,
 )
@@ -18,7 +17,6 @@ from prometheus_hardware_exporter.config import Config
 
 logger = getLogger(__name__)
 
-# pylint: disable=too-many-instance-attributes
 # pylint: disable=too-many-locals
 
 
@@ -70,17 +68,12 @@ class RedfishHelper:
 
     def __init__(self, config: Config) -> None:
         """Initialize values for class."""
-        self.host = config.redfish_host
-        self.username = config.redfish_username
-        self.password = config.redfish_password
-        self.timeout = config.redfish_client_timeout
-        self.max_retry = config.redfish_client_max_retry
         self.redfish_obj = redfish_client(
-            base_url=self.host,
-            username=self.username,
-            password=self.password,
-            timeout=self.timeout,
-            max_retry=self.max_retry,
+            base_url=config.redfish_host,
+            username=config.redfish_username,
+            password=config.redfish_password,
+            timeout=config.redfish_client_timeout,
+            max_retry=config.redfish_client_max_retry,
         )
 
     def __enter__(self) -> Self:
@@ -142,11 +135,11 @@ class RedfishHelper:
 
         Returns None if URI isn't present.
         """
-        resp: RestResponse = self.redfish_obj.get(uri)
-        if resp.status == 200:
-            return resp.dict
-        logger.debug("Not able to query from URI: %s.", uri)
-        return None
+        resp = self.redfish_obj.get(uri)
+        if resp.status != 200:
+            logger.debug("Not able to query from URI: %s.", uri)
+            return None
+        return resp.dict
 
     def get_processor_data(self) -> Tuple[Dict[str, int], Dict[str, List]]:
         """Return processor data and count.
@@ -235,6 +228,34 @@ class RedfishHelper:
         """
         return cls.systems_root_uri + f"{system_id}/{storage_name}/"
 
+    def _find_storage_controller_data(self, storage_data: Dict) -> List[Dict]:
+        """Return storage controller list.
+
+        Args:
+            storage_data: A dict obtained from a storage URI endpoint, eg:
+            /redfish/v1/Systems/1/Storage/XYZ123
+
+        Returns:
+            storage_controller_list: list of storage controllers for
+            requested storage id.
+
+        """
+        storage_controllers_list: List[Dict] = []
+        if "StorageControllers" in storage_data:
+            storage_controllers_list = storage_data["StorageControllers"]
+        # There are cases we have "Controllers" key instead of "StorageControllers"
+        elif "Controllers" in storage_data:
+            for controller in storage_data["Controllers"].values():
+                all_controller_data = self.redfish_obj.get(controller).dict
+                for controller in all_controller_data["Members"]:
+                    storage_controllers_list.append(
+                        self.redfish_obj.get(controller["@odata.id"]).dict
+                    )
+        else:
+            logger.warning("No storage controller information is found: %s", storage_data)
+
+        return storage_controllers_list
+
     def get_storage_controller_data(self) -> Tuple[Dict[str, int], Dict[str, List]]:
         """Return storage controller data and count.
 
@@ -303,19 +324,27 @@ class RedfishHelper:
                 )
 
                 # list of storage controllers for that storage id
-                storage_controllers_list: List[Dict] = self.redfish_obj.get(curr_storage_uri).dict[
-                    "StorageControllers"
-                ]
-                storage_controller_count[system_id] += len(storage_controllers_list)
-
+                storage_controllers_list: List[Dict] = self._find_storage_controller_data(
+                    self.redfish_obj.get(curr_storage_uri).dict
+                )
                 # picking out the required data from each storage controller in the list
                 for data in storage_controllers_list:
+                    # "Id" is what we expect if the key being used is Controllers
+                    controller_id = data.get("MemberId", "") or data.get("Id", "")
+                    state = data.get("Status", {}).get("State", None)
+                    health = data.get("Status", {}).get("Health", "NA")
+                    if controller_id == "" or not state:  # health is not required
+                        logger.warning(
+                            "No relavent data found in storage controller data: %s", data
+                        )
+                        continue
+                    storage_controller_count[system_id] += 1
                     storage_controller_data_in_curr_system.append(
                         {
                             "storage_id": storage_id,
-                            "controller_id": data["MemberId"],
-                            "state": data["Status"]["State"],
-                            "health": data["Status"]["Health"] or "NA",
+                            "controller_id": controller_id,
+                            "state": state,
+                            "health": health,
                         }
                     )
 
