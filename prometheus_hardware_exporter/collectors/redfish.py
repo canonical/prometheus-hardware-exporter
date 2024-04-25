@@ -231,6 +231,10 @@ class RedfishHelper:
     def _find_storage_controller_data(self, storage_data: Dict) -> List[Dict]:
         """Return storage controller list.
 
+        Args:
+            storage_data: A dict obtained from a storage URI endpoint, eg:
+            /redfish/v1/Systems/1/Storage/XYZ123
+
         Returns:
             storage_controller_list: list of storage controllers for
             requested storage id.
@@ -239,7 +243,7 @@ class RedfishHelper:
         storage_controllers_list: List[Dict]
         if "StorageControllers" in storage_data:
             storage_controllers_list = storage_data["StorageControllers"]
-        # ILO version 2.99 might have "Controllers" key instead of "StorageControllers"
+        # There are cases we have "Controllers" key instead of "StorageControllers"
         elif "Controllers" in storage_data:
             storage_controllers_list = []
             for controller in storage_data["Controllers"].values():
