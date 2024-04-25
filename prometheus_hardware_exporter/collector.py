@@ -331,7 +331,7 @@ class IpmiDcmiCollector(BlockingCollector):
     """Collector for ipmi dcmi metrics."""
 
     def __init__(self, config: Config) -> None:
-        """Initialze the collector."""
+        """Initialize the collector."""
         self.ipmi_dcmi = IpmiDcmi(config)
         self.ipmi_tool = IpmiTool(config)
         self.dmidecode = Dmidecode(config)

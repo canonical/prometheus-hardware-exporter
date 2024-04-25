@@ -20,7 +20,7 @@ class ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
 
 
 class SlientRequestHandler(WSGIRequestHandler):
-    """A Slient Request handler."""
+    """A Silent Request handler."""
 
     def log_message(self, format: str, *args: Any) -> None:  # pylint: disable=W0622
         """Log nothing."""
