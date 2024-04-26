@@ -10,8 +10,8 @@ You need `snapcraft` to build the snap:
 sudo snap install snapcraft --classic
 ```
 
-Snapcraft also requires backend to create isolated build environment, you can
-choose the following two backends:
+Snapcraft also requires backend to create isolated build environment. You can
+choose either of the following two backends for snapcraft:
 
 - [LXD](https://linuxcontainers.org/lxd/introduction/), which creates container
   image build instances. It can be used inside virtual machines.

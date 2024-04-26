@@ -5,17 +5,20 @@ management controllers) using IPMI (Intelligent Platform Management Interface)
 and Redfish protocol. It also exports and various SAS (Serial Attached SCSI) and
 RAID (redundant array of inexpensive disks) controllers.
 
-Note that the exporter does not bundle the required third party or proprietary
-software. If you would like to use this exporter you will need to install them
-by yourself. Therefore, Prometheus Hardware Exporter is recommended for
-[Juju](https://juju.is/) users, you can learn more about Hardware Observer on
+Prometheus Hardware Exporter is recommended for [Juju](https://juju.is/) users,
+you can deploy Prometheus Hardware Exporter using the Hardware Observer charm.
+You can learn more about Hardware Observer on
 [Charmhub](https://charmhub.io/hardware-observer).
+
+**Note**: this exporter does not bundle the required third party or proprietary
+software. If you would like to use this exporter, you will need to install them
+by yourself.
 
 ## Installation
 
-This package is not published in anywhere yet. For now, you can should install
-this application locally (or via a virtual environment). To install it on a
-virtual environment, you can run:
+This package is not published anywhere as of now. Currently, it can be installed
+locally or on a virtual environment. To install it on a virtual environment,
+run:
 
 ```shell
 # Install virtualvenv and source it
@@ -23,12 +26,12 @@ pip3 install virtualenv
 python3 -m venv venv
 source venv/bin/activate
 
-# Install the prometheus-hardware-exporter package; the "(venv)" means you are
-# under the virtual environment
+# Install the prometheus-hardware-exporter package; the "(venv)" prefix on the
+# shell prompt indicates that the virtual environment is active.
 (venv) pip3 install .
 ```
 
-To verify you have install the package, you can run:
+To verify that the package has been installed successfully, run:
 
 ```shell
 (venv) prometheus-hardware-exporter -h
@@ -39,8 +42,7 @@ the virtual environment.
 
 ## Usages
 
-To run the exporter at port `10000` and enable the ipmi sensor collector, you
-can run:
+To start the exporter at port `10000` and enable the ipmi sensor collector, run:
 
 ```shell
 (venv) prometheus-hardware-exporter -p 10000 --collector.ipmi_sensor
