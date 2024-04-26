@@ -5,9 +5,9 @@ management controllers) using IPMI (Intelligent Platform Management Interface)
 and Redfish protocol. It also exports and various SAS (Serial Attached SCSI) and
 RAID (redundant array of inexpensive disks) controllers.
 
-Prometheus Hardware Exporter is recommended for [Juju](https://juju.is/) users,
-you can deploy Prometheus Hardware Exporter using the Hardware Observer charm.
-You can learn more about Hardware Observer on
+Prometheus Hardware Exporter is recommended for [Juju](https://juju.is/) users.
+You can deploy Prometheus Hardware Exporter using the Hardware Observer charm.
+For more information, you can read the documentation about Hardware Observer on
 [Charmhub](https://charmhub.io/hardware-observer).
 
 **Note**: this exporter does not bundle the required third party or proprietary
@@ -50,8 +50,8 @@ To start the exporter at port `10000` and enable the ipmi sensor collector, run:
 
 Note that all the exporters are disabled by default as you will need to install
 the appropriate third party or proprietary software to run the collectors.  You
-can check out [Resources](200~https://charmhub.io/hardware-observer/resources/)
-to find out more information about the third party software.
+can check out [Resources](https://charmhub.io/hardware-observer/resources/) to
+find out more information about the third party software.
 
 ## Supported Metrics
 
