@@ -132,7 +132,7 @@ class BlockingCollector(Collector):
         Yields:
             metrics: the internal metrics
         """
-        # The general exception hanlder will try to make sure the single
+        # The general exception handler will try to make sure the single
         # collector's bug will only change the metrics output to failed_metrics
         # and also make sure other collectors are still working.
         try:

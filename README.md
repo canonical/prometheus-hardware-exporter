@@ -1,65 +1,65 @@
-# Prometheus Exporter Snap for Hardware Observer charm
+# Prometheus Hardware Exporter
 
+Prometheus Hardware Exporter exports Prometheus metrics from BMCs (Baseboard
+management controllers) using IPMI (Intelligent Platform Management Interface)
+and Redfish protocol. It also exports and various SAS (Serial Attached SCSI) and
+RAID (redundant array of inexpensive disks) controllers.
 
-You can learn more about Hardware Observer on [Charmhub](https://charmhub.io/hardware-observer).
-## Getting Started
+Prometheus Hardware Exporter is recommended for [Juju](https://juju.is/) users.
+You can deploy Prometheus Hardware Exporter using the Hardware Observer charm.
+For more information, you can read the documentation about Hardware Observer on
+[Charmhub](https://charmhub.io/hardware-observer).
 
-Install the snap from snap store:
+**Note**: this exporter does not bundle the required third party or proprietary
+software. If you would like to use this exporter, you will need to install them
+by yourself.
 
-```bash
-$ sudo snap install prometheus-hardware-exporter --classic
+## Installation
+
+This package is not published anywhere as of now. Currently, it can be installed
+locally or on a virtual environment. To install it on a virtual environment,
+run:
+
+```shell
+# Install virtualvenv and source it
+pip3 install virtualenv
+python3 -m venv venv
+source venv/bin/activate
+
+# Install the prometheus-hardware-exporter package; the "(venv)" prefix on the
+# shell prompt indicates that the virtual environment is active.
+(venv) pip3 install .
 ```
 
-Start the exporter:
+To verify that the package has been installed successfully, run:
 
-```bash
-$ sudo snap start prometheus-hardware-exporter
+```shell
+(venv) prometheus-hardware-exporter -h
 ```
 
-## Snap Configuration
+If you see the help message, then `prometheus-hardware-exporter` is installed on
+the virtual environment.
 
-The install hook (`./snap/hooks/install`) will generate a default configuration
-for the exporter. By default, the exporter is started at port 10000 with a
-logging level of INFO.
+## Usages
 
-You can change the default configuration by editing
+To start the exporter at port `10000` and enable the ipmi sensor collector, run:
 
-```bash
-$ /var/snap/prometheus-hardware-exporter/current/config.yaml
+```shell
+(venv) prometheus-hardware-exporter -p 10000 --collector.ipmi_sensor
 ```
 
-and then restart the snap by
+Note that all the exporters are disabled by default as you will need to install
+the appropriate third party or proprietary software to run the collectors.  You
+can check out [Resources](https://charmhub.io/hardware-observer/resources/) to
+find out more information about the third party software.
 
-```bash
-$ sudo snap restart prometheus-hardware-exporter
-```
+## Supported Metrics
 
-## Local Build and Testing
+You can learn more about the metrics from [Hardware Observer
+documentation](https://charmhub.io/hardware-observer/docs/metrics-and-alerts-common).
 
-You need `snapcraft` to build the snap:
+## Snap support
 
-```bash
-$ sudo snap install snapcraft --classic
-```
-
-Snapcraft also requires backend to create isolated build environment, you can
-choose the following two backends:
-
-- [LXD](https://linuxcontainers.org/lxd/introduction/), which creates container
-  image build instances. It can be used inside virtual machines.
-- [Multipass](https://multipass.run/), which creates virtual machine build
-  instances. It cannot be reliably used on platforms that do not support nested
-  virtualization. For instance, Multipass will most likely not run inside a
-  virtual machine itself.
-
-To build the snap:
-
-```bash
-$ make build
-```
-
-To try the snap that was built, you can install it locally:
-
-```bash
-$ sudo snap install --devmode ./$(grep -E "^name:" snap/snapcraft.yaml | awk '{print $2}').snap
-```
+This is still work in progress, and only support local testing. For more
+information on building and running the snap locally, please refer to
+[README-SNAP.md](README-SNAP.md)

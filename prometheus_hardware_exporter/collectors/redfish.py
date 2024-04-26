@@ -335,7 +335,7 @@ class RedfishHelper:
                     health = data.get("Status", {}).get("Health", "NA")
                     if controller_id == "" or not state:  # health is not required
                         logger.warning(
-                            "No relavent data found in storage controller data: %s", data
+                            "No relevant data found in storage controller data: %s", data
                         )
                         continue
                     storage_controller_count[system_id] += 1

@@ -88,7 +88,7 @@ class Sasircu(Command):
         return data
 
     def _get_controller(self, text: str) -> Dict[str, str]:
-        """Return controller information from the contoller section text.
+        """Return controller information from the controller section text.
 
         Returns:
             Controller information

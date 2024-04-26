@@ -1,14 +1,12 @@
 name: prometheus-hardware-exporter
 base: core22
 adopt-info: prometheus-hardware-exporter
-summary: collects backup results and exports them as metrics
+summary: collects hardware related information and exports them as metrics
 description: |
-  The prometheus-hardware-exporter is a snap for collecting backup
-  results from charm-hardware, and export those results as prometheus
-  metrics. The metrics are expected to be used with prometheus.
-
-grade: stable
-confinement: classic
+  The prometheus-hardware-exporter is a snap for collecting hardware related
+  information from the host machine, and export them as prometheus metrics.
+grade: devel
+confinement: strict
 
 apps:
   prometheus-hardware-exporter:

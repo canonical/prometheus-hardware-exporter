@@ -19,8 +19,8 @@ class ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
     daemon_threads = True
 
 
-class SlientRequestHandler(WSGIRequestHandler):
-    """A Slient Request handler."""
+class SilentRequestHandler(WSGIRequestHandler):
+    """A Silent Request handler."""
 
     def log_message(self, format: str, *args: Any) -> None:  # pylint: disable=W0622
         """Log nothing."""
@@ -51,7 +51,7 @@ class Exporter:
             self.port,
             self.app,
             server_class=ThreadingWSGIServer,
-            handler_class=SlientRequestHandler,
+            handler_class=SilentRequestHandler,
         )
         logger.info("Started prometheus hardware exporter at %s:%s.", self.addr, self.port)
         thread = threading.Thread(target=httpd.serve_forever)
