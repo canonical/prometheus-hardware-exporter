@@ -331,8 +331,10 @@ class RedfishHelper:
                 for data in storage_controllers_list:
                     # "Id" is what we expect if the key being used is Controllers
                     controller_id = data.get("MemberId") or data.get("Id")
-                    state = data.get("Status", {}).get("State")  # when is falsy set to None
-                    health = data.get("Status", {}).get("Health") or "NA"  # when is falsy set NA
+                    state = data.get("Status", {}).get("State")  # when it's falsy set to None
+                    health = (
+                        data.get("Status", {}).get("Health") or "NA"
+                    )  # when it's falsy set to NA
                     if not controller_id or not state:  # health is not required
                         logger.warning(
                             "No relevant data found in storage controller data: %s", data
