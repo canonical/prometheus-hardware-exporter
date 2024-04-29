@@ -435,7 +435,7 @@ class TestRedfishMetrics(unittest.TestCase):
         self, storage_name, mock_get_system_ids, mock_get_collection_ids
     ):
         mock_system_ids = ["s1"]
-        mock_storage_ids = ["STOR1", "STOR2", "STOR3"]
+        mock_storage_ids = ["STOR1", "STOR2", "STOR3", "STOR4"]
 
         mock_get_system_ids.return_value = mock_system_ids
         mock_get_collection_ids.return_value = mock_storage_ids
@@ -470,6 +470,15 @@ class TestRedfishMetrics(unittest.TestCase):
                         }
                     ]
                 }
+            elif f"{storage_root}/STOR4" in uri:  # Health is None
+                response.dict = {
+                    "StorageControllers": [
+                        {
+                            "MemberId": "sc3",
+                            "Status": {"Health": None, "State": "Enabled"},
+                        }
+                    ]
+                }
             # response for GET request to /redfish/v1/Systems/<sys_id>/
             elif "Systems" in uri:
                 response.dict = {
@@ -487,7 +496,7 @@ class TestRedfishMetrics(unittest.TestCase):
                 storage_controller_data,
             ) = redfish_helper.get_storage_controller_data()
 
-        self.assertEqual(storage_controller_count, {"s1": 3})
+        self.assertEqual(storage_controller_count, {"s1": 4})
         self.assertEqual(
             storage_controller_data,
             {
@@ -507,6 +516,12 @@ class TestRedfishMetrics(unittest.TestCase):
                     {
                         "storage_id": "STOR3",
                         "controller_id": "sc2",
+                        "health": "NA",
+                        "state": "Enabled",
+                    },
+                    {
+                        "storage_id": "STOR4",
+                        "controller_id": "sc3",
                         "health": "NA",
                         "state": "Enabled",
                     },
