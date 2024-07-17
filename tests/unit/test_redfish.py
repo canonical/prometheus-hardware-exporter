@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch
 import redfish_utilities
 from parameterized import parameterized
 from redfish.rest.v1 import (
+    BadRequestError,
     InvalidCredentialsError,
     RetriesExhaustedError,
     SessionCreationError,
@@ -1095,3 +1096,28 @@ class TestRedfishServiceDiscovery(unittest.TestCase):
             username="",
             password="",
         )
+
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
+    def test_redfish_logout_401(self, mock_redfish_client):
+        """Test that exception is not raised if logout fails with 401."""
+        mock_redfish_obj = Mock()
+        mock_redfish_obj.logout.side_effect = BadRequestError(
+            "Invalid session resource: /redfish/v1/SessionService/Sessions/132562, "
+            "return code: 401"
+        )
+        mock_redfish_client.return_value = mock_redfish_obj
+        with RedfishHelper(Mock()) as redfish_helper:
+            self.assertIsNone(redfish_helper.logout())
+
+    @patch("prometheus_hardware_exporter.collectors.redfish.redfish_client")
+    def test_redfish_logout_error(self, mock_redfish_client):
+        """Test that exception is raised if logout fails with response not 401."""
+        mock_redfish_obj = Mock()
+        mock_redfish_obj.logout.side_effect = BadRequestError(
+            "Invalid session resource: /redfish/v1/SessionService/Sessions/132562, "
+            "return code: 404"
+        )
+        mock_redfish_client.return_value = mock_redfish_obj
+        redfish_helper = RedfishHelper(Mock())
+        with self.assertRaises(BadRequestError):
+            redfish_helper.logout()

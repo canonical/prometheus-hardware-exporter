@@ -7,6 +7,7 @@ import redfish_utilities
 from cachetools.func import ttl_cache
 from redfish import redfish_client
 from redfish.rest.v1 import (
+    BadRequestError,
     InvalidCredentialsError,
     RetriesExhaustedError,
     SessionCreationError,
@@ -92,8 +93,16 @@ class RedfishHelper:
 
     def logout(self) -> None:
         """Logout from redfish."""
-        self.redfish_obj.logout()
-        logger.debug("(service) Logged out from redfish service ...")
+        # redfish sometimes fails to logout and this end up giving false alerts
+        # See https://github.com/DMTF/python-redfish-library/issues/160 and
+        # https://github.com/canonical/prometheus-hardware-exporter/issues/76
+        try:
+            self.redfish_obj.logout()
+            logger.debug("(service) Logged out from redfish service ...")
+        except BadRequestError as err:
+            logger.error("Failed to logout redfish: %s", str(err))
+            if "code: 401" not in str(err):
+                raise
 
     def get_sensor_data(self) -> Dict[str, List]:
         """Get sensor data.
