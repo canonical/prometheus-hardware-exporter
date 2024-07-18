@@ -4,11 +4,6 @@ from logging import getLogger
 from typing import Any, Dict, List
 
 from prometheus_client.metrics_core import GaugeMetricFamily, InfoMetricFamily
-from redfish.rest.v1 import (
-    InvalidCredentialsError,
-    RetriesExhaustedError,
-    SessionCreationError,
-)
 
 from .collectors.dmidecode import Dmidecode
 from .collectors.ipmi_dcmi import IpmiDcmi, IpmiTool
@@ -1041,13 +1036,7 @@ class RedfishCollector(BlockingCollector):
             smart_storage_health_data: Dict[str, Any] = (
                 redfish_helper.get_smart_storage_health_data()
             )
-        except (  # pylint: disable=W0718
-            ConnectionError,
-            InvalidCredentialsError,
-            RetriesExhaustedError,
-            SessionCreationError,
-            Exception,
-        ) as err:
+        except Exception as err:  # pylint: disable=broad-exception-caught
             logger.exception("Exception occurred while using redfish object: %s", err)
             payloads.append(Payload(name="redfish_call_success", value=0.0))
             return payloads
