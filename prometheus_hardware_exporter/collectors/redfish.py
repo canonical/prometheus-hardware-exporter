@@ -100,9 +100,7 @@ class RedfishHelper:
             self.redfish_obj.logout()
             logger.debug("(service) Logged out from redfish service ...")
         except BadRequestError as err:
-            logger.error("Failed to logout redfish: %s", str(err))
-            if "code: 401" not in str(err):
-                raise
+            logger.warning("Failed to logout redfish: %s", str(err))
 
     def get_sensor_data(self) -> Dict[str, List]:
         """Get sensor data.
