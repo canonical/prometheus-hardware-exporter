@@ -1,6 +1,8 @@
 """Module for collecter core codes."""
 
 from abc import abstractmethod
+import threading
+import time
 from dataclasses import dataclass, field
 from logging import getLogger
 from typing import Any, Dict, Iterable, List, Type
@@ -37,6 +39,40 @@ class Specification:
     labels: List[str] = field(default_factory=list)
 
 
+class FetchCache:
+    def __init__(self, fetch_function, refresh_interval=5) -> None:
+        self.fetch_function = fetch_function
+        self.value = None
+        self.lock = threading.Lock()
+        self.refresh_interval = refresh_interval
+        self.refresh_thread = threading.Thread(target=self._refresh_cache)
+        self.refresh_thread.daemon = True
+        self.refresh_thread.start()
+
+    def _refresh_cache(self) -> None:
+        while True:
+            start_time = time.time()
+
+            try:
+                # Generate the value in the background
+                new_value = self.fetch_function()
+                with self.lock:
+                    self.value = new_value
+            except Exception as e:
+                print(f"Error in fetch_function: {e}")
+
+            # Calculate time spent fetching
+            elapsed_time = time.time() - start_time
+
+            # Wait for the remainder of the refresh interval, if any
+            time_to_wait = max(0, self.refresh_interval - elapsed_time)
+            time.sleep(time_to_wait)
+
+    def get_value(self) -> Any:
+        # Return the precomputed value instantly
+        with self.lock:
+            return self.value
+
 class BlockingCollector(Collector):
     """Base class for blocking collector.
 
@@ -45,11 +81,14 @@ class BlockingCollector(Collector):
     is reading data from files.
     """
 
-    def __init__(self, config: Config) -> None:
+    def __init__(self, config: Config, enable_cache: bool = False) -> None:
         """Initialize the class."""
         self.config = config
         self._datastore: Dict[str, Payload] = {}
         self._specs = {spec.name: spec for spec in self.specifications}
+        self.cache = None
+        if enable_cache:
+            self.cache = FetchCache(fetch_function=self.fetch, refresh_interval=5)
 
     @abstractmethod
     def fetch(self) -> List[Payload]:
@@ -136,7 +175,10 @@ class BlockingCollector(Collector):
         # collector's bug will only change the metrics output to failed_metrics
         # and also make sure other collectors are still working.
         try:
-            payloads = self.fetch()
+            if self.cache:
+                payloads = self.cache.get_value()
+            else:
+                payloads = self.fetch()
             self.init_default_datastore(payloads)
             processed_payloads = self.process(payloads, self._datastore)
 
