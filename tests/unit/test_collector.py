@@ -1,11 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from redfish.rest.v1 import (
-    InvalidCredentialsError,
-    RetriesExhaustedError,
-    SessionCreationError,
-)
+from redfish.rest.v1 import InvalidCredentialsError, RetriesExhaustedError, SessionCreationError
 from test_resources.ipmi.ipmi_sample_data import (
     SAMPLE_IPMI_SEL_ENTRIES,
     SAMPLE_IPMI_SENSOR_ENTRIES,
