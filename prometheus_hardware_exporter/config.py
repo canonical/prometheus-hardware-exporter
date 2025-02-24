@@ -4,7 +4,7 @@ import os
 from logging import getLogger
 from typing import List
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator  # pylint: disable=no-name-in-module
 from yaml import safe_load
 
 logger = getLogger(__name__)
@@ -38,6 +38,7 @@ class Config(BaseModel):
     redfish_discover_cache_ttl: int = DEFAULT_REDFISH_DISCOVER_CACHE_TTL
 
     @validator("port")
+    @classmethod
     def validate_port_range(cls, port: int) -> int:
         """Validate port range."""
         if not 1 <= port <= 65535:
@@ -47,6 +48,7 @@ class Config(BaseModel):
         return port
 
     @validator("level")
+    @classmethod
     def validate_level_choice(cls, level: str) -> str:
         """Validate logging level choice."""
         level = level.upper()
@@ -58,6 +60,7 @@ class Config(BaseModel):
         return level
 
     @validator("enable_collectors")
+    @classmethod
     def validate_enable_collector_choice(cls, enable_collectors: List[str]) -> List[str]:
         """Validate enable choice."""
         # We may need to update this set if COLLECTOR_REGISTRIES is

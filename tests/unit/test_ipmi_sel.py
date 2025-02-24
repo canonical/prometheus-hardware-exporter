@@ -52,7 +52,7 @@ class TestIpmiSel(unittest.TestCase):
             payloads = ipmi_sel.get_sel_entries(24 * 60 * 60)
             expected_sel_entries = SAMPLE_SEL_ENTRIES
             mock_call.assert_called_with(
-                "--sdr-cache-recreate --output-event-state --interpret-oem-data --entity-sensor-names"  # noqa: E501
+                "--sdr-cache-recreate --output-event-state --interpret-oem-data --entity-sensor-names"
             )
             self.assertEqual(payloads, expected_sel_entries)
 
