@@ -13,6 +13,7 @@ DEFAULT_CONFIG = os.path.join(os.environ.get("SNAP_DATA", "./"), "config.yaml")
 
 DEFAULT_COLLECT_TIMEOUT = 30
 DEFAULT_IPMI_SEL_INTERVAL = 86400
+DEFAULT_IPMI_SEL_CRONJOB_INTERVAL = 5  # minutes
 DEFAULT_REDFISH_CLIENT_TIMEOUT = 15
 DEFAULT_REDFISH_CLIENT_MAX_RETRY = 1
 DEFAULT_REDFISH_DISCOVER_CACHE_TTL = 86400
@@ -29,6 +30,7 @@ class Config(BaseModel):
 
     collect_timeout: int = DEFAULT_COLLECT_TIMEOUT
     ipmi_sel_interval: int = DEFAULT_IPMI_SEL_INTERVAL
+    ipmi_sel_cronjob_interval: int = DEFAULT_IPMI_SEL_CRONJOB_INTERVAL
 
     redfish_host: str = "127.0.0.1"
     redfish_username: str = ""
