@@ -50,11 +50,10 @@ class TestIpmiSel(unittest.TestCase):
             config = Config()
             ipmi_sel = IpmiSel(config)
             payloads = ipmi_sel.get_sel_entries(24 * 60 * 60)
-            expected_sel_entries = SAMPLE_SEL_ENTRIES
             mock_call.assert_called_with(
                 "--sdr-cache-recreate --output-event-state --interpret-oem-data --entity-sensor-names"
             )
-            self.assertEqual(payloads, expected_sel_entries)
+            self.assertEqual(payloads, SAMPLE_SEL_ENTRIES)
 
     @patch.object(Command, "__call__")
     def test_01_get_sel_entries_zero_records(self, mock_call):
@@ -77,3 +76,33 @@ class TestIpmiSel(unittest.TestCase):
             "--sdr-cache-recreate --output-event-state --interpret-oem-data --entity-sensor-names"
         )
         self.assertEqual(payloads, None)
+
+    @patch.object(Command, "__call__")
+    @freeze_time("2023-07-09 12:00:00")
+    def test_03_ttl_valid(self, mock_call):
+        with open(SEL_SAMPLE_OUTPUT, "r") as content:
+            mock_call.return_value = Result(content.read(), None)
+            config = Config()
+            config.ipmi_sel_cache_ttl = 5
+            ipmi_sel = IpmiSel(config)
+            payloads_first = ipmi_sel.get_sel_entries(300)
+            self.assertEqual(payloads_first, SAMPLE_SEL_ENTRIES)
+
+            with freeze_time("2023-07-09 12:00:04"):
+                payloads_second = ipmi_sel.get_sel_entries(300)
+                self.assertEqual(payloads_first, payloads_second)
+
+    @patch.object(Command, "__call__")
+    @freeze_time("2023-07-09 12:00:00")
+    def test_04_ttl_expired(self, mock_call):
+        with open(SEL_SAMPLE_OUTPUT, "r") as content:
+            mock_call.return_value = Result(content.read(), None)
+            config = Config()
+            config.ipmi_sel_cache_ttl = 5
+            ipmi_sel = IpmiSel(config)
+            payloads = ipmi_sel.get_sel_entries(300)
+            self.assertEqual(payloads, SAMPLE_SEL_ENTRIES)
+
+            with freeze_time("2023-07-09 12:00:06"):
+                payloads_second = ipmi_sel.get_sel_entries(300)
+                self.assertEqual(payloads_second, None)

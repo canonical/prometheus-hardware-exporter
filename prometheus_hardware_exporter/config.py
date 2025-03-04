@@ -17,6 +17,7 @@ DEFAULT_IPMI_SEL_COLLECT_INTERVAL = 300
 DEFAULT_REDFISH_CLIENT_TIMEOUT = 15
 DEFAULT_REDFISH_CLIENT_MAX_RETRY = 1
 DEFAULT_REDFISH_DISCOVER_CACHE_TTL = 86400
+DEFAULT_IPMI_SEL_CACHE_TTL = 900
 
 # pylint: disable=E0213
 
@@ -31,6 +32,7 @@ class Config(BaseModel):
     collect_timeout: Optional[int] = DEFAULT_COLLECT_TIMEOUT
     ipmi_sel_interval: int = DEFAULT_IPMI_SEL_INTERVAL
     ipmi_sel_collect_interval: int = DEFAULT_IPMI_SEL_COLLECT_INTERVAL
+    ipmi_sel_cache_ttl: int = DEFAULT_IPMI_SEL_CACHE_TTL
 
     redfish_host: str = "127.0.0.1"
     redfish_username: str = ""
