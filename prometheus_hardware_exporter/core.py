@@ -3,7 +3,7 @@
 from abc import abstractmethod
 from dataclasses import dataclass, field
 from logging import getLogger
-from typing import Any, Dict, Iterable, List, Type
+from typing import Any, Dict, Iterable, List, Optional, Type
 
 from prometheus_client.metrics_core import GaugeMetricFamily, Metric
 from prometheus_client.registry import Collector
@@ -157,3 +157,39 @@ class BlockingCollector(Collector):
         except Exception as err:  # pylint: disable=W0718
             logger.error(err)
             yield from self.failed_metrics
+
+
+class NonBlockingCollector(BlockingCollector):
+    """Base class for non-blocking collector.
+
+    BlockingCollector base class is intended to be used when the collector is
+    fetching data in a blocking fashion. For example, if the fetching process
+    is reading data from streams or threads.
+    """
+
+    def __init__(self, config: Config) -> None:
+        """Initialize the class."""
+        super().__init__(config)
+        self._cache: Optional[List[Dict[str, str]]] = []
+        self._cache_timestamp: float = 0
+
+    @abstractmethod
+    def update_cache(self) -> None:
+        """User defined method for updating cache.
+
+        User should defined their own method for updating cache. This method
+        should be used to update the cache with the latest data.
+
+        Returns:
+            None
+        """
+
+    @abstractmethod
+    def is_cache_expired(self) -> bool:
+        """User defined method for checking cache expiration.
+
+        User should defined their own method for checking cache expiration.
+
+        Returns:
+            A boolean value indicating whether the cache is expired.
+        """
