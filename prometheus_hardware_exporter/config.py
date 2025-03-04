@@ -2,7 +2,7 @@
 
 import os
 from logging import getLogger
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, validator  # pylint: disable=no-name-in-module
 from yaml import safe_load
@@ -13,6 +13,7 @@ DEFAULT_CONFIG = os.path.join(os.environ.get("SNAP_DATA", "./"), "config.yaml")
 
 DEFAULT_COLLECT_TIMEOUT = 30
 DEFAULT_IPMI_SEL_INTERVAL = 86400
+DEFAULT_IPMI_SEL_COLLECT_INTERVAL = 300
 DEFAULT_REDFISH_CLIENT_TIMEOUT = 15
 DEFAULT_REDFISH_CLIENT_MAX_RETRY = 1
 DEFAULT_REDFISH_DISCOVER_CACHE_TTL = 86400
@@ -27,8 +28,9 @@ class Config(BaseModel):
     level: str = "DEBUG"
     enable_collectors: List[str] = []
 
-    collect_timeout: int = DEFAULT_COLLECT_TIMEOUT
+    collect_timeout: Optional[int] = DEFAULT_COLLECT_TIMEOUT
     ipmi_sel_interval: int = DEFAULT_IPMI_SEL_INTERVAL
+    ipmi_sel_collect_interval: int = DEFAULT_IPMI_SEL_COLLECT_INTERVAL
 
     redfish_host: str = "127.0.0.1"
     redfish_username: str = ""
