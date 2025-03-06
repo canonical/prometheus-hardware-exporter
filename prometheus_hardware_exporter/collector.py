@@ -582,6 +582,8 @@ class IpmiSelCollector(NonBlockingCollector):
 
     def update_cache(self) -> None:
         """Background thread function to update SEL cache periodically."""
+        logger.info("Starting IPMI SEL cache update thread.")
+
         while True:
             start_time = datetime.datetime.now()
 
@@ -589,9 +591,10 @@ class IpmiSelCollector(NonBlockingCollector):
             with self._lock:
                 self._cache = sel_entries
             self._cache_timestamp = datetime.datetime.now().timestamp()
+            logger.info("Updated IPMI SEL cache.")
 
             elapsed_time = (datetime.datetime.now() - start_time).total_seconds()
-            sleep_time = max(0, self.config.ipmi_sel_interval - elapsed_time)
+            sleep_time = max(0, self.config.ipmi_sel_collect_interval - elapsed_time)
             time.sleep(sleep_time)
 
     def is_cache_expired(self) -> bool:
@@ -621,7 +624,7 @@ class IpmiSelCollector(NonBlockingCollector):
     def fetch(self) -> List[Payload]:
         """Load ipmi sel entries."""
         if self.is_cache_expired():
-            logger.warning("ipmi sel cache is expired.")
+            logger.warning("Cache for ipmi sel is expired.")
             return [Payload(name="ipmi_sel_command_success", value=0.0)]
 
         with self._lock:
