@@ -1,3 +1,4 @@
+import datetime
 import unittest
 from unittest.mock import Mock, patch
 
@@ -415,6 +416,20 @@ class TestCustomCollector(unittest.TestCase):
 
         self.assertEqual(payloads[0].name, "ipmi_sel_command_success")
         self.assertEqual(payloads[0].samples[0].value, 0.0)
+
+    @patch(
+        "prometheus_hardware_exporter.collectors.ipmi_sel.IpmiSel.get_sel_entries",
+        side_effect=Exception,
+    )
+    @freeze_time("2023-07-09 12:00:00")
+    def test_ipmi_sel_cmd_exception(self, mock_ipmi_sel):
+        """Test ipmi sel collector when ipmi sel command raises an exception."""
+        ipmi_sel_collector = IpmiSelCollector(Config())
+
+        self.assertEqual(len(list(ipmi_sel_collector.collect())), 1)
+        self.assertEqual(
+            ipmi_sel_collector._cache_timestamp, datetime.datetime(2023, 7, 9, 12, 0).timestamp()
+        )
 
     @patch(
         "prometheus_hardware_exporter.collectors.ipmi_sel.IpmiSel.get_sel_entries",

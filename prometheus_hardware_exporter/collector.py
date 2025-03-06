@@ -587,11 +587,14 @@ class IpmiSelCollector(NonBlockingCollector):
         while True:
             start_time = datetime.datetime.now()
 
-            sel_entries = self.ipmi_sel.get_sel_entries(self.config.ipmi_sel_interval)
-            with self._lock:
-                self._cache = sel_entries
-            self._cache_timestamp = datetime.datetime.now().timestamp()
-            logger.info("Updated IPMI SEL cache.")
+            try:
+                sel_entries = self.ipmi_sel.get_sel_entries(self.config.ipmi_sel_interval)
+                with self._lock:
+                    self._cache = sel_entries
+                self._cache_timestamp = datetime.datetime.now().timestamp()
+                logger.info("Updated IPMI SEL cache.")
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.error("Failed to update IPMI SEL cache: %s", e)
 
             elapsed_time = (datetime.datetime.now() - start_time).total_seconds()
             sleep_time = max(0, self.config.ipmi_sel_collect_interval - elapsed_time)
