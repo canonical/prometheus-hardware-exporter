@@ -1,5 +1,8 @@
 """Module for a collection of hardware collecters."""
 
+import datetime
+import threading
+import time
 from logging import getLogger
 from typing import Any, Dict, List
 
@@ -15,7 +18,7 @@ from .collectors.sasircu import LSISASCollectorHelper, Sasircu
 from .collectors.ssacli import SsaCLI
 from .collectors.storcli import MegaRAIDCollectorHelper, StorCLI
 from .config import Config
-from .core import BlockingCollector, Payload, Specification
+from .core import BlockingCollector, NonBlockingCollector, Payload, Specification
 
 logger = getLogger(__name__)
 
@@ -564,13 +567,45 @@ class IpmiSensorsCollector(BlockingCollector):
             return 0.0
 
 
-class IpmiSelCollector(BlockingCollector):
+class IpmiSelCollector(NonBlockingCollector):
     """Collector for IPMI SEL data."""
 
     def __init__(self, config: Config) -> None:
         """Initialize the collector."""
         self.ipmi_sel = IpmiSel(config)
         super().__init__(config)
+
+        self._cache_timestamp = datetime.datetime.now().timestamp()
+        self._lock = threading.Lock()
+        self._update_thread = threading.Thread(target=self.update_cache, daemon=True)
+        self._update_thread.start()
+
+    def update_cache(self) -> None:
+        """Background thread function to update SEL cache periodically."""
+        logger.info("Starting IPMI SEL cache update thread.")
+
+        while True:
+            start_time = datetime.datetime.now()
+
+            try:
+                sel_entries = self.ipmi_sel.get_sel_entries(self.config.ipmi_sel_interval)
+                with self._lock:
+                    self._cache = sel_entries
+                self._cache_timestamp = datetime.datetime.now().timestamp()
+                logger.info("Updated IPMI SEL cache.")
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.error("Failed to update IPMI SEL cache: %s", e)
+
+            elapsed_time = (datetime.datetime.now() - start_time).total_seconds()
+            sleep_time = max(0, self.config.ipmi_sel_collect_interval - elapsed_time)
+            time.sleep(sleep_time)
+
+    def is_cache_expired(self) -> bool:
+        """Check if the cache is expired."""
+        return (
+            datetime.datetime.now().timestamp() - self._cache_timestamp
+            > self.config.ipmi_sel_cache_ttl
+        )
 
     @property
     def specifications(self) -> List[Specification]:
@@ -591,14 +626,18 @@ class IpmiSelCollector(BlockingCollector):
 
     def fetch(self) -> List[Payload]:
         """Load ipmi sel entries."""
-        sel_entries = self.ipmi_sel.get_sel_entries(self.config.ipmi_sel_interval)
+        if self.is_cache_expired():
+            logger.warning("Cache for ipmi sel is expired.")
+            return [Payload(name="ipmi_sel_command_success", value=0.0)]
+
+        with self._lock:
+            sel_entries = self._cache
 
         if sel_entries is None:
-            logger.warning("Fail to get ipmi sel entries.")
+            logger.warning("Failed to get ipmi sel entries.")
             return [Payload(name="ipmi_sel_command_success", value=0.0)]
 
         sel_states_dict = {"NOMINAL": 0, "WARNING": 1, "CRITICAL": 2}
-
         payloads = [Payload(name="ipmi_sel_command_success", value=1.0)]
 
         sel_entries_dict: Dict[tuple, int] = {}

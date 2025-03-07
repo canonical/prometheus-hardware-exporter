@@ -4,6 +4,7 @@ import datetime
 from logging import getLogger
 from typing import Dict, List, Optional
 
+from ..config import Config
 from ..utils import Command
 
 logger = getLogger(__name__)
@@ -14,6 +15,11 @@ class IpmiSel(Command):
 
     prefix = ""
     command = "ipmi-sel"
+
+    def __init__(self, config: Config) -> None:
+        """Initialize the IpmiSel class."""
+        super().__init__(config)
+        self.config.collect_timeout = None
 
     def get_sel_entries(self, time_range: int) -> Optional[List[Dict[str, str]]]:
         """Get SEL entries along with state.

@@ -1,6 +1,8 @@
+import datetime
 import unittest
 from unittest.mock import Mock, patch
 
+from freezegun import freeze_time
 from redfish.rest.v1 import InvalidCredentialsError, RetriesExhaustedError, SessionCreationError
 from test_resources.ipmi.ipmi_sample_data import (
     SAMPLE_IPMI_SEL_ENTRIES,
@@ -17,6 +19,7 @@ from prometheus_hardware_exporter.collector import (
     RedfishCollector,
     SsaCLICollector,
 )
+from prometheus_hardware_exporter.config import Config
 from prometheus_hardware_exporter.core import Payload
 
 
@@ -378,24 +381,13 @@ class TestCustomCollector(unittest.TestCase):
                     self.assertEqual(payload.samples[0].value, expect)
             self.assertTrue(payload_exists)
 
-    def test_ipmi_sel_not_installed(self):
-        """Test ipmi sel collector when ipmi sel is not installed."""
-        ipmi_sel_collector = IpmiSelCollector(Mock())
-        ipmi_sel_collector.ipmi_sel = Mock()
-        ipmi_sel_collector.ipmi_sel.installed = False
-        ipmi_sel_collector.ipmi_sel.get_sel_entries.return_value = []
-        payloads = ipmi_sel_collector.collect()
-
-        self.assertEqual(len(list(payloads)), 1)
-
-    def test_ipmi_sel_installed_and_okay(self):
+    @patch(
+        "prometheus_hardware_exporter.collectors.ipmi_sel.IpmiSel.get_sel_entries",
+        return_value=SAMPLE_IPMI_SEL_ENTRIES,
+    )
+    def test_ipmi_sel_installed_and_okay(self, mock_get_sel_entries):
         """Test ipmi sel collector can fetch correct number of metrics."""
-        ipmi_sel_collector = IpmiSelCollector(Mock())
-        ipmi_sel_collector.ipmi_sel = Mock()
-
-        mock_sel_entries = SAMPLE_IPMI_SEL_ENTRIES
-
-        ipmi_sel_collector.ipmi_sel.get_sel_entries.return_value = mock_sel_entries
+        ipmi_sel_collector = IpmiSelCollector(Config())
 
         payloads = ipmi_sel_collector.collect()
 
@@ -412,16 +404,65 @@ class TestCustomCollector(unittest.TestCase):
 
         self.assertDictEqual(payloads_labels_value_map, expected_payloads_label_value_map)
 
-    def test_ipmi_sel_cmd_fail(self):
+    @patch(
+        "prometheus_hardware_exporter.collectors.ipmi_sel.IpmiSel.get_sel_entries",
+        return_value=None,
+    )
+    def test_ipmi_sel_cmd_fail(self, mock_ipmi_sel):
         """Test ipmi sel collector when ipmi sel is not installed."""
-        ipmi_sel_collector = IpmiSelCollector(Mock())
-        ipmi_sel_collector.ipmi_sel = Mock()
-
-        ipmi_sel_collector.ipmi_sel.get_sel_entries.return_value = None
+        ipmi_sel_collector = IpmiSelCollector(Config())
 
         payloads = list(ipmi_sel_collector.collect())
-        assert payloads[0].name == "ipmi_sel_command_success"
-        assert payloads[0].samples[0].value == 0.0
+
+        self.assertEqual(payloads[0].name, "ipmi_sel_command_success")
+        self.assertEqual(payloads[0].samples[0].value, 0.0)
+
+    @patch(
+        "prometheus_hardware_exporter.collectors.ipmi_sel.IpmiSel.get_sel_entries",
+        side_effect=Exception,
+    )
+    @freeze_time("2023-07-09 12:00:00")
+    def test_ipmi_sel_cmd_exception(self, mock_ipmi_sel):
+        """Test ipmi sel collector when ipmi sel command raises an exception."""
+        ipmi_sel_collector = IpmiSelCollector(Config())
+
+        self.assertEqual(len(list(ipmi_sel_collector.collect())), 1)
+        self.assertEqual(
+            ipmi_sel_collector._cache_timestamp, datetime.datetime(2023, 7, 9, 12, 0).timestamp()
+        )
+
+    @patch(
+        "prometheus_hardware_exporter.collectors.ipmi_sel.IpmiSel.get_sel_entries",
+        return_value=SAMPLE_IPMI_SEL_ENTRIES,
+    )
+    @freeze_time("2023-07-09 12:00:00")
+    def test_ipmi_sel_ttl_valid(self, mock_ipmi_sel):
+        ipmi_sel_collector = IpmiSelCollector(Config())
+        ipmi_sel_collector.config.ipmi_sel_cache_ttl = 5
+
+        payloads_first = list(ipmi_sel_collector.collect())
+        self.assertEqual(len(payloads_first), 3)
+
+        with freeze_time("2023-07-09 12:00:04"):
+            payloads_second = list(ipmi_sel_collector.collect())
+            self.assertEqual(payloads_first, payloads_second)
+
+    @patch(
+        "prometheus_hardware_exporter.collectors.ipmi_sel.IpmiSel.get_sel_entries",
+        return_value=SAMPLE_IPMI_SEL_ENTRIES,
+    )
+    @freeze_time("2023-07-09 12:00:00")
+    def test_ipmi_sel_ttl_expired(self, mock_ipmi_sel):
+        ipmi_sel_collector = IpmiSelCollector(Config())
+        ipmi_sel_collector.config.ipmi_sel_cache_ttl = 5
+
+        payloads_first = list(ipmi_sel_collector.collect())
+        self.assertEqual(len(payloads_first), 3)
+
+        with freeze_time("2023-07-09 12:00:06"):
+            payloads_second = list(ipmi_sel_collector.collect())
+            assert payloads_second[0].name == "ipmi_sel_command_success"
+            assert payloads_second[0].samples[0].value == 0.0
 
     def test_ipmimonitoring_not_installed(self):
         """Test ipmi sensor collector when ipmimonitoring is not installed."""

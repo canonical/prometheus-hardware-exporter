@@ -50,11 +50,10 @@ class TestIpmiSel(unittest.TestCase):
             config = Config()
             ipmi_sel = IpmiSel(config)
             payloads = ipmi_sel.get_sel_entries(24 * 60 * 60)
-            expected_sel_entries = SAMPLE_SEL_ENTRIES
             mock_call.assert_called_with(
                 "--sdr-cache-recreate --output-event-state --interpret-oem-data --entity-sensor-names"
             )
-            self.assertEqual(payloads, expected_sel_entries)
+            self.assertEqual(payloads, SAMPLE_SEL_ENTRIES)
 
     @patch.object(Command, "__call__")
     def test_01_get_sel_entries_zero_records(self, mock_call):
