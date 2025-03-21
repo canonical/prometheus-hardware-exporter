@@ -1,4 +1,5 @@
 import datetime
+import time
 import unittest
 from unittest.mock import Mock, patch
 
@@ -423,8 +424,14 @@ class TestCustomCollector(unittest.TestCase):
     )
     @freeze_time("2023-07-09 12:00:00")
     def test_ipmi_sel_cmd_exception(self, mock_ipmi_sel):
-        """Test ipmi sel collector when ipmi sel command raises an exception."""
+        """Test ipmi sel collector when ipmi sel command raises an exception.
+
+        It's necessary to wait a a bit because the test might finish before the background
+        thread encounters the exception.
+        """
         ipmi_sel_collector = IpmiSelCollector(Config())
+
+        time.sleep(0.1)
 
         self.assertEqual(len(list(ipmi_sel_collector.collect())), 1)
         self.assertEqual(
