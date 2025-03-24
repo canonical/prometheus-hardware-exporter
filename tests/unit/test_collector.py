@@ -445,7 +445,7 @@ class TestCustomCollector(unittest.TestCase):
     @freeze_time("2023-07-09 12:00:00")
     def test_ipmi_sel_ttl_valid(self, mock_ipmi_sel):
         ipmi_sel_collector = IpmiSelCollector(Config())
-        ipmi_sel_collector.config.ipmi_sel_cache_ttl = 5
+        ipmi_sel_collector.config.ipmi_sel_cache_ttl = 6
 
         payloads_first = list(ipmi_sel_collector.collect())
         self.assertEqual(len(payloads_first), 3)
