@@ -20,8 +20,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.10"]
-    runs-on: ubuntu-22.04
+        python-version: ['3.8', '3.10']
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
       with:
@@ -47,8 +47,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.10"]
-    runs-on: ubuntu-22.04
+        python-version: ['3.8', '3.10']
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
       with:
@@ -66,6 +66,17 @@ jobs:
 
     - name: Run unit tests
       run: tox -e unit
+
+    - name: Determine system architecture
+      run: echo "SYSTEM_ARCH=$(uname -m)" >> $GITHUB_ENV
+
+    - name: Upload Unit Test Coverage File
+      uses: actions/upload-artifact@v4
+      with:
+        include-hidden-files: true
+        if-no-files-found: ignore
+        name: coverage-unit-${{ matrix.python-version }}-${{ env.SYSTEM_ARCH }}
+        path: .coverage-unit
 
   func:
     name: Functional tests
@@ -94,3 +105,69 @@ jobs:
 
     - name: Run functional tests
       run: tox -e func
+
+    - name: Generate Safe Test Command Identifier by removing spaces and special characters
+      run: |
+        TEST_CMD_ID=$(echo "${{ matrix.python-version }}" | sed 's/[^a-zA-Z0-9]/_/g')
+        echo "TEST_CMD_ID=$TEST_CMD_ID" >> $GITHUB_ENV
+
+    - name: Upload Functional Test Coverage Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        include-hidden-files: true
+        if-no-files-found: ignore
+        name: coverage-functional-${{ env.TEST_CMD_ID }}-${{ env.SYSTEM_ARCH }}
+        path: .coverage-func
+
+  tics-analysis:
+    runs-on: ubuntu-22.04
+    if: >
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    needs: func
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install coverage tools
+        run: |
+          pip install coverage
+
+      - name: Determine system architecture
+        run: echo "SYSTEM_ARCH=$(uname -m)" >> $GITHUB_ENV
+
+      - name: Download Coverage Files
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*-${{ env.SYSTEM_ARCH }}
+          merge-multiple: true
+          path: artifacts/
+        continue-on-error: true
+
+      - name: Merge coverage reports
+        run: |
+          # Create the path that is expected to have a coverage.xml for tics
+          mkdir -p tests/report/
+
+          coverage_files=(./artifacts/.coverage*)
+
+          if [ -e "${coverage_files[0]}" ]; then
+            echo "Merging coverage files: ${coverage_files[*]}"
+            coverage combine "${coverage_files[@]}"
+            coverage xml -o tests/report/coverage.xml
+          else
+            echo "No coverage files found, skipping merge"
+            # Create an empty file to avoid downstream failure
+            touch tests/report/coverage.xml
+          fi
+
+      - name: Run TICS analysis
+        uses: tiobe/tics-github-action@v3
+        with:
+          mode: qserver
+          project: prometheus-hardware-exporter
+          viewerUrl: https://canonical.tiobe.com/tiobeweb/TICS/api/cfg?name=default
+          branchdir: ${{ github.workspace }}
+          ticsAuthToken: ${{ secrets.TICSAUTHTOKEN }}
+          installTics: true
