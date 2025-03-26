@@ -24,6 +24,27 @@ from prometheus_hardware_exporter.config import Config
 from prometheus_hardware_exporter.core import Payload
 
 
+def wait_until(predicate, attempts: int = 15, interval: float = 1.0) -> bool:
+    """Wait until the predicate is true or the attempts are exhausted.
+
+    The function uses attempts instead of timeout to be safe for tests using freeze_time.
+
+    Args:
+        predicate (Callable): Predicate function.
+        attempts (int): Number of attempts.
+        interval (float): Interval in seconds.
+
+    Returns:
+        bool: True if the predicate is true, False otherwise
+    """
+    while attempts > 0:
+        if predicate():
+            return True
+        attempts -= 1
+        time.sleep(interval)
+    return False
+
+
 class TestCustomCollector(unittest.TestCase):
     """Custom test class."""
 
@@ -390,6 +411,8 @@ class TestCustomCollector(unittest.TestCase):
         """Test ipmi sel collector can fetch correct number of metrics."""
         ipmi_sel_collector = IpmiSelCollector(Config())
 
+        assert wait_until(lambda: mock_get_sel_entries.called), "SEL Update thread is not alive"
+
         payloads = ipmi_sel_collector.collect()
 
         payloads_labels_value_map = {}
@@ -409,9 +432,11 @@ class TestCustomCollector(unittest.TestCase):
         "prometheus_hardware_exporter.collectors.ipmi_sel.IpmiSel.get_sel_entries",
         return_value=None,
     )
-    def test_ipmi_sel_cmd_fail(self, mock_ipmi_sel):
+    def test_ipmi_sel_cmd_fail(self, mock_get_sel_entries):
         """Test ipmi sel collector when ipmi sel is not installed."""
         ipmi_sel_collector = IpmiSelCollector(Config())
+
+        assert wait_until(lambda: mock_get_sel_entries.called), "SEL Update thread is not alive"
 
         payloads = list(ipmi_sel_collector.collect())
 
@@ -423,7 +448,7 @@ class TestCustomCollector(unittest.TestCase):
         side_effect=Exception,
     )
     @freeze_time("2023-07-09 12:00:00")
-    def test_ipmi_sel_cmd_exception(self, mock_ipmi_sel):
+    def test_ipmi_sel_cmd_exception(self, mock_get_sel_entries):
         """Test ipmi sel collector when ipmi sel command raises an exception.
 
         It's necessary to wait a a bit because the test might finish before the background
@@ -431,7 +456,7 @@ class TestCustomCollector(unittest.TestCase):
         """
         ipmi_sel_collector = IpmiSelCollector(Config())
 
-        time.sleep(0.1)
+        assert wait_until(lambda: mock_get_sel_entries.called), "SEL Update thread is not alive"
 
         self.assertEqual(len(list(ipmi_sel_collector.collect())), 1)
         self.assertEqual(
@@ -443,9 +468,11 @@ class TestCustomCollector(unittest.TestCase):
         return_value=SAMPLE_IPMI_SEL_ENTRIES,
     )
     @freeze_time("2023-07-09 12:00:00")
-    def test_ipmi_sel_ttl_valid(self, mock_ipmi_sel):
+    def test_ipmi_sel_ttl_valid(self, mock_get_sel_entries):
         ipmi_sel_collector = IpmiSelCollector(Config())
         ipmi_sel_collector.config.ipmi_sel_cache_ttl = 5
+
+        assert wait_until(lambda: mock_get_sel_entries.called), "SEL Update thread is not alive"
 
         payloads_first = list(ipmi_sel_collector.collect())
         self.assertEqual(len(payloads_first), 3)
@@ -459,9 +486,11 @@ class TestCustomCollector(unittest.TestCase):
         return_value=SAMPLE_IPMI_SEL_ENTRIES,
     )
     @freeze_time("2023-07-09 12:00:00")
-    def test_ipmi_sel_ttl_expired(self, mock_ipmi_sel):
+    def test_ipmi_sel_ttl_expired(self, mock_get_sel_entries):
         ipmi_sel_collector = IpmiSelCollector(Config())
         ipmi_sel_collector.config.ipmi_sel_cache_ttl = 5
+
+        assert wait_until(lambda: mock_get_sel_entries.called), "SEL Update thread is not alive"
 
         payloads_first = list(ipmi_sel_collector.collect())
         self.assertEqual(len(payloads_first), 3)
