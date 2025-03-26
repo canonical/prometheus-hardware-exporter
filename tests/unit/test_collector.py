@@ -25,7 +25,7 @@ from prometheus_hardware_exporter.core import Payload
 
 
 def wait_until(predicate, attempts: int = 15, interval: float = 1.0) -> bool:
-    """Wait until the predicate is true or timeout is reached.
+    """Wait until the predicate is true or the attempts are exhausted.
 
     The function uses attempts instead of timeout to be safe for tests using freeze_time.
 
