@@ -9,6 +9,9 @@ on:
     paths-ignore:
       - "**.md"
       - "**.rst"
+  push:
+    branches:
+      - 'improve-coverage-report-name'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
@@ -69,6 +72,14 @@ jobs:
 
     - name: Determine system architecture
       run: echo "SYSTEM_ARCH=$(uname -m)" >> $GITHUB_ENV
+    
+    - name: Rename unit coverage file
+      run: |
+        if [ -e ".coverage-unit" ]; then
+          mv .coverage-unit .coverage-unit-${{ matrix.python-version }}-${{ env.SYSTEM_ARCH }}
+        else
+          echo "No coverage file found, skipping rename"
+        fi
 
     - name: Upload Unit Test Coverage File
       uses: actions/upload-artifact@v4
@@ -76,7 +87,7 @@ jobs:
         include-hidden-files: true
         if-no-files-found: ignore
         name: coverage-unit-${{ matrix.python-version }}-${{ env.SYSTEM_ARCH }}
-        path: .coverage-unit
+        path: .coverage-unit-${{ matrix.python-version }}-${{ env.SYSTEM_ARCH }}
 
   func:
     name: Functional tests
@@ -105,11 +116,22 @@ jobs:
 
     - name: Run functional tests
       run: tox -e func
-
+    
+    - name: Determine system architecture
+      run: echo "SYSTEM_ARCH=$(uname -m)" >> $GITHUB_ENV
+      
     - name: Generate Safe Test Command Identifier by removing spaces and special characters
       run: |
         TEST_CMD_ID=$(echo "${{ matrix.python-version }}" | sed 's/[^a-zA-Z0-9]/_/g')
         echo "TEST_CMD_ID=$TEST_CMD_ID" >> $GITHUB_ENV
+
+    - name: Rename functional coverage file
+      run: |
+        if [ -e ".coverage-func" ]; then
+          mv .coverage-func .coverage-func-${{ env.TEST_CMD_ID }}-${{ env.SYSTEM_ARCH }}
+        else
+          echo "No coverage file found, skipping rename"
+        fi 
 
     - name: Upload Functional Test Coverage Artifact
       uses: actions/upload-artifact@v4
@@ -117,12 +139,12 @@ jobs:
         include-hidden-files: true
         if-no-files-found: ignore
         name: coverage-functional-${{ env.TEST_CMD_ID }}-${{ env.SYSTEM_ARCH }}
-        path: .coverage-func
+        path: .coverage-func-${{ env.TEST_CMD_ID }}-${{ env.SYSTEM_ARCH }}
 
   tics-analysis:
     runs-on: ubuntu-22.04
     if: >
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/improve-coverage-report-name')) ||
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     needs: func
     steps:
@@ -155,6 +177,7 @@ jobs:
           if [ -e "${coverage_files[0]}" ]; then
             echo "Merging coverage files: ${coverage_files[*]}"
             coverage combine "${coverage_files[@]}"
+            coverage report --show-missing
             coverage xml -o tests/report/coverage.xml
           else
             echo "No coverage files found, skipping merge"
