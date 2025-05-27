@@ -3,6 +3,7 @@
 import datetime
 import threading
 import time
+from collections import namedtuple
 from logging import getLogger
 from typing import Any, Dict, List
 
@@ -612,8 +613,38 @@ class IpmiSelCollector(NonBlockingCollector):
         """Define IPMI SEL metrics specs."""
         return [
             Specification(
-                name="ipmi_sel_state",
-                documentation="Event state from IPMI SEL entry.",
+                name="ipmi_sel_state_nominal",
+                documentation="The ID for IPMI SEL nominal event.",
+                labels=["name", "type"],
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="ipmi_sel_state_nominal_timestamp",
+                documentation="The timestamp for the IPMI SEL nominal event.",
+                labels=["name", "type"],
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="ipmi_sel_state_warning",
+                documentation="The ID for IPMI SEL warning event.",
+                labels=["name", "type"],
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="ipmi_sel_state_warning_timestamp",
+                documentation="The timestamp for the IPMI SEL warning event.",
+                labels=["name", "type"],
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="ipmi_sel_state_critical",
+                documentation="The ID for IPMI SEL critical event.",
+                labels=["name", "type"],
+                metric_class=GaugeMetricFamily,
+            ),
+            Specification(
+                name="ipmi_sel_state_critical_timestamp",
+                documentation="The timestamp for the IPMI SEL critical event.",
                 labels=["name", "type"],
                 metric_class=GaugeMetricFamily,
             ),
@@ -637,30 +668,41 @@ class IpmiSelCollector(NonBlockingCollector):
             logger.warning("Failed to get ipmi sel entries.")
             return [Payload(name="ipmi_sel_command_success", value=0.0)]
 
-        sel_states_dict = {"NOMINAL": 0, "WARNING": 1, "CRITICAL": 2}
+        metrics = {}
+        sel_states = {"nominal", "warning", "critical"}
+        MetricKey = namedtuple("key", ["state", "labels"])
+        MetricValue = namedtuple("value", ["event_id", "timestamp"])
+        for entry in sel_entries:
+            sel_state = entry["State"].lower()
+            if sel_state not in sel_states:
+                logger.warning("Unknown ipmi SEL state: %s. Treating it as Nominal.", sel_state)
+                sel_state = "nominal"
+
+            event_id = int(entry["ID"])
+            time = datetime.datetime.strptime(entry["Date"] + entry["Time"], "%b-%d-%Y%H:%M:%S")
+
+            key = MetricKey(sel_state, (entry["Name"], entry["Type"]))
+            value = MetricValue(event_id, time.timestamp())
+
+            # Get the latest one only, otherwise the timeseries will be a function of time for
+            # multiple values (R -> R^n), this is not allowed in prometheus
+            metrics[key] = value
+
         payloads = [Payload(name="ipmi_sel_command_success", value=1.0)]
-
-        sel_entries_dict: Dict[tuple, int] = {}
-        for sel_entry in sel_entries:
-            if sel_entry["State"].upper() in sel_states_dict:
-                sel_state_value = sel_states_dict[sel_entry["State"].upper()]
-            else:
-                logger.warning(
-                    "Unknown ipmi SEL state: %s. Treating it as Nominal.", sel_entry["State"]
-                )
-                sel_state_value = sel_states_dict["NOMINAL"]
-
-            key = (sel_entry["Name"], sel_entry["Type"])
-            if key not in sel_entries_dict or sel_entries_dict[key] < sel_state_value:
-                sel_entries_dict[key] = sel_state_value
-
-        for sel_labels, sel_state_value in sel_entries_dict.items():
-            payloads.append(
-                Payload(
-                    name="ipmi_sel_state",
-                    labels=list(sel_labels),
-                    value=sel_state_value,
-                )
+        for key, value in metrics.items():
+            payloads.extend(
+                [
+                    Payload(
+                        name=f"ipmi_sel_state_{key.state}",
+                        labels=list(key.labels),
+                        value=value.event_id,
+                    ),
+                    Payload(
+                        name=f"ipmi_sel_state_{key.state}_timestamp",
+                        labels=list(key.labels),
+                        value=value.timestamp,
+                    ),
+                ]
             )
         return payloads
 
