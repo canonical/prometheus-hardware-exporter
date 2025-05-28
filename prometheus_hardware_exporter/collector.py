@@ -619,32 +619,14 @@ class IpmiSelCollector(NonBlockingCollector):
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
-                name="ipmi_sel_state_nominal_timestamp",
-                documentation="The timestamp for the IPMI SEL nominal event.",
-                labels=["name", "type"],
-                metric_class=GaugeMetricFamily,
-            ),
-            Specification(
                 name="ipmi_sel_state_warning",
                 documentation="The ID for IPMI SEL warning event.",
                 labels=["name", "type"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
-                name="ipmi_sel_state_warning_timestamp",
-                documentation="The timestamp for the IPMI SEL warning event.",
-                labels=["name", "type"],
-                metric_class=GaugeMetricFamily,
-            ),
-            Specification(
                 name="ipmi_sel_state_critical",
                 documentation="The ID for IPMI SEL critical event.",
-                labels=["name", "type"],
-                metric_class=GaugeMetricFamily,
-            ),
-            Specification(
-                name="ipmi_sel_state_critical_timestamp",
-                documentation="The timestamp for the IPMI SEL critical event.",
                 labels=["name", "type"],
                 metric_class=GaugeMetricFamily,
             ),
@@ -671,38 +653,24 @@ class IpmiSelCollector(NonBlockingCollector):
         metrics = {}
         sel_states = {"nominal", "warning", "critical"}
         MetricKey = namedtuple("key", ["state", "labels"])
-        MetricValue = namedtuple("value", ["event_id", "timestamp"])
         for entry in sel_entries:
             sel_state = entry["State"].lower()
             if sel_state not in sel_states:
                 logger.warning("Unknown ipmi SEL state: %s. Treating it as Nominal.", sel_state)
                 sel_state = "nominal"
 
-            event_id = int(entry["ID"])
-            time = datetime.datetime.strptime(entry["Date"] + entry["Time"], "%b-%d-%Y%H:%M:%S")
-
-            key = MetricKey(sel_state, (entry["Name"], entry["Type"]))
-            value = MetricValue(event_id, time.timestamp())
-
             # Get the latest one only, otherwise the timeseries will be a function of time for
             # multiple values (R -> R^n), this is not allowed in prometheus
-            metrics[key] = value
+            metrics[MetricKey(sel_state, (entry["Name"], entry["Type"]))] = int(entry["ID"])
 
         payloads = [Payload(name="ipmi_sel_command_success", value=1.0)]
         for key, value in metrics.items():
-            payloads.extend(
-                [
-                    Payload(
-                        name=f"ipmi_sel_state_{key.state}",
-                        labels=list(key.labels),
-                        value=value.event_id,
-                    ),
-                    Payload(
-                        name=f"ipmi_sel_state_{key.state}_timestamp",
-                        labels=list(key.labels),
-                        value=value.timestamp,
-                    ),
-                ]
+            payloads.append(
+                Payload(
+                    name=f"ipmi_sel_state_{key.state}",
+                    labels=list(key.labels),
+                    value=value,
+                )
             )
         return payloads
 

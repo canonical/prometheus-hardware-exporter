@@ -416,21 +416,15 @@ class TestCustomCollector(unittest.TestCase):
         metrics = list(ipmi_sel_collector.collect())
 
         # Constructed from SAMPLE_IPMI_SEL_ENTRIES
-        self.assertEqual(len(metrics), 7)
+        self.assertEqual(len(metrics), 4)
         self.assertEqual(metrics[0].samples[0].name, "ipmi_sel_command_success")
         self.assertEqual(metrics[0].samples[0].value, 1.0)
         self.assertEqual(metrics[1].samples[0].name, "ipmi_sel_state_nominal")
         self.assertEqual(metrics[1].samples[0].value, 497)
-        self.assertEqual(metrics[2].samples[0].name, "ipmi_sel_state_nominal_timestamp")
-        self.assertEqual(metrics[2].samples[0].value, 1665057471.0)
-        self.assertEqual(metrics[3].samples[0].name, "ipmi_sel_state_critical")
-        self.assertEqual(metrics[3].samples[0].value, 494)
-        self.assertEqual(metrics[4].samples[0].name, "ipmi_sel_state_critical_timestamp")
-        self.assertEqual(metrics[4].samples[0].value, 1665057443.0)
-        self.assertEqual(metrics[5].samples[0].name, "ipmi_sel_state_warning")
-        self.assertEqual(metrics[5].samples[0].value, 495)
-        self.assertEqual(metrics[6].samples[0].name, "ipmi_sel_state_warning_timestamp")
-        self.assertEqual(metrics[6].samples[0].value, 1665057458.0)
+        self.assertEqual(metrics[2].samples[0].name, "ipmi_sel_state_critical")
+        self.assertEqual(metrics[2].samples[0].value, 494)
+        self.assertEqual(metrics[3].samples[0].name, "ipmi_sel_state_warning")
+        self.assertEqual(metrics[3].samples[0].value, 495)
 
     @patch(
         "prometheus_hardware_exporter.collectors.ipmi_sel.IpmiSel.get_sel_entries",
@@ -479,7 +473,7 @@ class TestCustomCollector(unittest.TestCase):
         assert wait_until(lambda: mock_get_sel_entries.called), "SEL Update thread is not alive"
 
         payloads_first = list(ipmi_sel_collector.collect())
-        self.assertEqual(len(payloads_first), 7)
+        self.assertEqual(len(payloads_first), 4)
 
         with freeze_time("2023-07-09 12:00:04"):
             payloads_second = list(ipmi_sel_collector.collect())
@@ -497,7 +491,7 @@ class TestCustomCollector(unittest.TestCase):
         assert wait_until(lambda: mock_get_sel_entries.called), "SEL Update thread is not alive"
 
         payloads_first = list(ipmi_sel_collector.collect())
-        self.assertEqual(len(payloads_first), 7)
+        self.assertEqual(len(payloads_first), 4)
 
         with freeze_time("2023-07-09 12:00:06"):
             payloads_second = list(ipmi_sel_collector.collect())
