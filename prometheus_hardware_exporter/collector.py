@@ -571,6 +571,8 @@ class IpmiSensorsCollector(BlockingCollector):
 class IpmiSelCollector(NonBlockingCollector):
     """Collector for IPMI SEL data."""
 
+    SEL_STATES = {"nominal", "warning", "critical"}
+
     def __init__(self, config: Config) -> None:
         """Initialize the collector."""
         self.ipmi_sel = IpmiSel(config)
@@ -651,17 +653,16 @@ class IpmiSelCollector(NonBlockingCollector):
             return [Payload(name="ipmi_sel_command_success", value=0.0)]
 
         metrics = {}
-        sel_states = {"nominal", "warning", "critical"}
-        MetricKey = namedtuple("key", ["state", "labels"])
+        IpmiSelMetric = namedtuple("IpmiSelMetric", ["state", "labels"])
         for entry in sel_entries:
             sel_state = entry["State"].lower()
-            if sel_state not in sel_states:
+            if sel_state not in self.SEL_STATES:
                 logger.warning("Unknown ipmi SEL state: %s. Treating it as Nominal.", sel_state)
                 sel_state = "nominal"
 
             # Get the latest one only, otherwise the timeseries will be a function of time for
             # multiple values (R -> R^n), this is not allowed in prometheus
-            metrics[MetricKey(sel_state, (entry["Name"], entry["Type"]))] = int(entry["ID"])
+            metrics[IpmiSelMetric(sel_state, (entry["Name"], entry["Type"]))] = int(entry["ID"])
 
         payloads = [Payload(name="ipmi_sel_command_success", value=1.0)]
         for key, value in metrics.items():
