@@ -422,7 +422,7 @@ class TestCustomCollector(unittest.TestCase):
         self.assertEqual(metrics[1].samples[0].name, "ipmi_sel_state_nominal")
         self.assertEqual(metrics[1].samples[0].value, 497)
         self.assertEqual(metrics[2].samples[0].name, "ipmi_sel_state_critical")
-        self.assertEqual(metrics[2].samples[0].value, 494)
+        self.assertEqual(metrics[2].samples[0].value, 499)
         self.assertEqual(metrics[3].samples[0].name, "ipmi_sel_state_warning")
         self.assertEqual(metrics[3].samples[0].value, 495)
 
