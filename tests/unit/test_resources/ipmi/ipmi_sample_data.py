@@ -44,6 +44,33 @@ SAMPLE_IPMI_SEL_ENTRIES = [
         "State": "N/A",
         "Event": "S0/G0",
     },
+    {
+        "ID": "498",
+        "Date": "Oct-06-2022",
+        "Time": "19:57:55",
+        "Name": "System Chassis SysHealth_Stat",
+        "Type": "Chassis",
+        "State": "Critical",
+        "Event": "transition to Non-recoverable from less severe",
+    },
+    {
+        "ID": "499",
+        "Date": "Oct-06-2022",
+        "Time": "19:57:57",
+        "Name": "System Chassis SysHealth_Stat",
+        "Type": "Chassis",
+        "State": "Critical",
+        "Event": "transition to Non-recoverable from less severe 2",
+    },
+    {
+        "ID": "500",
+        "Date": "Oct-06-2022",
+        "Time": "19:58:10",
+        "Name": "System Chassis SysHealth_Stat A1",
+        "Type": "Chassis A1",
+        "State": "Critical",
+        "Event": "transition to Non-recoverable from less severe 2",
+    },
 ]
 SAMPLE_IPMI_SENSOR_ENTRIES = [
     {
