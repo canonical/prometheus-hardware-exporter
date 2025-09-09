@@ -1062,7 +1062,6 @@ class RedfishCollector(BlockingCollector):
         try:
             redfish_helper = RedfishHelper(self.config)
             redfish_helper.login()
-            payloads.append(Payload(name="redfish_call_success", value=1.0))
 
             processor_count: Dict[str, int]
             processor_data: Dict[str, List]
@@ -1090,6 +1089,9 @@ class RedfishCollector(BlockingCollector):
             logger.exception("Exception occurred while using redfish object: %s", err)
             payloads.append(Payload(name="redfish_call_success", value=0.0))
             return payloads
+        else:
+            # Sucess only if no exception was raised
+            payloads.append(Payload(name="redfish_call_success", value=1.0))
         finally:
             # Guarding against `RedfishHelper` crashes, and `redfish_helper` remains `None`
             if redfish_helper:
