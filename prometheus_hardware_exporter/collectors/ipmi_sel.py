@@ -49,7 +49,9 @@ class IpmiSel(Command):
             sel_item_values = [entry.strip() for entry in sel_item_values]
             sel_item_dict = dict(zip(sel_data_fields, sel_item_values))
             if sel_item_dict["Date"] == "PostInit":
-                sel_entries.append(sel_item_dict)
+                # Skip PostInit entries as they do not have a valid timestamp
+                # Usually these are generated during system boot and mostly not relevant
+                continue
             else:
                 sel_item_datetime_str = sel_item_dict["Date"] + sel_item_dict["Time"]
                 sel_item_datetime = datetime.datetime.strptime(

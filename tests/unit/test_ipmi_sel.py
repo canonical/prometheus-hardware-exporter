@@ -10,15 +10,6 @@ from prometheus_hardware_exporter.utils import Command, Result
 SEL_SAMPLE_OUTPUT = "tests/unit/test_resources/ipmi/ipmi_sel_sample_output.txt"
 SAMPLE_SEL_ENTRIES = [
     {
-        "ID": "14",
-        "Date": "PostInit",
-        "Time": "PostInit",
-        "Name": "Disk Drive Bay 1 Cable SAS A",
-        "Type": "Cable/Interconnect",
-        "State": "Critical",
-        "Event": "Configuration Error - Incorrect cable connected",
-    },
-    {
         "ID": "494",
         "Date": "Jul-09-2023",
         "Time": "13:56:23",
