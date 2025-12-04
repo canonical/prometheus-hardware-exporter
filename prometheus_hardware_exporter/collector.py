@@ -332,7 +332,7 @@ class IpmiDcmiCollector(BlockingCollector):
     def __init__(self, config: Config) -> None:
         """Initialize the collector."""
         self.ipmi_dcmi = IpmiDcmi(config)
-        self.ipmi_tool = IpmiTool(config)
+        self.ipmitool = IpmiTool(config)
         self.dmidecode = Dmidecode(config)
         super().__init__(config)
 
@@ -343,11 +343,13 @@ class IpmiDcmiCollector(BlockingCollector):
             Specification(
                 name="ipmi_dcmi_power_consumption_watts",
                 documentation="Current power consumption in watts",
+                labels=["bmc_host"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
                 name="ipmi_dcmi_command_success",
                 documentation="Indicates if the ipmi dcmi command is successful or not",
+                labels=["bmc_host"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
@@ -355,20 +357,26 @@ class IpmiDcmiCollector(BlockingCollector):
                 documentation=(
                     "Current power capacity usage as a percentage of the overall PSU budget"
                 ),
-                labels=["ps_redundancy", "get_ps_redundancy_ok", "maximum_power_capacity"],
+                labels=[
+                    "ps_redundancy",
+                    "get_ps_redundancy_ok",
+                    "maximum_power_capacity",
+                    "bmc_host",
+                ],
                 metric_class=GaugeMetricFamily,
             ),
         ]
 
     def fetch(self) -> List[Payload]:
         """Load current power from ipmi dcmi power statistics."""
+        bmc_host = self.ipmitool.get_ipmi_host() or "unknown"
         current_power_payload = self.ipmi_dcmi.get_current_power()
 
         if not current_power_payload:
             logger.error("Failed to fetch current power from ipmi dcmi")
             return [Payload(name="ipmi_dcmi_command_success", value=0.0)]
 
-        get_ps_redundancy_ok, ps_redundancy = self.ipmi_tool.get_ps_redundancy()
+        get_ps_redundancy_ok, ps_redundancy = self.ipmitool.get_ps_redundancy()
         # Because we fail to get the redundancy config from the server,
         # Suppose redundancy enable make denominator smaller
         # and alert is more easy to fire.
@@ -400,13 +408,19 @@ class IpmiDcmiCollector(BlockingCollector):
             Payload(
                 name="ipmi_dcmi_power_consumption_watts",
                 value=current_power_payload["current_power"],
+                labels=[bmc_host],
             ),
             Payload(
                 name="ipmi_dcmi_power_consumption_percentage",
                 value=power_capacity_percentage,
-                labels=[ps_redundancy_str, get_ps_redundancy_ok_str, str(maximum_power_capacity)],
+                labels=[
+                    ps_redundancy_str,
+                    get_ps_redundancy_ok_str,
+                    str(maximum_power_capacity),
+                    bmc_host,
+                ],
             ),
-            Payload(name="ipmi_dcmi_command_success", value=1.0),
+            Payload(name="ipmi_dcmi_command_success", value=1.0, labels=[bmc_host]),
         ]
         return payloads
 
@@ -421,6 +435,7 @@ class IpmiSensorsCollector(BlockingCollector):
     def __init__(self, config: Config) -> None:
         """Initialize the collector."""
         self.ipmimonitoring = IpmiMonitoring(config)
+        self.ipmitool = IpmiTool(config)
         super().__init__(config)
 
     @property
@@ -430,97 +445,113 @@ class IpmiSensorsCollector(BlockingCollector):
             Specification(
                 name="ipmi_temperature_celsius",
                 documentation="Temperature measure from temperature sensors",
-                labels=["name", "state", "unit"],
+                labels=["name", "state", "unit", "bmc_host"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
                 name="ipmi_power_watts",
                 documentation="Power measure from power sensors",
-                labels=["name", "state", "unit"],
+                labels=["name", "state", "unit", "bmc_host"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
                 name="ipmi_voltage_volts",
                 documentation="Voltage measure from voltage sensors",
-                labels=["name", "state", "unit"],
+                labels=["name", "state", "unit", "bmc_host"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
                 name="ipmi_current_amperes",
                 documentation="Current measure from current sensors",
-                labels=["name", "state", "unit"],
+                labels=["name", "state", "unit", "bmc_host"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
                 name="ipmi_fan_speed_rpm",
                 documentation="Fan speed measure, in rpm",
-                labels=["name", "state", "unit"],
+                labels=["name", "state", "unit", "bmc_host"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
                 name="ipmi_fan_speed_ratio",
                 documentation="Fan speed measure, as a percentage of maximum speed",
-                labels=["name", "state", "unit"],
+                labels=["name", "state", "unit", "bmc_host"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
                 name="ipmi_generic_sensor_value",
                 documentation="Generic sensor value from ipmi sensors",
-                labels=["name", "state", "unit", "type"],
+                labels=["name", "state", "unit", "type", "bmc_host"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
                 name="ipmimonitoring_command_success",
                 documentation="Indicates if the ipmimonitoring command succeeded or not",
+                labels=["bmc_host"],
                 metric_class=GaugeMetricFamily,
             ),
         ]
 
     def fetch(self) -> List[Payload]:
         """Load ipmi sensors data."""
+        bmc_host = self.ipmitool.get_ipmi_host() or "unknown"
         sensor_data = self.ipmimonitoring.get_sensor_data()
 
         if not sensor_data:
             logger.error("Failed to get ipmi sensor data.")
-            return [Payload(name="ipmimonitoring_command_success", value=0.0)]
+            return [Payload(name="ipmimonitoring_command_success", value=0.0, labels=[bmc_host])]
 
-        payloads = [Payload(name="ipmimonitoring_command_success", value=1.0)]
+        payloads = [Payload(name="ipmimonitoring_command_success", value=1.0, labels=[bmc_host])]
         for sensor_data_item in sensor_data:
             current_item_unit = sensor_data_item.get("Units")
             if current_item_unit == "C":
                 payloads.append(
-                    self._create_sensor_data_payload(sensor_data_item, "ipmi_temperature_celsius")
+                    self._create_sensor_data_payload(
+                        sensor_data_item, "ipmi_temperature_celsius", bmc_host
+                    )
                 )
             elif current_item_unit == "RPM":
                 payloads.append(
-                    self._create_sensor_data_payload(sensor_data_item, "ipmi_fan_speed_rpm")
+                    self._create_sensor_data_payload(
+                        sensor_data_item, "ipmi_fan_speed_rpm", bmc_host
+                    )
                 )
             elif current_item_unit == "A":
                 payloads.append(
-                    self._create_sensor_data_payload(sensor_data_item, "ipmi_current_amperes")
+                    self._create_sensor_data_payload(
+                        sensor_data_item, "ipmi_current_amperes", bmc_host
+                    )
                 )
             elif current_item_unit == "V":
                 payloads.append(
-                    self._create_sensor_data_payload(sensor_data_item, "ipmi_voltage_volts")
+                    self._create_sensor_data_payload(
+                        sensor_data_item, "ipmi_voltage_volts", bmc_host
+                    )
                 )
             elif current_item_unit == "W":
                 payloads.append(
-                    self._create_sensor_data_payload(sensor_data_item, "ipmi_power_watts")
+                    self._create_sensor_data_payload(
+                        sensor_data_item, "ipmi_power_watts", bmc_host
+                    )
                 )
             elif current_item_unit == "%":
                 if sensor_data_item.get("Type") == "Fan":
                     payloads.append(
-                        self._create_sensor_data_payload(sensor_data_item, "ipmi_fan_speed_ratio")
+                        self._create_sensor_data_payload(
+                            sensor_data_item, "ipmi_fan_speed_ratio", bmc_host
+                        )
                     )
                 else:
                     payloads.append(
                         self._create_sensor_data_payload(
-                            sensor_data_item, "ipmi_generic_sensor_value"
+                            sensor_data_item, "ipmi_generic_sensor_value", bmc_host
                         )
                     )
             else:
                 payloads.append(
-                    self._create_sensor_data_payload(sensor_data_item, "ipmi_generic_sensor_value")
+                    self._create_sensor_data_payload(
+                        sensor_data_item, "ipmi_generic_sensor_value", bmc_host
+                    )
                 )
 
         return payloads
@@ -530,7 +561,7 @@ class IpmiSensorsCollector(BlockingCollector):
         return payloads
 
     def _create_sensor_data_payload(
-        self, sensor_data_item: Dict[str, str], metric_name: str
+        self, sensor_data_item: Dict[str, str], metric_name: str, bmc_host: str
     ) -> Payload:
         """Create a payload based on metric name and sensor data."""
         if metric_name == "ipmi_generic_sensor_value":
@@ -541,6 +572,7 @@ class IpmiSensorsCollector(BlockingCollector):
                     sensor_data_item["State"],
                     sensor_data_item["Units"],
                     sensor_data_item["Type"],
+                    bmc_host,
                 ],
                 value=self._get_sensor_value_from_reading(sensor_data_item["Reading"]),
             )
@@ -551,6 +583,7 @@ class IpmiSensorsCollector(BlockingCollector):
                 sensor_data_item["Name"],
                 sensor_data_item["State"],
                 sensor_data_item["Units"],
+                bmc_host,
             ],
             value=self._get_sensor_value_from_reading(sensor_data_item["Reading"]),
         )
@@ -576,6 +609,7 @@ class IpmiSelCollector(NonBlockingCollector):
     def __init__(self, config: Config) -> None:
         """Initialize the collector."""
         self.ipmi_sel = IpmiSel(config)
+        self.ipmitool = IpmiTool(config)
         super().__init__(config)
 
         self._cache_timestamp = datetime.datetime.now().timestamp()
@@ -617,40 +651,43 @@ class IpmiSelCollector(NonBlockingCollector):
             Specification(
                 name="ipmi_sel_state_nominal",
                 documentation="The ID for IPMI SEL nominal event.",
-                labels=["name", "type"],
+                labels=["name", "type", "bmc_host"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
                 name="ipmi_sel_state_warning",
                 documentation="The ID for IPMI SEL warning event.",
-                labels=["name", "type"],
+                labels=["name", "type", "bmc_host"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
                 name="ipmi_sel_state_critical",
                 documentation="The ID for IPMI SEL critical event.",
-                labels=["name", "type"],
+                labels=["name", "type", "bmc_host"],
                 metric_class=GaugeMetricFamily,
             ),
             Specification(
                 name="ipmi_sel_command_success",
                 documentation="Indicates if the ipmi sel command succeeded or not",
+                labels=["bmc_host"],
                 metric_class=GaugeMetricFamily,
             ),
         ]
 
     def fetch(self) -> List[Payload]:
         """Load ipmi sel entries."""
+        bmc_host = self.ipmitool.get_ipmi_host() or "unknown"
+
         if self.is_cache_expired():
             logger.warning("Cache for ipmi sel is expired.")
-            return [Payload(name="ipmi_sel_command_success", value=0.0)]
+            return [Payload(name="ipmi_sel_command_success", value=0.0, labels=[bmc_host])]
 
         with self._lock:
             sel_entries = self._cache
 
         if sel_entries is None:
             logger.warning("Failed to get ipmi sel entries.")
-            return [Payload(name="ipmi_sel_command_success", value=0.0)]
+            return [Payload(name="ipmi_sel_command_success", value=0.0, labels=[bmc_host])]
 
         metrics = {}
         IpmiSelMetric = namedtuple("IpmiSelMetric", ["state", "labels"])
@@ -664,12 +701,12 @@ class IpmiSelCollector(NonBlockingCollector):
             # multiple values (R -> R^n), this is not allowed in prometheus
             metrics[IpmiSelMetric(sel_state, (entry["Name"], entry["Type"]))] = int(entry["ID"])
 
-        payloads = [Payload(name="ipmi_sel_command_success", value=1.0)]
+        payloads = [Payload(name="ipmi_sel_command_success", value=1.0, labels=[bmc_host])]
         for key, value in metrics.items():
             payloads.append(
                 Payload(
                     name=f"ipmi_sel_state_{key.state}",
-                    labels=list(key.labels),
+                    labels=list(key.labels) + [bmc_host],
                     value=value,
                 )
             )

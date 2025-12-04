@@ -324,10 +324,11 @@ class TestCustomCollector(unittest.TestCase):
         """Test ipmi dcmi collector when ipmi-dcmi is not installed."""
         ipmi_dcmi_collector = IpmiDcmiCollector(Mock())
         ipmi_dcmi_collector.ipmi_dcmi = Mock()
+        ipmi_dcmi_collector.ipmitool = Mock()
         ipmi_dcmi_collector.ipmi_dcmi.installed = False
         ipmi_dcmi_collector.ipmi_dcmi.get_current_power.return_value = {}
 
-        ipmi_dcmi_collector.ipmi_tool = Mock()
+        ipmi_dcmi_collector.ipmitool = Mock()
         ipmi_dcmi_collector.dmidecode = Mock()
         payloads = ipmi_dcmi_collector.collect()
 
@@ -337,13 +338,13 @@ class TestCustomCollector(unittest.TestCase):
         """Test ipmi dcmi collector can fetch correct number of metrics."""
         ipmi_dcmi_collector = IpmiDcmiCollector(Mock())
         ipmi_dcmi_collector.ipmi_dcmi = Mock()
-        ipmi_dcmi_collector.ipmi_tool = Mock()
+        ipmi_dcmi_collector.ipmitool = Mock()
         ipmi_dcmi_collector.dmidecode = Mock()
 
         mock_dcmi_payload = {"current_power": 105}
 
         ipmi_dcmi_collector.ipmi_dcmi.get_current_power.return_value = mock_dcmi_payload
-        ipmi_dcmi_collector.ipmi_tool.get_ps_redundancy.return_value = (True, True)
+        ipmi_dcmi_collector.ipmitool.get_ps_redundancy.return_value = (True, True)
         ipmi_dcmi_collector.dmidecode.get_power_capacities.return_value = [1000, 1000]
 
         payloads = list(ipmi_dcmi_collector.collect())
@@ -357,13 +358,13 @@ class TestCustomCollector(unittest.TestCase):
         """Test ipmi dcmi collector with ps_redundancy return is not ok."""
         ipmi_dcmi_collector = IpmiDcmiCollector(Mock())
         ipmi_dcmi_collector.ipmi_dcmi = Mock()
-        ipmi_dcmi_collector.ipmi_tool = Mock()
+        ipmi_dcmi_collector.ipmitool = Mock()
         ipmi_dcmi_collector.dmidecode = Mock()
 
         mock_dcmi_payload = {"current_power": 105}
 
         ipmi_dcmi_collector.ipmi_dcmi.get_current_power.return_value = mock_dcmi_payload
-        ipmi_dcmi_collector.ipmi_tool.get_ps_redundancy.return_value = (False, False)
+        ipmi_dcmi_collector.ipmitool.get_ps_redundancy.return_value = (False, False)
         ipmi_dcmi_collector.dmidecode.get_power_capacities.return_value = [1000, 1000]
 
         payloads = list(ipmi_dcmi_collector.collect())
@@ -377,7 +378,7 @@ class TestCustomCollector(unittest.TestCase):
         """Test ipmi dcmi collector can fetch correct number of metrics."""
         ipmi_dcmi_collector = IpmiDcmiCollector(Mock())
         ipmi_dcmi_collector.ipmi_dcmi = Mock()
-        ipmi_dcmi_collector.ipmi_tool = Mock()
+        ipmi_dcmi_collector.ipmitool = Mock()
         ipmi_dcmi_collector.dmidecode = Mock()
 
         mock_dcmi_payload = {"current_power": 105}
@@ -391,7 +392,7 @@ class TestCustomCollector(unittest.TestCase):
             ((True, False), [1000, 1000], 105 / 2000),
         ]:
             ipmi_dcmi_collector.ipmi_dcmi.get_current_power.return_value = mock_dcmi_payload
-            ipmi_dcmi_collector.ipmi_tool.get_ps_redundancy.return_value = ps_redundancy
+            ipmi_dcmi_collector.ipmitool.get_ps_redundancy.return_value = ps_redundancy
             ipmi_dcmi_collector.dmidecode.get_power_capacities.return_value = power_capacities
 
             payloads = ipmi_dcmi_collector.collect()
@@ -410,6 +411,7 @@ class TestCustomCollector(unittest.TestCase):
     def test_ipmi_sel_installed_and_okay(self, mock_get_sel_entries):
         """Test ipmi sel collector can fetch correct number of metrics."""
         ipmi_sel_collector = IpmiSelCollector(Config())
+        ipmi_sel_collector.ipmitool = Mock()
 
         assert wait_until(lambda: mock_get_sel_entries.called), "SEL Update thread is not alive"
 
@@ -435,6 +437,7 @@ class TestCustomCollector(unittest.TestCase):
     def test_ipmi_sel_cmd_fail(self, mock_get_sel_entries):
         """Test ipmi sel collector when ipmi sel is not installed."""
         ipmi_sel_collector = IpmiSelCollector(Config())
+        ipmi_sel_collector.ipmitool = Mock()
 
         assert wait_until(lambda: mock_get_sel_entries.called), "SEL Update thread is not alive"
 
@@ -455,6 +458,7 @@ class TestCustomCollector(unittest.TestCase):
         thread encounters the exception.
         """
         ipmi_sel_collector = IpmiSelCollector(Config())
+        ipmi_sel_collector.ipmitool = Mock()
 
         assert wait_until(lambda: mock_get_sel_entries.called), "SEL Update thread is not alive"
 
@@ -470,6 +474,7 @@ class TestCustomCollector(unittest.TestCase):
     @freeze_time("2023-07-09 12:00:00")
     def test_ipmi_sel_ttl_valid(self, mock_get_sel_entries):
         ipmi_sel_collector = IpmiSelCollector(Config())
+        ipmi_sel_collector.ipmitool = Mock()
         ipmi_sel_collector.config.ipmi_sel_cache_ttl = 5
 
         assert wait_until(lambda: mock_get_sel_entries.called), "SEL Update thread is not alive"
@@ -488,6 +493,7 @@ class TestCustomCollector(unittest.TestCase):
     @freeze_time("2023-07-09 12:00:00")
     def test_ipmi_sel_ttl_expired(self, mock_get_sel_entries):
         ipmi_sel_collector = IpmiSelCollector(Config())
+        ipmi_sel_collector.ipmitool = Mock()
         ipmi_sel_collector.config.ipmi_sel_cache_ttl = 5
 
         assert wait_until(lambda: mock_get_sel_entries.called), "SEL Update thread is not alive"
@@ -504,6 +510,7 @@ class TestCustomCollector(unittest.TestCase):
         """Test ipmi sensor collector when ipmimonitoring is not installed."""
         ipmi_sensors_collector = IpmiSensorsCollector(Mock())
         ipmi_sensors_collector.ipmimonitoring = Mock()
+        ipmi_sensors_collector.ipmitool = Mock()
         ipmi_sensors_collector.ipmimonitoring.installed = False
         ipmi_sensors_collector.ipmimonitoring.get_sensor_data.return_value = []
         payloads = ipmi_sensors_collector.collect()
@@ -514,6 +521,7 @@ class TestCustomCollector(unittest.TestCase):
         """Test ipmi sensors collector can fetch correct number of metrics."""
         ipmi_sensors_collector = IpmiSensorsCollector(Mock())
         ipmi_sensors_collector.ipmimonitoring = Mock()
+        ipmi_sensors_collector.ipmitool = Mock()
 
         mock_sensor_data = SAMPLE_IPMI_SENSOR_ENTRIES
 
