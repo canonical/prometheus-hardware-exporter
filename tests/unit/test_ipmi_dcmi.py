@@ -9,6 +9,15 @@ DCMI_SAMPLE_OUTPUT = "tests/unit/test_resources/ipmi/ipmi_dcmi_sample_output.txt
 IPMITOOL_SDR_PS_SAMPLE_OUTPUT = "tests/unit/test_resources/ipmi/ipmitool_sdr_ps_sample_output.txt"
 
 
+IPMITOOL_LAN_PRINT_SAMPLE_OUTPUT = (
+    "IP Address Source       : DHCP Address\n"
+    "IP Address              : 0.0.0.0\n"
+    "Subnet Mask             : 255.255.255.0\n"
+    "MAC Address             : 00:00:00:00:00:00\n"
+    "SNMP Community String   : public\n"
+)
+
+
 class TestIpmiDcmi(unittest.TestCase):
     """Test the IpmiDcmi class."""
 
@@ -67,3 +76,27 @@ class TestIpmiTool(unittest.TestCase):
         ipmitool = IpmiTool(config)
         ps_redundancy = ipmitool.get_ps_redundancy()
         self.assertEqual(ps_redundancy, (True, False))
+
+    @patch.object(Command, "__call__")
+    def test_03_get_ipmi_host_success(self, mock_call):
+        mock_call.return_value = Result(IPMITOOL_LAN_PRINT_SAMPLE_OUTPUT, None)
+        config = Config()
+        ipmitool = IpmiTool(config)
+        ipmi_host = ipmitool.get_ipmi_host()
+        self.assertEqual(ipmi_host, "0.0.0.0")
+
+    @patch.object(Command, "__call__")
+    def test_04_get_ipmi_host_error(self, mock_call):
+        mock_call.return_value = Result("", True)
+        config = Config()
+        ipmitool = IpmiTool(config)
+        ipmi_host = ipmitool.get_ipmi_host()
+        self.assertEqual(ipmi_host, None)
+
+    @patch.object(Command, "__call__")
+    def test_04_get_ipmi_no_host(self, mock_call):
+        mock_call.return_value = Result("", None)
+        config = Config()
+        ipmitool = IpmiTool(config)
+        ipmi_host = ipmitool.get_ipmi_host()
+        self.assertEqual(ipmi_host, None)

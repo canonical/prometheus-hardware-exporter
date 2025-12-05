@@ -2,7 +2,7 @@
 
 import re
 from logging import getLogger
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 from ..utils import Command
 
@@ -35,6 +35,22 @@ class IpmiTool(Command):
                 # column 4 is redundancy status
                 output.append(data[4])
         return True, all(status == "Fully Redundant" for status in output) | False
+
+    def get_ipmi_host(self) -> Optional[str]:
+        """Get IPMI host name.
+
+        returns:
+            hostname - IPMI/BMC host or None
+        """
+        result = self("lan print")
+        if result.error:
+            logger.error(result.error)
+            return None
+        for line in result.data.splitlines():
+            if "IP Address" in line and "Source" not in line:
+                _, ip_address = line.split(":", 1)
+                return ip_address.strip()
+        return None
 
 
 class IpmiDcmi(Command):
