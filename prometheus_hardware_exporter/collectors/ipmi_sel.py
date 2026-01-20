@@ -5,7 +5,7 @@ from logging import getLogger
 from typing import Dict, List, Optional
 
 from ..config import Config
-from ..utils import Command
+from ..utils import Command, ipmi_over_lan_args
 
 logger = getLogger(__name__)
 
@@ -32,9 +32,11 @@ class IpmiSel(Command):
         # --sdr-cache-recreate is required to automatically recreate the SDR cache in case it is
         # out of date or invalid. Without this, the service will stop getting ipmi-sel data if the
         # cache is out of date.
-        result = self(
+        args = (
             "--sdr-cache-recreate --output-event-state --interpret-oem-data --entity-sensor-names"
+            + ipmi_over_lan_args(self.config)
         )
+        result = self(args)
         if result.error:
             logger.error(result.error)
             return None

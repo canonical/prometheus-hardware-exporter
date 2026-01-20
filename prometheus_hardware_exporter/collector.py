@@ -369,8 +369,8 @@ class IpmiDcmiCollector(BlockingCollector):
 
     def fetch(self) -> List[Payload]:
         """Load current power from ipmi dcmi power statistics."""
-        bmc_host = self.ipmitool.get_ipmi_host() or "unknown"
         current_power_payload = self.ipmi_dcmi.get_current_power()
+        bmc_host = self.config.hostname or "unknown"
 
         if not current_power_payload:
             logger.error("Failed to fetch current power from ipmi dcmi")
@@ -435,7 +435,6 @@ class IpmiSensorsCollector(BlockingCollector):
     def __init__(self, config: Config) -> None:
         """Initialize the collector."""
         self.ipmimonitoring = IpmiMonitoring(config)
-        self.ipmitool = IpmiTool(config)
         super().__init__(config)
 
     @property
@@ -494,7 +493,7 @@ class IpmiSensorsCollector(BlockingCollector):
 
     def fetch(self) -> List[Payload]:
         """Load ipmi sensors data."""
-        bmc_host = self.ipmitool.get_ipmi_host() or "unknown"
+        bmc_host = self.config.hostname or "unknown"
         sensor_data = self.ipmimonitoring.get_sensor_data()
 
         if not sensor_data:
@@ -676,7 +675,7 @@ class IpmiSelCollector(NonBlockingCollector):
 
     def fetch(self) -> List[Payload]:
         """Load ipmi sel entries."""
-        bmc_host = self.ipmitool.get_ipmi_host() or "unknown"
+        bmc_host = self.config.hostname or "unknown"
 
         if self.is_cache_expired():
             logger.warning("Cache for ipmi sel is expired.")
@@ -1090,7 +1089,7 @@ class RedfishCollector(BlockingCollector):
         """Load redfish data."""
         payloads: List[Payload] = []
 
-        service_status = self.discover_redfish_services(self.config.redfish_host)
+        service_status = self.discover_redfish_services(self.config.hostname)
         payloads.append(Payload(name="redfish_service_available", value=float(service_status)))
         if not service_status:
             return payloads

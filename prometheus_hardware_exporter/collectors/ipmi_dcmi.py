@@ -2,9 +2,9 @@
 
 import re
 from logging import getLogger
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
-from ..utils import Command
+from ..utils import Command, ipmi_over_lan_args
 
 logger = getLogger(__name__)
 
@@ -36,22 +36,6 @@ class IpmiTool(Command):
                 output.append(data[4])
         return True, all(status == "Fully Redundant" for status in output) | False
 
-    def get_ipmi_host(self) -> Optional[str]:
-        """Get IPMI host name.
-
-        returns:
-            hostname - IPMI/BMC host or None
-        """
-        result = self("lan print")
-        if result.error:
-            logger.error(result.error)
-            return None
-        for line in result.data.splitlines():
-            if "IP Address" in line and "Source" not in line:
-                _, ip_address = line.split(":", 1)
-                return ip_address.strip()
-        return None
-
 
 class IpmiDcmi(Command):
     """Command line tool for ipmi dcmi."""
@@ -65,7 +49,8 @@ class IpmiDcmi(Command):
         Returns:
             payload: a dictionary containing current_power, or {}
         """
-        result = self("--get-system-power-statistics")
+        args = "--get-system-power-statistics" + ipmi_over_lan_args(self.config)
+        result = self(args)
         if result.error:
             logger.error(result.error)
             return {}

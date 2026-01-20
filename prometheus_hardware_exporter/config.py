@@ -1,6 +1,7 @@
 """Module for hardware exporter related configuration."""
 
 import os
+import subprocess
 from logging import getLogger
 from typing import List, Optional
 
@@ -19,14 +20,29 @@ DEFAULT_REDFISH_CLIENT_MAX_RETRY = 1
 DEFAULT_REDFISH_DISCOVER_CACHE_TTL = 86400
 DEFAULT_IPMI_SEL_CACHE_TTL = 600
 
+
 # pylint: disable=E0213
+
+
+def get_bmc_address() -> Optional[str]:
+    """Get BMC IP address by ipmitool."""
+    cmd = "ipmitool lan print"
+    try:
+        output = subprocess.check_output(cmd.split(), text=True)
+        for line in output.splitlines():
+            values = line.split(":")
+            if values[0].strip() == "IP Address":
+                return values[1].strip()
+    except subprocess.CalledProcessError:
+        logger.debug("IPMI is not available")
+    return None
 
 
 class Config(BaseModel):
     """Hardware exporter configuration."""
 
     port: int = 10000
-    level: str = "DEBUG"
+    level: str = "INFO"
     enable_collectors: List[str] = []
 
     collect_timeout: Optional[int] = DEFAULT_COLLECT_TIMEOUT
@@ -34,9 +50,10 @@ class Config(BaseModel):
     ipmi_sel_collect_interval: int = DEFAULT_IPMI_SEL_COLLECT_INTERVAL
     ipmi_sel_cache_ttl: int = DEFAULT_IPMI_SEL_CACHE_TTL
 
-    redfish_host: str = "127.0.0.1"
-    redfish_username: str = ""
-    redfish_password: str = ""
+    hostname: str = ""
+    username: str = ""
+    password: str = ""
+    driver_type: str = ""
     redfish_client_timeout: int = DEFAULT_REDFISH_CLIENT_TIMEOUT
     redfish_client_max_retry: int = DEFAULT_REDFISH_CLIENT_MAX_RETRY
     redfish_discover_cache_ttl: int = DEFAULT_REDFISH_DISCOVER_CACHE_TTL
@@ -88,6 +105,18 @@ class Config(BaseModel):
             raise ValueError(msg)
         return enable_collectors
 
+    @validator("driver_type")
+    @classmethod
+    def validate_driver_type_choice(cls, driver_type: str) -> str:
+        """Validate driver type choice."""
+        driver = driver_type.upper()
+        choices = {"LAN", "LAN_2_0", "KCS", "SSIF", "OPENIPMI", "SUNBMC", ""}
+        if driver not in choices:
+            msg = f"Driver type must be in {choices} (case-insensitive)."
+            logger.error(msg)
+            raise ValueError(msg)
+        return driver_type
+
     @classmethod
     def load_config(cls, config_file: str = DEFAULT_CONFIG) -> "Config":
         """Load configuration file and validate it."""
@@ -98,4 +127,14 @@ class Config(BaseModel):
         with open(config_file, "r", encoding="utf-8") as config:
             logger.info("Loaded exporter configuration: %s.", config_file)
             data = safe_load(config) or {}
-            return cls(**data)
+            conf = cls(**data)
+            # If hostname not provided, try to resolve from local ipmitool
+            if not conf.hostname:
+                try:
+                    host = get_bmc_address()
+                    if host:
+                        conf.hostname = host
+                        logger.info("Resolved hostname from ipmitool: %s", host)
+                except Exception:  # pragma: no cover - best-effort
+                    logger.debug("Unable to resolve hostname via ipmitool")
+            return conf

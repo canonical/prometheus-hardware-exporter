@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 """Test prometheus-hardware-exporter package."""
+
 from subprocess import run
 
 

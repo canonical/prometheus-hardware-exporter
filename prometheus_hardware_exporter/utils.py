@@ -84,3 +84,11 @@ def get_json_output(content: str) -> Union[dict, Exception]:
         return data
     except ValueError as err:
         return err
+
+
+def ipmi_over_lan_args(config: Config) -> str:
+    """Get IPMI over LAN arguments for ipmitool commands."""
+    cmd = ""
+    if "LAN" in config.driver_type.upper():
+        cmd += f" -D {config.driver_type} -h {config.hostname} -u {config.username} -p {config.password} "
+    return cmd

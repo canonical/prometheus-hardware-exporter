@@ -24,6 +24,7 @@ from .config import (
     DEFAULT_REDFISH_CLIENT_TIMEOUT,
     DEFAULT_REDFISH_DISCOVER_CACHE_TTL,
     Config,
+    get_bmc_address,
 )
 from .exporter import Exporter
 
@@ -52,20 +53,26 @@ def parse_command_line() -> argparse.Namespace:
         type=int,
     )
     parser.add_argument(
-        "--redfish-host",
-        help="Hostname for redfish collector",
-        default="127.0.0.1",
-        type=str,
-    )
-    parser.add_argument(
-        "--redfish-username",
-        help="BMC username for redfish collector",
+        "--hostname",
+        help="Hostname of the bmc/ipmi device",
         default="",
         type=str,
     )
     parser.add_argument(
-        "--redfish-password",
-        help="BMC password for redfish collector",
+        "--username",
+        help="BMC username",
+        default="",
+        type=str,
+    )
+    parser.add_argument(
+        "--password",
+        help="BMC password",
+        default="",
+        type=str,
+    )
+    parser.add_argument(
+        "--driver-type",
+        help="Specify the driver type to use instead of doing an auto selection. Use LAN_2_0 for ipmi over LAN.",
         default="",
         type=str,
     )
@@ -197,15 +204,25 @@ def main() -> None:
             port=namespace.port,
             level=namespace.level,
             enable_collectors=collectors,
-            redfish_host=namespace.redfish_host,
-            redfish_username=namespace.redfish_username,
-            redfish_password=namespace.redfish_password,
+            hostname=namespace.hostname,
+            username=namespace.username,
+            password=namespace.password,
+            driver_type=namespace.driver_type,
             ipmi_sel_interval=namespace.ipmi_sel_interval,
             redfish_client_timeout=namespace.redfish_client_timeout,
             redfish_client_max_retry=namespace.redfish_client_max_retry,
             redfish_discover_cache_ttl=namespace.redfish_discover_cache_ttl,
             collect_timeout=namespace.collect_timeout,
         )
+
+        # If hostname is empty, try to resolve BMC IP via ipmitool
+        if not exporter_config.hostname:
+            host = get_bmc_address()
+            if host is not None:
+                exporter_config.hostname = host
+                logger.info("Resolved hostname from ipmitool: %s", host)
+            else:
+                logger.warning("Hostname is not provided and cannot be resolved from ipmitool.")
 
     # Start the exporter
     start_exporter(exporter_config)

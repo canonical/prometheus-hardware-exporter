@@ -70,9 +70,9 @@ class RedfishHelper:
     def __init__(self, config: Config) -> None:
         """Initialize values for class."""
         self.redfish_obj = redfish_client(
-            base_url=config.redfish_host,
-            username=config.redfish_username,
-            password=config.redfish_password,
+            base_url=config.hostname,
+            username=config.username,
+            password=config.password,
             timeout=config.redfish_client_timeout,
             max_retry=config.redfish_client_max_retry,
         )
