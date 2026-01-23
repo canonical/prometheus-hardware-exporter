@@ -76,27 +76,3 @@ class TestIpmiTool(unittest.TestCase):
         ipmitool = IpmiTool(config)
         ps_redundancy = ipmitool.get_ps_redundancy()
         self.assertEqual(ps_redundancy, (True, False))
-
-    @patch.object(Command, "__call__")
-    def test_03_get_ipmi_host_success(self, mock_call):
-        mock_call.return_value = Result(IPMITOOL_LAN_PRINT_SAMPLE_OUTPUT, None)
-        config = Config()
-        ipmitool = IpmiTool(config)
-        ipmi_host = ipmitool.get_ipmi_host()
-        self.assertEqual(ipmi_host, "0.0.0.0")
-
-    @patch.object(Command, "__call__")
-    def test_04_get_ipmi_host_error(self, mock_call):
-        mock_call.return_value = Result("", True)
-        config = Config()
-        ipmitool = IpmiTool(config)
-        ipmi_host = ipmitool.get_ipmi_host()
-        self.assertEqual(ipmi_host, None)
-
-    @patch.object(Command, "__call__")
-    def test_04_get_ipmi_no_host(self, mock_call):
-        mock_call.return_value = Result("", None)
-        config = Config()
-        ipmitool = IpmiTool(config)
-        ipmi_host = ipmitool.get_ipmi_host()
-        self.assertEqual(ipmi_host, None)

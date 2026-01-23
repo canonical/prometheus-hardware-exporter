@@ -49,8 +49,8 @@ class IpmiDcmi(Command):
         Returns:
             payload: a dictionary containing current_power, or {}
         """
-        args = "--get-system-power-statistics" + ipmi_over_lan_args(self.config)
-        result = self(args)
+        args = ["--get-system-power-statistics", *ipmi_over_lan_args(self.config)]
+        result = self(" ".join(args))
         if result.error:
             logger.error(result.error)
             return {}

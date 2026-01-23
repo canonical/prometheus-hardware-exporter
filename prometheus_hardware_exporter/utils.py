@@ -88,7 +88,16 @@ def get_json_output(content: str) -> Union[dict, Exception]:
 
 def ipmi_over_lan_args(config: Config) -> str:
     """Get IPMI over LAN arguments for ipmitool commands."""
-    cmd = ""
-    if "LAN" in config.driver_type.upper():
-        cmd += f" -D {config.driver_type} -h {config.hostname} -u {config.username} -p {config.password} "
-    return cmd
+    if "LAN" not in config.driver_type.upper():
+        return []
+
+    return [
+        "-D",
+        config.driver_type,
+        "-h",
+        config.hostname,
+        "-u",
+        config.username,
+        "-p",
+        config.password,
+    ]

@@ -127,14 +127,4 @@ class Config(BaseModel):
         with open(config_file, "r", encoding="utf-8") as config:
             logger.info("Loaded exporter configuration: %s.", config_file)
             data = safe_load(config) or {}
-            conf = cls(**data)
-            # If hostname not provided, try to resolve from local ipmitool
-            if not conf.hostname:
-                try:
-                    host = get_bmc_address()
-                    if host:
-                        conf.hostname = host
-                        logger.info("Resolved hostname from ipmitool: %s", host)
-                except Exception:  # pragma: no cover - best-effort
-                    logger.debug("Unable to resolve hostname via ipmitool")
-            return conf
+            return cls(**data)

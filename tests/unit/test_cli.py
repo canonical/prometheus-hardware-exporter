@@ -105,3 +105,63 @@ def test_get_collector_registries():
             "collector.redfish",
         ]
     )
+
+
+@patch.object(__main__, "get_bmc_address")
+@patch.object(__main__, "start_exporter")
+@patch.object(__main__, "parse_command_line")
+def test_main_resolves_hostname_from_ipmitool(mock_parse_cli, mock_start_exporter, mock_get_bmc):
+    """When no hostname provided, main should resolve it via get_bmc_address."""
+    mock_ns = Mock()
+    mock_ns.config = False
+    mock_ns.port = 10000
+    mock_ns.level = "INFO"
+    mock_ns.redfish_host = ""
+    mock_ns.redfish_username = ""
+    mock_ns.redfish_password = ""
+    mock_ns.driver_type = ""
+    mock_ns.ipmi_sel_interval = 0
+    mock_ns.redfish_client_timeout = 15
+    mock_ns.redfish_client_max_retry = 1
+    mock_ns.redfish_discover_cache_ttl = 86400
+    mock_ns.collect_timeout = 30
+    mock_parse_cli.return_value = mock_ns
+
+    mock_get_bmc.return_value = "1.2.3.4"
+
+    main()
+
+    mock_get_bmc.assert_called_once()
+    assert mock_start_exporter.called
+    exporter_config = mock_start_exporter.call_args[0][0]
+    assert exporter_config.hostname == "1.2.3.4"
+
+
+@patch.object(__main__, "get_bmc_address")
+@patch.object(__main__, "start_exporter")
+@patch.object(__main__, "parse_command_line")
+def test_main_hostname_unresolved_warns(mock_parse_cli, mock_start_exporter, mock_get_bmc):
+    """When get_bmc_address returns None, hostname remains empty."""
+    mock_ns = Mock()
+    mock_ns.config = False
+    mock_ns.port = 10000
+    mock_ns.level = "INFO"
+    mock_ns.redfish_host = ""
+    mock_ns.redfish_username = ""
+    mock_ns.redfish_password = ""
+    mock_ns.driver_type = ""
+    mock_ns.ipmi_sel_interval = 0
+    mock_ns.redfish_client_timeout = 15
+    mock_ns.redfish_client_max_retry = 1
+    mock_ns.redfish_discover_cache_ttl = 86400
+    mock_ns.collect_timeout = 30
+    mock_parse_cli.return_value = mock_ns
+
+    mock_get_bmc.return_value = None
+
+    main()
+
+    mock_get_bmc.assert_called_once()
+    assert mock_start_exporter.called
+    exporter_config = mock_start_exporter.call_args[0][0]
+    assert exporter_config.hostname == ""

@@ -32,11 +32,14 @@ class IpmiSel(Command):
         # --sdr-cache-recreate is required to automatically recreate the SDR cache in case it is
         # out of date or invalid. Without this, the service will stop getting ipmi-sel data if the
         # cache is out of date.
-        args = (
-            "--sdr-cache-recreate --output-event-state --interpret-oem-data --entity-sensor-names"
-            + ipmi_over_lan_args(self.config)
-        )
-        result = self(args)
+        args = [
+            "--sdr-cache-recreate",
+            "--output-event-state",
+            "--interpret-oem-data",
+            "--entity-sensor-names",
+            *ipmi_over_lan_args(self.config),
+        ]
+        result = self(" ".join(args))
         if result.error:
             logger.error(result.error)
             return None

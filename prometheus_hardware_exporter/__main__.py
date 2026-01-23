@@ -53,26 +53,26 @@ def parse_command_line() -> argparse.Namespace:
         type=int,
     )
     parser.add_argument(
-        "--hostname",
+        "--redfish-host",
         help="Hostname of the bmc/ipmi device",
         default="",
         type=str,
     )
     parser.add_argument(
-        "--username",
-        help="BMC username",
+        "--redfish-username",
+        help="Username of the bmc/ipmi device",
         default="",
         type=str,
     )
     parser.add_argument(
-        "--password",
-        help="BMC password",
+        "--redfish-password",
+        help="Password of the bmc/ipmi device",
         default="",
         type=str,
     )
     parser.add_argument(
         "--driver-type",
-        help="Specify the driver type to use instead of doing an auto selection. Use LAN_2_0 for ipmi over LAN.",
+        help="Specify the driver type to be used for ipmi. Use LAN_2_0 for ipmi over LAN.",
         default="",
         type=str,
     )
@@ -204,9 +204,9 @@ def main() -> None:
             port=namespace.port,
             level=namespace.level,
             enable_collectors=collectors,
-            hostname=namespace.hostname,
-            username=namespace.username,
-            password=namespace.password,
+            hostname=namespace.redfish_host,
+            username=namespace.redfish_username,
+            password=namespace.redfish_password,
             driver_type=namespace.driver_type,
             ipmi_sel_interval=namespace.ipmi_sel_interval,
             redfish_client_timeout=namespace.redfish_client_timeout,
