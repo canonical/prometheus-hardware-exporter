@@ -70,6 +70,7 @@ def test_get_json_output_err():
     result = get_json_output("""{"a": 1, "b": 2}123""")
     assert isinstance(result, Exception)
 
+
 def test_ipmi_over_lan_args_with_lan():
     """Returns LAN args when driver_type contains LAN."""
     config = Config()
@@ -90,6 +91,7 @@ def test_ipmi_over_lan_args_with_lan():
         "-p",
         "pass",
     ]
+
 
 def test_ipmi_over_lan_args_without_lan():
     """Returns empty list when driver_type does not contain LAN."""

@@ -1,3 +1,4 @@
+import subprocess
 import unittest
 from unittest.mock import patch
 
@@ -5,7 +6,6 @@ import pytest
 
 from prometheus_hardware_exporter.__main__ import Config
 from prometheus_hardware_exporter.config import get_bmc_address
-import subprocess
 
 
 class TestConfig(unittest.TestCase):
@@ -56,7 +56,7 @@ class TestConfig(unittest.TestCase):
             "port": mock_port,
             "level": mock_level,
             "enable_collectors": mock_enable_collectors,
-            "driver_type": "LAN_2_0"
+            "driver_type": "LAN_2_0",
         }
         with pytest.raises(ValueError):
             Config.load_config()
@@ -81,9 +81,7 @@ class TestConfig(unittest.TestCase):
 @patch("prometheus_hardware_exporter.config.subprocess.check_output")
 def test_get_bmc_address_success(mock_check_output):
     """get_bmc_address should return IP when ipmitool prints it."""
-    mock_check_output.return_value = (
-        "Some header\nIP Address              : 1.2.3.4\nOther: value"
-    )
+    mock_check_output.return_value = "Some header\nIP Address              : 1.2.3.4\nOther: value"
     assert get_bmc_address() == "1.2.3.4"
 
 
