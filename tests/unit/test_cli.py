@@ -9,6 +9,7 @@ from prometheus_hardware_exporter.__main__ import (
     parse_command_line,
     start_exporter,
 )
+from prometheus_hardware_exporter.collectors.ipmi_dcmi import IpmiTool
 from prometheus_hardware_exporter.config import Config
 
 
@@ -107,7 +108,7 @@ def test_get_collector_registries():
     )
 
 
-@patch.object(__main__, "get_bmc_address")
+@patch.object(IpmiTool, "get_ipmi_host")
 @patch.object(__main__, "start_exporter")
 @patch.object(__main__, "parse_command_line")
 def test_main_resolves_hostname_from_ipmitool(mock_parse_cli, mock_start_exporter, mock_get_bmc):
@@ -137,7 +138,7 @@ def test_main_resolves_hostname_from_ipmitool(mock_parse_cli, mock_start_exporte
     assert exporter_config.hostname == "1.2.3.4"
 
 
-@patch.object(__main__, "get_bmc_address")
+@patch.object(IpmiTool, "get_ipmi_host")
 @patch.object(__main__, "start_exporter")
 @patch.object(__main__, "parse_command_line")
 def test_main_hostname_unresolved_warns(mock_parse_cli, mock_start_exporter, mock_get_bmc):

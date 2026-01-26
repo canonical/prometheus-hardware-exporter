@@ -1,7 +1,6 @@
 """Module for hardware exporter related configuration."""
 
 import os
-import subprocess
 from logging import getLogger
 from typing import List, Optional
 
@@ -22,20 +21,6 @@ DEFAULT_IPMI_SEL_CACHE_TTL = 600
 
 
 # pylint: disable=E0213
-
-
-def get_bmc_address() -> Optional[str]:
-    """Get BMC IP address by ipmitool."""
-    cmd = "ipmitool lan print"
-    try:
-        output = subprocess.check_output(cmd.split(), text=True)
-        for line in output.splitlines():
-            values = line.split(":")
-            if values[0].strip() == "IP Address":
-                return values[1].strip()
-    except subprocess.CalledProcessError:
-        logger.debug("IPMI is not available")
-    return None
 
 
 class Config(BaseModel):

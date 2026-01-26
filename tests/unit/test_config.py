@@ -1,11 +1,9 @@
-import subprocess
 import unittest
 from unittest.mock import patch
 
 import pytest
 
 from prometheus_hardware_exporter.__main__ import Config
-from prometheus_hardware_exporter.config import get_bmc_address
 
 
 class TestConfig(unittest.TestCase):
@@ -76,24 +74,3 @@ class TestConfig(unittest.TestCase):
         self.patch_os_path_exists.stop()
         with pytest.raises(ValueError):
             Config.load_config("random")
-
-
-@patch("prometheus_hardware_exporter.config.subprocess.check_output")
-def test_get_bmc_address_success(mock_check_output):
-    """get_bmc_address should return IP when ipmitool prints it."""
-    mock_check_output.return_value = "Some header\nIP Address              : 1.2.3.4\nOther: value"
-    assert get_bmc_address() == "1.2.3.4"
-
-
-@patch("prometheus_hardware_exporter.config.subprocess.check_output")
-def test_get_bmc_address_failure(mock_check_output):
-    """get_bmc_address should return None when ipmitool is unavailable."""
-    mock_check_output.side_effect = subprocess.CalledProcessError(1, "ipmitool")
-    assert get_bmc_address() is None
-
-
-@patch("prometheus_hardware_exporter.config.subprocess.check_output")
-def test_get_bmc_address_no_host(mock_check_output):
-    """get_bmc_address should return None when no IP Address line present."""
-    mock_check_output.return_value = "No ip information here\nAnother line"
-    assert get_bmc_address() is None

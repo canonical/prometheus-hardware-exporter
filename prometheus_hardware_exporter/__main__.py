@@ -10,6 +10,7 @@ from .collector import (
     IpmiDcmiCollector,
     IpmiSelCollector,
     IpmiSensorsCollector,
+    IpmiTool,
     LSISASControllerCollector,
     MegaRAIDCollector,
     PowerEdgeRAIDCollector,
@@ -24,7 +25,6 @@ from .config import (
     DEFAULT_REDFISH_CLIENT_TIMEOUT,
     DEFAULT_REDFISH_DISCOVER_CACHE_TTL,
     Config,
-    get_bmc_address,
 )
 from .exporter import Exporter
 
@@ -217,7 +217,7 @@ def main() -> None:
 
         # If hostname is empty, try to resolve BMC IP via ipmitool
         if not exporter_config.hostname:
-            host = get_bmc_address()
+            host = IpmiTool(exporter_config).get_ipmi_host()
             if host is not None:
                 exporter_config.hostname = host
                 logger.info("Resolved hostname from ipmitool: %s", host)

@@ -93,6 +93,26 @@ def test_ipmi_over_lan_args_with_lan():
     ]
 
 
+def test_ipmi_over_lan_args_missing_user():
+    """Returns LAN args when driver_type contains LAN."""
+    config = Config()
+    config.driver_type = "LAN"
+    config.hostname = "1.2.3.4"
+    config.username = ""
+    config.password = "pass"
+
+    args = utils.ipmi_over_lan_args(config)
+    assert isinstance(args, list)
+    assert args == [
+        "-D",
+        "LAN",
+        "-h",
+        "1.2.3.4",
+        "-p",
+        "pass",
+    ]
+
+
 def test_ipmi_over_lan_args_without_lan():
     """Returns empty list when driver_type does not contain LAN."""
     config = Config()
