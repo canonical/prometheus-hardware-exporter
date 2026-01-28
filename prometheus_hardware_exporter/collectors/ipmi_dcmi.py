@@ -4,7 +4,7 @@ import re
 from logging import getLogger
 from typing import Dict, Optional, Tuple
 
-from ..utils import Command
+from ..utils import Command, ipmi_over_lan_args
 
 logger = getLogger(__name__)
 
@@ -65,7 +65,8 @@ class IpmiDcmi(Command):
         Returns:
             payload: a dictionary containing current_power, or {}
         """
-        result = self("--get-system-power-statistics")
+        args = ["--get-system-power-statistics", *ipmi_over_lan_args(self.config)]
+        result = self(" ".join(args))
         if result.error:
             logger.error(result.error)
             return {}

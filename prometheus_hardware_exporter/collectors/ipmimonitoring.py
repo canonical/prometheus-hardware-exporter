@@ -3,7 +3,7 @@
 from logging import getLogger
 from typing import Dict, List
 
-from ..utils import Command
+from ..utils import Command, ipmi_over_lan_args
 
 logger = getLogger(__name__)
 
@@ -23,7 +23,8 @@ class IpmiMonitoring(Command):
         # --sdr-cache-recreate is required to automatically recreate the SDR cache in case it is
         # out of date or invalid. Without this, the service will stop getting sensor data if the
         # cache is out of date.
-        result = self("--sdr-cache-recreate")
+        args = ["--sdr-cache-recreate", *ipmi_over_lan_args(self.config)]
+        result = self(" ".join(args))
         if result.error:
             logger.error(result.error)
             return []

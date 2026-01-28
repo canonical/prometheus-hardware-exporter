@@ -4,7 +4,7 @@ import json
 import subprocess
 from dataclasses import dataclass
 from logging import getLogger
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 from .config import Config
 
@@ -84,3 +84,23 @@ def get_json_output(content: str) -> Union[dict, Exception]:
         return data
     except ValueError as err:
         return err
+
+
+def ipmi_over_lan_args(config: Config) -> List[str]:
+    """Get IPMI over LAN arguments for ipmitool commands."""
+    if "LAN" not in config.driver_type.upper():
+        return []
+
+    args = ["-D", config.driver_type]
+
+    optional_args = {
+        "-h": config.hostname,
+        "-u": config.username,
+        "-p": config.password,
+    }
+
+    for flag, value in optional_args.items():
+        if value:
+            args.extend([flag, value])
+
+    return args

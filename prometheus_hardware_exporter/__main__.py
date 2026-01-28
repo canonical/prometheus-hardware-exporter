@@ -10,6 +10,7 @@ from .collector import (
     IpmiDcmiCollector,
     IpmiSelCollector,
     IpmiSensorsCollector,
+    IpmiTool,
     LSISASControllerCollector,
     MegaRAIDCollector,
     PowerEdgeRAIDCollector,
@@ -53,19 +54,25 @@ def parse_command_line() -> argparse.Namespace:
     )
     parser.add_argument(
         "--redfish-host",
-        help="Hostname for redfish collector",
-        default="127.0.0.1",
+        help="Hostname of the bmc/ipmi device",
+        default="",
         type=str,
     )
     parser.add_argument(
         "--redfish-username",
-        help="BMC username for redfish collector",
+        help="Username of the bmc/ipmi device",
         default="",
         type=str,
     )
     parser.add_argument(
         "--redfish-password",
-        help="BMC password for redfish collector",
+        help="Password of the bmc/ipmi device",
+        default="",
+        type=str,
+    )
+    parser.add_argument(
+        "--driver-type",
+        help="Specify the driver type to be used for ipmi. Use LAN_2_0 for ipmi over LAN.",
         default="",
         type=str,
     )
@@ -197,15 +204,25 @@ def main() -> None:
             port=namespace.port,
             level=namespace.level,
             enable_collectors=collectors,
-            redfish_host=namespace.redfish_host,
-            redfish_username=namespace.redfish_username,
-            redfish_password=namespace.redfish_password,
+            hostname=namespace.redfish_host,
+            username=namespace.redfish_username,
+            password=namespace.redfish_password,
+            driver_type=namespace.driver_type,
             ipmi_sel_interval=namespace.ipmi_sel_interval,
             redfish_client_timeout=namespace.redfish_client_timeout,
             redfish_client_max_retry=namespace.redfish_client_max_retry,
             redfish_discover_cache_ttl=namespace.redfish_discover_cache_ttl,
             collect_timeout=namespace.collect_timeout,
         )
+
+        # If hostname is empty, try to resolve BMC IP via ipmitool
+        if not exporter_config.hostname:
+            host = IpmiTool(exporter_config).get_ipmi_host()
+            if host is not None:
+                exporter_config.hostname = host
+                logger.info("Resolved hostname from ipmitool: %s", host)
+            else:
+                logger.warning("Hostname is not provided and cannot be resolved from ipmitool.")
 
     # Start the exporter
     start_exporter(exporter_config)

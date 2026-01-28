@@ -54,6 +54,16 @@ class TestConfig(unittest.TestCase):
             "port": mock_port,
             "level": mock_level,
             "enable_collectors": mock_enable_collectors,
+            "driver_type": "LAN_2_0",
+        }
+        with pytest.raises(ValueError):
+            Config.load_config()
+
+    @patch("prometheus_hardware_exporter.config.safe_load")
+    def test_invalid_driver_config(self, mock_safe_load):
+        """Test invalid driver config."""
+        mock_safe_load.return_value = {
+            "driver_type": "RANDOM",
         }
         with pytest.raises(ValueError):
             Config.load_config()
