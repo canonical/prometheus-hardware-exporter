@@ -4,7 +4,7 @@ import re
 from logging import getLogger
 from typing import Dict, Optional, Tuple
 
-from ..utils import Command, ipmi_over_lan_args
+from ..utils import Command, ipmi_over_lan_args, ipmitool_over_lan_args
 
 logger = getLogger(__name__)
 
@@ -24,7 +24,8 @@ class IpmiTool(Command):
             - ok - True if fetching redundancy info is successful
             - redundancy - True if redundancy is enabled
         """
-        result = self("""sdr type "Power Supply" -c""")
+        args = ["sdr", "type", "Power Supply", "-c", *ipmitool_over_lan_args(self.config)]
+        result = self(" ".join(args))
         if result.error:
             logger.error(result.error)
             return False, False

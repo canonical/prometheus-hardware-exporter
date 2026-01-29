@@ -53,19 +53,19 @@ def parse_command_line() -> argparse.Namespace:
         type=int,
     )
     parser.add_argument(
-        "--redfish-host",
+        "--hostname",
         help="Hostname of the bmc/ipmi device",
         default="",
         type=str,
     )
     parser.add_argument(
-        "--redfish-username",
+        "--username",
         help="Username of the bmc/ipmi device",
         default="",
         type=str,
     )
     parser.add_argument(
-        "--redfish-password",
+        "--password",
         help="Password of the bmc/ipmi device",
         default="",
         type=str,
@@ -204,9 +204,9 @@ def main() -> None:
             port=namespace.port,
             level=namespace.level,
             enable_collectors=collectors,
-            hostname=namespace.redfish_host,
-            username=namespace.redfish_username,
-            password=namespace.redfish_password,
+            hostname=namespace.hostname,
+            username=namespace.username,
+            password=namespace.password,
             driver_type=namespace.driver_type,
             ipmi_sel_interval=namespace.ipmi_sel_interval,
             redfish_client_timeout=namespace.redfish_client_timeout,

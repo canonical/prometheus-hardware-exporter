@@ -123,3 +123,57 @@ def test_ipmi_over_lan_args_without_lan():
 
     args = utils.ipmi_over_lan_args(config)
     assert args == []
+
+
+def test_ipmitool_over_lan_args_with_lan():
+    """Returns LAN args for ipmitool when driver_type contains LAN."""
+    config = Config()
+    config.driver_type = "LAN"
+    config.hostname = "1.2.3.4"
+    config.username = "admin"
+    config.password = "pass"
+
+    args = utils.ipmitool_over_lan_args(config)
+    assert isinstance(args, list)
+    assert args == [
+        "-I",
+        "lanplus",
+        "-H",
+        "1.2.3.4",
+        "-U",
+        "admin",
+        "-P",
+        "pass",
+    ]
+
+
+def test_ipmitool_over_lan_args_missing_user():
+    """Skips username flag when username is empty for ipmitool."""
+    config = Config()
+    config.driver_type = "LAN"
+    config.hostname = "1.2.3.4"
+    config.username = ""
+    config.password = "pass"
+
+    args = utils.ipmitool_over_lan_args(config)
+    assert isinstance(args, list)
+    assert args == [
+        "-I",
+        "lanplus",
+        "-H",
+        "1.2.3.4",
+        "-P",
+        "pass",
+    ]
+
+
+def test_ipmitool_over_lan_args_without_lan():
+    """Returns empty list when driver_type does not contain LAN for ipmitool."""
+    config = Config()
+    config.driver_type = "KCS"
+    config.hostname = "1.2.3.4"
+    config.username = "admin"
+    config.password = "pass"
+
+    args = utils.ipmitool_over_lan_args(config)
+    assert args == []
