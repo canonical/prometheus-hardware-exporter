@@ -117,9 +117,9 @@ def test_main_resolves_hostname_from_ipmitool(mock_parse_cli, mock_start_exporte
     mock_ns.config = False
     mock_ns.port = 10000
     mock_ns.level = "INFO"
-    mock_ns.redfish_host = ""
-    mock_ns.redfish_username = ""
-    mock_ns.redfish_password = ""
+    mock_ns.hostname = ""
+    mock_ns.username = ""
+    mock_ns.password = ""
     mock_ns.driver_type = ""
     mock_ns.ipmi_sel_interval = 0
     mock_ns.redfish_client_timeout = 15
@@ -147,9 +147,9 @@ def test_main_hostname_unresolved_warns(mock_parse_cli, mock_start_exporter, moc
     mock_ns.config = False
     mock_ns.port = 10000
     mock_ns.level = "INFO"
-    mock_ns.redfish_host = ""
-    mock_ns.redfish_username = ""
-    mock_ns.redfish_password = ""
+    mock_ns.hostname = ""
+    mock_ns.username = ""
+    mock_ns.password = ""
     mock_ns.driver_type = ""
     mock_ns.ipmi_sel_interval = 0
     mock_ns.redfish_client_timeout = 15

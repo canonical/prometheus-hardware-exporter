@@ -104,3 +104,23 @@ def ipmi_over_lan_args(config: Config) -> List[str]:
             args.extend([flag, value])
 
     return args
+
+
+def ipmitool_over_lan_args(config: Config) -> List[str]:
+    """Get ipmitool over LAN arguments for ipmitool commands."""
+    if "LAN" not in config.driver_type.upper():
+        return []
+
+    args = ["-I", "lanplus"]
+
+    optional_args = {
+        "-H": config.hostname,
+        "-U": config.username,
+        "-P": config.password,
+    }
+
+    for flag, value in optional_args.items():
+        if value:
+            args.extend([flag, value])
+
+    return args
