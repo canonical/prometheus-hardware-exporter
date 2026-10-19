@@ -1,0 +1,6 @@
+Controllers found: 1
+----------------------------------------------------------------------
+Controller 1: Adaptec ASR8885Q
+   Controller Serial Number: SERIAL-REDACTED
+   Controller World Wide Name: WWN-REDACTED
+   Controller Status: Optimal

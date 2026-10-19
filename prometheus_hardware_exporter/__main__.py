@@ -7,6 +7,7 @@ from typing import Dict
 from prometheus_client.registry import Collector
 
 from .collector import (
+    AdaptecRAIDCollector,
     IpmiDcmiCollector,
     IpmiSelCollector,
     IpmiSensorsCollector,
@@ -18,7 +19,10 @@ from .collector import (
     SsaCLICollector,
 )
 from .config import (
+    DEFAULT_ARCCONF_PATH,
+    DEFAULT_BIND_ADDRESS,
     DEFAULT_COLLECT_TIMEOUT,
+    DEFAULT_COLLECTION_TIMEOUT,
     DEFAULT_CONFIG,
     DEFAULT_IPMI_SEL_INTERVAL,
     DEFAULT_REDFISH_CLIENT_MAX_RETRY,
@@ -48,9 +52,25 @@ def parse_command_line() -> argparse.Namespace:
     parser.add_argument(
         "-p",
         "--port",
-        help="Address on which to expose metrics and web interface.",
+        help="Port on which to expose metrics and web interface.",
         default=10000,
         type=int,
+    )
+    parser.add_argument(
+        "--bind-address",
+        help="Address on which to expose metrics (default: 127.0.0.1).",
+        default=DEFAULT_BIND_ADDRESS,
+    )
+    parser.add_argument(
+        "--arcconf-path",
+        help="Absolute path to trusted arcconf executable (default: /usr/sbin/arcconf).",
+        default=DEFAULT_ARCCONF_PATH,
+    )
+    parser.add_argument(
+        "--collection-timeout",
+        help="Total Adaptec collection budget in seconds, including discovery (0 < value <= 110).",
+        default=DEFAULT_COLLECTION_TIMEOUT,
+        type=float,
     )
     parser.add_argument(
         "--hostname",
@@ -87,6 +107,11 @@ def parse_command_line() -> argparse.Namespace:
         help="The timeout duration when running the shell commands to get the hardware data",
         default=DEFAULT_COLLECT_TIMEOUT,
         type=int,
+    )
+    parser.add_argument(
+        "--collector.adaptec_raid",
+        help="Enable Adaptec RAID collector (default: disabled)",
+        action="store_true",
     )
     parser.add_argument(
         "--collector.hpe_ssa",
@@ -162,6 +187,7 @@ def parse_command_line() -> argparse.Namespace:
 def get_collector_registries(config: Config) -> Dict[str, Collector]:
     """Get collector_registries simple factory."""
     return {
+        "collector.adaptec_raid": AdaptecRAIDCollector(config),
         "collector.hpe_ssa": SsaCLICollector(config),
         "collector.ipmi_dcmi": IpmiDcmiCollector(config),
         "collector.ipmi_sel": IpmiSelCollector(config),
@@ -179,7 +205,7 @@ def start_exporter(config: Config, daemon: bool = False) -> None:
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.getLevelName(config.level))
 
-    exporter = Exporter(config.port)
+    exporter = Exporter(config.port, addr=config.bind_address)
     enable_collectors_set = set(config.enable_collectors)
     collector_registries = get_collector_registries(config)
 
@@ -202,6 +228,9 @@ def main() -> None:
                 collectors.append(args_name)
         exporter_config = Config(
             port=namespace.port,
+            bind_address=namespace.bind_address,
+            arcconf_path=namespace.arcconf_path,
+            collection_timeout=namespace.collection_timeout,
             level=namespace.level,
             enable_collectors=collectors,
             hostname=namespace.hostname,

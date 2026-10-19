@@ -4,7 +4,7 @@ import os
 from logging import getLogger
 from typing import List, Optional
 
-from pydantic import BaseModel, validator  # pylint: disable=no-name-in-module
+from pydantic import BaseModel, Field, validator  # pylint: disable=no-name-in-module
 from yaml import safe_load
 
 logger = getLogger(__name__)
@@ -12,6 +12,10 @@ logger = getLogger(__name__)
 DEFAULT_CONFIG = os.path.join(os.environ.get("SNAP_DATA", "./"), "config.yaml")
 
 DEFAULT_COLLECT_TIMEOUT = 30
+DEFAULT_BIND_ADDRESS = "127.0.0.1"
+DEFAULT_ARCCONF_PATH = "/usr/sbin/arcconf"
+DEFAULT_COLLECTION_TIMEOUT = 100
+MAX_COLLECTION_TIMEOUT = 110
 DEFAULT_IPMI_SEL_INTERVAL = 86400 * 3  # 3 days
 DEFAULT_IPMI_SEL_COLLECT_INTERVAL = 300
 DEFAULT_REDFISH_CLIENT_TIMEOUT = 15
@@ -27,6 +31,11 @@ class Config(BaseModel):
     """Hardware exporter configuration."""
 
     port: int = 10000
+    bind_address: str = DEFAULT_BIND_ADDRESS
+    arcconf_path: str = DEFAULT_ARCCONF_PATH
+    collection_timeout: float = Field(
+        default=DEFAULT_COLLECTION_TIMEOUT, gt=0, le=MAX_COLLECTION_TIMEOUT
+    )
     level: str = "INFO"
     enable_collectors: List[str] = []
 
@@ -42,6 +51,24 @@ class Config(BaseModel):
     redfish_client_timeout: int = DEFAULT_REDFISH_CLIENT_TIMEOUT
     redfish_client_max_retry: int = DEFAULT_REDFISH_CLIENT_MAX_RETRY
     redfish_discover_cache_ttl: int = DEFAULT_REDFISH_DISCOVER_CACHE_TTL
+
+    @validator("bind_address")
+    @classmethod
+    def validate_bind_address(cls, address: str) -> str:
+        """Reject empty addresses, which implicitly bind all interfaces."""
+        if not address or address != address.strip():
+            raise ValueError(
+                "Bind address must be a non-empty address without surrounding whitespace."
+            )
+        return address
+
+    @validator("arcconf_path")
+    @classmethod
+    def validate_arcconf_path(cls, path: str) -> str:
+        """Require an explicit executable path, never PATH lookup."""
+        if not os.path.isabs(path) or "\x00" in path:
+            raise ValueError("Arcconf path must be an absolute executable path without NUL bytes.")
+        return path
 
     @validator("port")
     @classmethod
@@ -72,6 +99,7 @@ class Config(BaseModel):
         # We may need to update this set if COLLECTOR_REGISTRIES is
         # changed.
         choices = {
+            "collector.adaptec_raid",
             "collector.hpe_ssa",
             "collector.ipmi_dcmi",
             "collector.ipmi_sel",

@@ -74,3 +74,46 @@ class TestConfig(unittest.TestCase):
         self.patch_os_path_exists.stop()
         with pytest.raises(ValueError):
             Config.load_config("random")
+
+
+def test_collector_contract_defaults():
+    config = Config()
+    assert config.bind_address == "127.0.0.1"
+    assert config.arcconf_path == "/usr/sbin/arcconf"
+    assert config.collect_timeout == 30
+    assert config.collection_timeout == 100
+
+
+def test_collector_contract_yaml_overrides(tmp_path):
+    path = tmp_path / "config.yaml"
+    path.write_text(
+        "bind_address: 192.0.2.1\narcconf_path: /opt/adaptec/arcconf\n"
+        "collection_timeout: 90\ncollect_timeout: 15\n"
+    )
+    config = Config.load_config(str(path))
+    assert config.bind_address == "192.0.2.1"
+    assert config.arcconf_path == "/opt/adaptec/arcconf"
+    assert config.collection_timeout == 90
+    assert config.collect_timeout == 15
+
+
+@pytest.mark.parametrize("budget", [0, -1, 110.1, 120, float("inf"), float("nan"), None])
+def test_invalid_collection_budget(budget):
+    with pytest.raises(ValueError):
+        Config(collection_timeout=budget)
+
+
+@pytest.mark.parametrize("path", ["arcconf", "./arcconf", "", "/usr/sbin/arcconf\x00"])
+def test_invalid_arcconf_path(path):
+    with pytest.raises(ValueError):
+        Config(arcconf_path=path)
+
+
+@pytest.mark.parametrize("address", ["", " ", " 127.0.0.1"])
+def test_invalid_bind_address(address):
+    with pytest.raises(ValueError):
+        Config(bind_address=address)
+
+
+def test_collection_budget_maximum():
+    assert Config(collection_timeout=110).collection_timeout == 110

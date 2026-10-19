@@ -9,6 +9,15 @@ from typing import Any, Dict, List
 
 from prometheus_client.metrics_core import GaugeMetricFamily, InfoMetricFamily
 
+from .collectors.arcconf import (
+    ArcConf,
+    ArcconfDeadlineExceeded,
+    ArcconfError,
+    number,
+    parse_config,
+    parse_list,
+    safe_text,
+)
 from .collectors.dmidecode import Dmidecode
 from .collectors.ipmi_dcmi import IpmiDcmi, IpmiTool
 from .collectors.ipmi_sel import IpmiSel
@@ -324,6 +333,243 @@ class MegaRAIDCollector(BlockingCollector):
     def process(self, payloads: List[Payload], datastore: Dict[str, Payload]) -> List[Payload]:
         """Process the payload if needed."""
         return payloads
+
+
+class AdaptecRAIDCollector(BlockingCollector):
+    """Expose one complete AD/LD/PD snapshot per successfully scanned controller."""
+
+    def __init__(self, config: Config) -> None:
+        self.arcconf = ArcConf(config)
+        self._scan_lock = threading.Lock()
+        super().__init__(config)
+
+    @property
+    def specifications(self) -> List[Specification]:
+        metrics = [
+            ("arcconf_command_success", []),
+            ("arcconf_collection_incomplete", []),
+            ("arcconf_collection_deadline_exceeded", []),
+            ("arcconf_command_ctrl_success", ["controller_id"]),
+            ("adaptec_controllers", []),
+            ("adaptec_logical_drives", ["controller_id"]),
+            ("adaptec_ready_logical_drives", ["controller_id"]),
+            ("adaptec_unready_logical_drives", ["controller_id"]),
+            ("adaptec_physical_drives", ["controller_id"]),
+            ("adaptec_controller_healthy", ["controller_id"]),
+            ("adaptec_controller_temperature_celsius", ["controller_id"]),
+            ("adaptec_controller_defunct_drives", ["controller_id"]),
+            ("adaptec_logical_drive_healthy", ["controller_id", "logical_drive_id"]),
+            ("adaptec_physical_drive_healthy", ["controller_id", "channel_id", "device_id"]),
+            (
+                "adaptec_physical_drive_temperature_celsius",
+                ["controller_id", "channel_id", "device_id"],
+            ),
+            ("adaptec_physical_drive_smart_alert", ["controller_id", "channel_id", "device_id"]),
+            (
+                "adaptec_physical_drive_smart_warnings",
+                ["controller_id", "channel_id", "device_id"],
+            ),
+        ]
+        specs = [
+            Specification(name, name.replace("_", " "), GaugeMetricFamily, labels)
+            for name, labels in metrics
+        ]
+        specs.extend(
+            Specification(name, name.replace("_", " "), InfoMetricFamily)
+            for name in ("adaptec_controller", "adaptec_logical_drive", "adaptec_physical_drive")
+        )
+        return specs
+
+    @staticmethod
+    def _optional(payloads: List[Payload], name: str, labels: List[str], raw: str) -> None:
+        value = number(raw)
+        if value is not None:
+            payloads.append(Payload(name, value, labels))
+
+    def _controller_payloads(self, controller_id: str, deadline: float) -> List[Payload]:
+        ad, _ = parse_config(
+            self.arcconf.run("GETCONFIG", controller_id, "AD", deadline=deadline), "ad"
+        )
+        _, logical = parse_config(
+            self.arcconf.run("GETCONFIG", controller_id, "LD", deadline=deadline), "ld"
+        )
+        _, physical = parse_config(
+            self.arcconf.run("GETCONFIG", controller_id, "PD", deadline=deadline), "pd"
+        )
+        payloads = [
+            Payload("adaptec_logical_drives", len(logical), [controller_id]),
+            Payload(
+                "adaptec_ready_logical_drives",
+                sum(drive["state"].strip().lower() == "optimal" for drive in logical),
+                [controller_id],
+            ),
+            Payload(
+                "adaptec_unready_logical_drives",
+                sum(drive["state"].strip().lower() != "optimal" for drive in logical),
+                [controller_id],
+            ),
+            Payload("adaptec_physical_drives", len(physical), [controller_id]),
+            Payload(
+                "adaptec_controller",
+                {
+                    "controller_id": controller_id,
+                    "model": safe_text(ad.get("model", "unknown")),
+                    "mode": safe_text(ad.get("mode", "unknown")),
+                    "state": safe_text(ad["state"]),
+                },
+            ),
+            Payload(
+                "adaptec_controller_healthy",
+                int(ad["state"].strip().lower() == "optimal"),
+                [controller_id],
+            ),
+        ]
+        self._optional(
+            payloads,
+            "adaptec_controller_temperature_celsius",
+            [controller_id],
+            ad.get("temperature", ""),
+        )
+        self._optional(
+            payloads, "adaptec_controller_defunct_drives", [controller_id], ad.get("defunct", "")
+        )
+        for drive in logical:
+            labels = [controller_id, drive["logical_drive_id"]]
+            payloads.extend(
+                [
+                    Payload(
+                        "adaptec_logical_drive",
+                        {
+                            "controller_id": controller_id,
+                            "logical_drive_id": labels[1],
+                            "raid_level": safe_text(drive.get("raid_level", "unknown")),
+                            "state": safe_text(drive["state"]),
+                        },
+                    ),
+                    Payload(
+                        "adaptec_logical_drive_healthy",
+                        int(drive["state"].strip().lower() == "optimal"),
+                        labels,
+                    ),
+                ]
+            )
+        healthy_states = {
+            "online",
+            "ready",
+            "global hot-spare",
+            "dedicated hot-spare",
+            "pooled hot-spare",
+            "hot spare",
+            "online (jbod)",
+            "raw (pass through)",
+        }
+        for drive in physical:
+            labels = [controller_id, drive["channel_id"], drive["device_id"]]
+            payloads.extend(
+                [
+                    Payload(
+                        "adaptec_physical_drive",
+                        {
+                            "controller_id": controller_id,
+                            "channel_id": labels[1],
+                            "device_id": labels[2],
+                            "model": safe_text(drive.get("model", "unknown")),
+                            "state": safe_text(drive["state"]),
+                        },
+                    ),
+                    Payload(
+                        "adaptec_physical_drive_healthy",
+                        int(" ".join(drive["state"].lower().split()) in healthy_states),
+                        labels,
+                    ),
+                ]
+            )
+            self._optional(
+                payloads,
+                "adaptec_physical_drive_temperature_celsius",
+                labels,
+                drive.get("temperature", ""),
+            )
+            self._optional(
+                payloads,
+                "adaptec_physical_drive_smart_warnings",
+                labels,
+                drive.get("warnings", ""),
+            )
+            smart = drive.get("smart", "").strip().lower()
+            if smart in {"yes", "no"}:
+                payloads.append(
+                    Payload("adaptec_physical_drive_smart_alert", int(smart == "yes"), labels)
+                )
+        return payloads
+
+    def fetch(self) -> List[Payload]:
+        deadline = time.monotonic() + self.config.collection_timeout
+        payloads = self._failure_payloads()
+        try:
+            ids = parse_list(self.arcconf.run("LIST", deadline=deadline))
+        except ArcconfError as error:
+            payloads[2].value = int(isinstance(error, ArcconfDeadlineExceeded))
+            logger.warning("Adaptec discovery failed: %s", error)
+            return payloads
+        payloads.append(Payload("adaptec_controllers", len(ids)))
+        payloads[0].value = 1
+        payloads[1].value = 0
+        for controller_id in ids:
+            try:
+                if payloads[2].value or time.monotonic() >= deadline:
+                    raise ArcconfDeadlineExceeded("arcconf collection deadline exceeded")
+                controller_payloads = self._controller_payloads(controller_id, deadline)
+                if time.monotonic() >= deadline:
+                    raise ArcconfDeadlineExceeded("arcconf collection deadline exceeded")
+            except ArcconfError as error:
+                logger.warning("Adaptec controller %s scan failed: %s", controller_id, error)
+                payloads[0].value = 0
+                payloads[1].value = 1
+                if isinstance(error, ArcconfDeadlineExceeded):
+                    payloads[2].value = 1
+                payloads.append(Payload("arcconf_command_ctrl_success", 0, [controller_id]))
+            else:
+                payloads.append(Payload("arcconf_command_ctrl_success", 1, [controller_id]))
+                payloads.extend(controller_payloads)
+        return payloads
+
+    @staticmethod
+    def _failure_payloads() -> List[Payload]:
+        return [
+            Payload("arcconf_command_success", 0),
+            Payload("arcconf_collection_incomplete", 1),
+            Payload("arcconf_collection_deadline_exceeded", 0),
+        ]
+
+    def process(self, payloads: List[Payload], datastore: Dict[str, Payload]) -> List[Payload]:
+        return payloads
+
+    def describe(self):
+        """Never execute arcconf during registry registration."""
+        return iter(())
+
+    def collect(self):
+        """Build one metric family per name, without caching values across scrapes."""
+        if not self._scan_lock.acquire(blocking=False):
+            payloads = self._failure_payloads()
+        else:
+            try:
+                payloads = self.fetch()
+            except Exception:  # pylint: disable=broad-exception-caught
+                logger.exception("Adaptec scan failed")
+                payloads = self._failure_payloads()
+            finally:
+                self._scan_lock.release()
+        families = {}
+        for payload in payloads:
+            spec = self._specs[payload.name]
+            if payload.name not in families:
+                families[payload.name] = spec.metric_class(
+                    name=spec.name, labels=spec.labels, documentation=spec.documentation
+                )
+            families[payload.name].add_metric(labels=payload.labels, value=payload.value)
+        return iter(families.values())
 
 
 class IpmiDcmiCollector(BlockingCollector):

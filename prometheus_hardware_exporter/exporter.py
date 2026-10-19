@@ -10,6 +10,8 @@ from prometheus_client import make_wsgi_app
 from prometheus_client.core import REGISTRY
 from prometheus_client.registry import Collector
 
+from .config import DEFAULT_BIND_ADDRESS
+
 logger = getLogger(__name__)
 
 
@@ -29,7 +31,7 @@ class SilentRequestHandler(WSGIRequestHandler):
 class Exporter:
     """The exporter class."""
 
-    def __init__(self, port: int, addr: str = "0.0.0.0") -> None:
+    def __init__(self, port: int, addr: str = DEFAULT_BIND_ADDRESS) -> None:
         """Initialize the exporter class.
 
         Args:

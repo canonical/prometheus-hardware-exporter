@@ -1,0 +1,47 @@
+----------------------------------------------------------------------
+Controller information
+----------------------------------------------------------------------
+   Controller Status                        : Optimal
+   Channel description                      : SAS/SATA
+   Controller Model                         : Adaptec ASR8885Q
+   Controller Serial Number                 : SERIAL-REDACTED
+   Temperature                              : 50 C/ 122 F (Normal)
+   Logical devices/Failed/Degraded          : 2/0/1
+----------------------------------------------------------------------
+Logical device information
+----------------------------------------------------------------------
+Logical device number 0
+   Logical device name                      : RAID10-Data
+   RAID level                               : 10
+   Status of logical device                 : Optimal
+   Size                                     : 1143808 MB
+
+Logical device number 1
+   Logical device name                      : RAID5-Archive
+   RAID level                               : 5
+   Status of logical device                 : Degraded
+   Size                                     : 1906000 MB
+
+----------------------------------------------------------------------
+Physical Device information
+----------------------------------------------------------------------
+      Device #0
+         Device is a Hard drive
+         State                              : Online
+         Reported Channel,Device(T:L)       : 0,0(0:0)
+         Model                              : ST600MP0006
+         Total Size                          : 572325 MB
+
+      Device #1
+         Device is a Hard drive
+         State                              : Online
+         Reported Channel,Device(T:L)       : 0,1(0:1)
+         Model                              : ST600MP0006
+         Total Size                          : 572325 MB
+
+      Device #2
+         Device is a Hard drive
+         State                              : Ready
+         Reported Channel,Device(T:L)       : 0,2(0:2)
+         Model                              : ST600MP0006
+         Total Size                          : 572325 MB

@@ -51,7 +51,7 @@ class TestCli:
         mock_enable_collectors = ["collector.mega_raid"]
         config = Config(port=mock_port, level=mock_level, enable_collectors=mock_enable_collectors)
         start_exporter(config)
-        mock_exporter.assert_called_once_with(mock_port)
+        mock_exporter.assert_called_once_with(mock_port, addr="127.0.0.1")
 
     @pytest.mark.parametrize(
         "enable_collectors",
@@ -95,6 +95,7 @@ def test_get_collector_registries():
 
     assert set(collector_registries.keys()) == set(
         [
+            "collector.adaptec_raid",
             "collector.hpe_ssa",
             "collector.ipmi_dcmi",
             "collector.ipmi_sel",
@@ -126,6 +127,9 @@ def test_main_resolves_hostname_from_ipmitool(mock_parse_cli, mock_start_exporte
     mock_ns.redfish_client_max_retry = 1
     mock_ns.redfish_discover_cache_ttl = 86400
     mock_ns.collect_timeout = 30
+    mock_ns.bind_address = "127.0.0.1"
+    mock_ns.arcconf_path = "/usr/sbin/arcconf"
+    mock_ns.collection_timeout = 100
     mock_parse_cli.return_value = mock_ns
 
     mock_get_bmc.return_value = "1.2.3.4"
@@ -156,6 +160,9 @@ def test_main_hostname_unresolved_warns(mock_parse_cli, mock_start_exporter, moc
     mock_ns.redfish_client_max_retry = 1
     mock_ns.redfish_discover_cache_ttl = 86400
     mock_ns.collect_timeout = 30
+    mock_ns.bind_address = "127.0.0.1"
+    mock_ns.arcconf_path = "/usr/sbin/arcconf"
+    mock_ns.collection_timeout = 100
     mock_parse_cli.return_value = mock_ns
 
     mock_get_bmc.return_value = None
@@ -166,3 +173,39 @@ def test_main_hostname_unresolved_warns(mock_parse_cli, mock_start_exporter, moc
     assert mock_start_exporter.called
     exporter_config = mock_start_exporter.call_args[0][0]
     assert exporter_config.hostname == ""
+
+
+@pytest.mark.parametrize(
+    "options,address,path,budget",
+    [
+        ([], "127.0.0.1", "/usr/sbin/arcconf", 100),
+        (
+            [
+                "--bind-address",
+                "0.0.0.0",
+                "--arcconf-path",
+                "/opt/adaptec/arcconf",
+                "--collection-timeout",
+                "90",
+            ],
+            "0.0.0.0",
+            "/opt/adaptec/arcconf",
+            90,
+        ),
+    ],
+)
+def test_contract_cli_defaults_and_overrides(monkeypatch, options, address, path, budget):
+    monkeypatch.setattr("sys.argv", ["exporter", "--hostname", "bmc", *options])
+    with patch.object(__main__, "start_exporter") as start:
+        main()
+    config = start.call_args.args[0]
+    assert config.bind_address == address
+    assert config.arcconf_path == path
+    assert config.collection_timeout == budget
+
+
+def test_start_exporter_bind_override():
+    with patch.object(__main__, "Exporter") as exporter:
+        with patch.object(__main__, "get_collector_registries", return_value={}):
+            start_exporter(Config(bind_address="192.0.2.1"))
+    exporter.assert_called_once_with(10000, addr="192.0.2.1")

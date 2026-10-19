@@ -48,6 +48,12 @@ To start the exporter at port `10000` and enable the ipmi sensor collector, run:
 (venv) prometheus-hardware-exporter -p 10000 --collector.ipmi_sensor
 ```
 
+Metrics bind to `127.0.0.1` by default. Use `--bind-address <IPv4-address>`
+(`bind_address` in YAML) to change this explicitly. Binding `0.0.0.0` exposes
+metrics on every IPv4 interface; this endpoint has no authentication or TLS.
+Use a protected network or authenticated proxy if remote access is required.
+When `--config` is supplied, YAML configuration is used instead of CLI settings.
+
 Note that all the exporters are disabled by default as you will need to install
 the appropriate third party or proprietary software to run the collectors.  You
 can check out [Resources](https://charmhub.io/hardware-observer/resources/) to
@@ -57,6 +63,64 @@ find out more information about the third party software.
 
 You can learn more about the metrics from [Hardware Observer
 documentation](https://charmhub.io/hardware-observer/docs/metrics-and-alerts-common).
+
+### Adaptec RAID
+
+Install `arcconf` separately at `/usr/sbin/arcconf` (default), or set an explicit
+absolute path with `--arcconf-path` / YAML `arcconf_path`. No `PATH` search or
+shell is used. The binary and all parent directories must be trusted,
+administrator-owned and not writable by the exporter account or untrusted users;
+ownership and permissions are an installation responsibility, not checked by
+the exporter. Missing/non-executable binaries report collection failure.
+Enable with `--collector.adaptec_raid`, or add `collector.adaptec_raid` to
+`enable_collectors` in YAML config. Disabled by default. Collector runs read-only
+`arcconf LIST` and `arcconf GETCONFIG <id> AD`, `LD`, `PD` for each discovered
+controller; `--collect-timeout` bounds each command (default 30 seconds).
+`--collection-timeout` / YAML `collection_timeout` separately bounds the entire
+Adaptec scan, including discovery (default 100 seconds; must be greater than 0
+and at most 110 seconds). Every command uses the smaller of its per-command
+timeout and the remaining monotonic scan budget. No new commands start once the
+deadline is reached. This leaves at least 10 seconds before Alloy's 120-second
+scrape timeout for subprocess cleanup, metric rendering and response delivery.
+It is not an HTTP-wide deadline for other enabled collectors; enable only the
+Adaptec collector on this endpoint to use that scrape budget. OS scheduling,
+process creation and uninterruptible kernel I/O can delay cleanup beyond the
+nominal deadline; this is not a hard real-time guarantee.
+
+`arcconf_command_success` reports complete discovery/scan success;
+`arcconf_command_ctrl_success{controller_id}` reports each discovered controller.
+`arcconf_collection_incomplete` is 1 for discovery/command/parse failure, deadline
+expiry, unexpected scan failure or overlapping scrape rejected by the existing
+nonblocking lock; otherwise 0. `arcconf_collection_deadline_exceeded` is 1 only
+when the total scan deadline expires, not on an ordinary per-command timeout.
+On failure, completed controllers retain their current-scrape AD/LD/PD snapshots.
+Failed or deadline-skipped controllers have per-controller success 0 and no
+hardware samples. A per-command failure still allows later controllers to be
+scanned while budget remains. No previous-scrape hardware samples are reused.
+
+Example YAML (`prometheus-hardware-exporter --config config.yaml`):
+
+```yaml
+port: 10000
+bind_address: 127.0.0.1
+arcconf_path: /usr/sbin/arcconf
+collect_timeout: 30
+collection_timeout: 100
+enable_collectors:
+  - collector.adaptec_raid
+```
+
+Hardware status gauges report health separately: unknown/degraded states yield 0,
+not command failure. Missing optional sensors yield no sample. No serial numbers,
+WWNs, logical-drive names or mount paths are exported.
+
+The feature branch's `AdaptecRAIDCollector` registration and
+`adaptec_ready_logical_drives` / `adaptec_unready_logical_drives` gauges are retained.
+Collection now uses separate AD/LD/PD commands instead of `GETCONFIG AL`.
+Drive info labels are restricted: logical drives expose controller ID, logical-drive
+ID, RAID level and state; physical drives expose controller ID, channel ID, device
+ID, model and state. Previous name/size/raw-location labels are no longer exported.
+Physical device IDs now identify channel/device locations, not `Device #` ordinals.
 
 ## Snap support
 
